@@ -1,0 +1,57 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Validate tag and read version
+        id: version
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF_NAME -notmatch '^v(?<version>\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)$') {
+            throw "Tag must use semantic versioning, for example v0.1.0. Received: $env:GITHUB_REF_NAME"
+          }
+          "value=$($Matches.version)" >> $env:GITHUB_OUTPUT
+
+      - name: Restore
+        run: dotnet restore SephiriaBuildOverlay.sln
+
+      - name: Test
+        run: dotnet test SephiriaBuildOverlay.sln -c Release --no-restore -p:Version="${{ steps.version.outputs.value }}"
+
+      - name: Build paste-ready package
+        shell: pwsh
+        run: ./tools/BuildRelease.ps1 -Version "${{ steps.version.outputs.value }}"
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SephiriaBuildOverlay-${{ steps.version.outputs.value }}
+          path: |
+            dist/*.zip
+            dist/*.sha256
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $assets = Get-ChildItem -LiteralPath dist -File | Where-Object { $_.Extension -in '.zip', '.sha256' }
+          if ($assets.Count -ne 2) { throw "Expected one ZIP and one SHA-256 file, found $($assets.Count)." }
+          gh release create "$env:GITHUB_REF_NAME" $assets.FullName --verify-tag --generate-notes --title "Sephiria Build Overlay $env:GITHUB_REF_NAME"

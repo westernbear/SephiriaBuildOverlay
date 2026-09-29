@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SephiriaBuildOverlay.Core", "src\SephiriaBuildOverlay.Core\SephiriaBuildOverlay.Core.csproj", "{E5C64C6C-0D5C-46D1-A0B2-2794EF62204A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SephiriaBuildOverlay.Plugin", "src\SephiriaBuildOverlay.Plugin\SephiriaBuildOverlay.Plugin.csproj", "{2F220F5F-B770-48B4-B317-266E44EF70DF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SephiriaBuildOverlay.Tests", "tests\SephiriaBuildOverlay.Tests\SephiriaBuildOverlay.Tests.csproj", "{2D8561D5-1C27-41B9-B40D-229BA9056A9A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E5C64C6C-0D5C-46D1-A0B2-2794EF62204A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E5C64C6C-0D5C-46D1-A0B2-2794EF62204A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E5C64C6C-0D5C-46D1-A0B2-2794EF62204A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E5C64C6C-0D5C-46D1-A0B2-2794EF62204A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2F220F5F-B770-48B4-B317-266E44EF70DF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2F220F5F-B770-48B4-B317-266E44EF70DF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2F220F5F-B770-48B4-B317-266E44EF70DF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2F220F5F-B770-48B4-B317-266E44EF70DF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2D8561D5-1C27-41B9-B40D-229BA9056A9A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2D8561D5-1C27-41B9-B40D-229BA9056A9A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2D8561D5-1C27-41B9-B40D-229BA9056A9A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2D8561D5-1C27-41B9-B40D-229BA9056A9A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

@@ -1,0 +1,3454 @@
+{
+    "gameVersion":  "1.0.33",
+    "generatedFrom":  "https://www.sephiria.wiki",
+    "entries":  [
+                    {
+                        "slug":  "reinforced_potion_lid",
+                        "gameKey":  "1",
+                        "kind":  "Artifact",
+                        "koreanName":  "강화 포션 뚜껑",
+                        "rarity":  "Common",
+                        "category":  "alchemy"
+                    },
+                    {
+                        "slug":  "eye_crystal_necklace",
+                        "gameKey":  "2",
+                        "kind":  "Artifact",
+                        "koreanName":  "눈 결정 목걸이",
+                        "rarity":  "Common",
+                        "category":  "glacier"
+                    },
+                    {
+                        "slug":  "mast_model",
+                        "gameKey":  "3",
+                        "kind":  "Artifact",
+                        "koreanName":  "돛대 모형",
+                        "rarity":  "Common",
+                        "category":  "extrium"
+                    },
+                    {
+                        "slug":  "lightning_bolt",
+                        "gameKey":  "4",
+                        "kind":  "Artifact",
+                        "koreanName":  "라이트닝 볼트",
+                        "rarity":  "Common",
+                        "category":  "magic_engineering"
+                    },
+                    {
+                        "slug":  "wizard",
+                        "gameKey":  "5",
+                        "kind":  "Artifact",
+                        "koreanName":  "마법사의 동전",
+                        "rarity":  "Common",
+                        "category":  "academy"
+                    },
+                    {
+                        "slug":  "dried_flower",
+                        "gameKey":  "6",
+                        "kind":  "Artifact",
+                        "koreanName":  "말라버린 꽃",
+                        "rarity":  "Common",
+                        "category":  "lake"
+                    },
+                    {
+                        "slug":  "amulet",
+                        "gameKey":  "7",
+                        "kind":  "Artifact",
+                        "koreanName":  "명석함의 부적",
+                        "rarity":  "Common",
+                        "category":  "glacier"
+                    },
+                    {
+                        "slug":  "windpool_shawl",
+                        "gameKey":  "8",
+                        "kind":  "Artifact",
+                        "koreanName":  "바람풀 목도리",
+                        "rarity":  "Common",
+                        "category":  "spring_song"
+                    },
+                    {
+                        "slug":  "shield_technique_manual",
+                        "gameKey":  "9",
+                        "kind":  "Artifact",
+                        "koreanName":  "방패술 교본",
+                        "rarity":  "Common",
+                        "category":  "firmness"
+                    },
+                    {
+                        "slug":  "begonia_flavor_pocket",
+                        "gameKey":  "10",
+                        "kind":  "Artifact",
+                        "koreanName":  "베고니아 향 주머니",
+                        "rarity":  "Common",
+                        "category":  "firmness"
+                    },
+                    {
+                        "slug":  "shield",
+                        "gameKey":  "11",
+                        "kind":  "Artifact",
+                        "koreanName":  "보호막",
+                        "rarity":  "Common",
+                        "category":  "guardian"
+                    },
+                    {
+                        "slug":  "unclean_bandage",
+                        "gameKey":  "12",
+                        "kind":  "Artifact",
+                        "koreanName":  "부정한 붕대",
+                        "rarity":  "Common",
+                        "category":  "precision"
+                    },
+                    {
+                        "slug":  "ice_bolt",
+                        "gameKey":  "13",
+                        "kind":  "Artifact",
+                        "koreanName":  "아이스 볼트",
+                        "rarity":  "Common",
+                        "category":  "glacier"
+                    },
+                    {
+                        "slug":  "compression_band",
+                        "gameKey":  "14",
+                        "kind":  "Artifact",
+                        "koreanName":  "압박 밴드",
+                        "rarity":  "Common",
+                        "category":  "spring_song"
+                    },
+                    {
+                        "slug":  "endodits_questionnaire",
+                        "gameKey":  "15",
+                        "kind":  "Artifact",
+                        "koreanName":  "엔도디토의 문진",
+                        "rarity":  "Common",
+                        "category":  "lake"
+                    },
+                    {
+                        "slug":  "smoke_screen",
+                        "gameKey":  "16",
+                        "kind":  "Artifact",
+                        "koreanName":  "연막",
+                        "rarity":  "Common",
+                        "category":  "shadow"
+                    },
+                    {
+                        "slug":  "amulet_of_aspiration",
+                        "gameKey":  "17",
+                        "kind":  "Artifact",
+                        "koreanName":  "열망의 부적",
+                        "rarity":  "Common",
+                        "category":  "precision"
+                    },
+                    {
+                        "slug":  "ohia_lehua",
+                        "gameKey":  "18",
+                        "kind":  "Artifact",
+                        "koreanName":  "오히아 레후아",
+                        "rarity":  "Common",
+                        "category":  "yinggalbul"
+                    },
+                    {
+                        "slug":  "silver_plate",
+                        "gameKey":  "19",
+                        "kind":  "Artifact",
+                        "koreanName":  "은접시",
+                        "rarity":  "Common",
+                        "category":  "firmness"
+                    },
+                    {
+                        "slug":  "straw",
+                        "gameKey":  "20",
+                        "kind":  "Artifact",
+                        "koreanName":  "지푸라기 인형",
+                        "rarity":  "Common",
+                        "category":  "lake"
+                    },
+                    {
+                        "slug":  "chiri",
+                        "gameKey":  "21",
+                        "kind":  "Artifact",
+                        "koreanName":  "찌릿 슈크림빵",
+                        "rarity":  "Common",
+                        "category":  "extrium"
+                    },
+                    {
+                        "slug":  "cloth_armor",
+                        "gameKey":  "22",
+                        "kind":  "Artifact",
+                        "koreanName":  "천 갑옷",
+                        "rarity":  "Common",
+                        "category":  "guardian"
+                    },
+                    {
+                        "slug":  "green_tooth",
+                        "gameKey":  "23",
+                        "kind":  "Artifact",
+                        "koreanName":  "초록색 톱니",
+                        "rarity":  "Common",
+                        "category":  "precision"
+                    },
+                    {
+                        "slug":  "criton",
+                        "gameKey":  "26",
+                        "kind":  "Artifact",
+                        "koreanName":  "크리톤의 인장",
+                        "rarity":  "Common",
+                        "category":  "bargaining"
+                    },
+                    {
+                        "slug":  "fire_bolt",
+                        "gameKey":  "27",
+                        "kind":  "Artifact",
+                        "koreanName":  "파이어 볼트",
+                        "rarity":  "Common",
+                        "category":  "yinggalbul"
+                    },
+                    {
+                        "slug":  "pro",
+                        "gameKey":  "28",
+                        "kind":  "Artifact",
+                        "koreanName":  "프로슘 반지",
+                        "rarity":  "Common",
+                        "category":  "glacier"
+                    },
+                    {
+                        "slug":  "golden_leaf",
+                        "gameKey":  "29",
+                        "kind":  "Artifact",
+                        "koreanName":  "황금 단풍잎",
+                        "rarity":  "Common",
+                        "category":  "bargaining"
+                    },
+                    {
+                        "slug":  "amulet_of_power",
+                        "gameKey":  "30",
+                        "kind":  "Artifact",
+                        "koreanName":  "힘의 부적",
+                        "rarity":  "Common",
+                        "category":  "firmness"
+                    },
+                    {
+                        "slug":  "thornbush",
+                        "gameKey":  "31",
+                        "kind":  "Artifact",
+                        "koreanName":  "가시덤불",
+                        "rarity":  "Uncommon",
+                        "category":  "spring_song"
+                    },
+                    {
+                        "slug":  "thorn_shell",
+                        "gameKey":  "32",
+                        "kind":  "Artifact",
+                        "koreanName":  "가시 등껍질",
+                        "rarity":  "Uncommon",
+                        "category":  "guardian"
+                    },
+                    {
+                        "slug":  "viscosity",
+                        "gameKey":  "33",
+                        "kind":  "Artifact",
+                        "koreanName":  "가시 부적",
+                        "rarity":  "Uncommon",
+                        "category":  "firmness"
+                    },
+                    {
+                        "slug":  "simple_contract",
+                        "gameKey":  "34",
+                        "kind":  "Artifact",
+                        "koreanName":  "간이 계약서",
+                        "rarity":  "Uncommon",
+                        "category":  "colleague"
+                    },
+                    {
+                        "slug":  "craving",
+                        "gameKey":  "35",
+                        "kind":  "Artifact",
+                        "koreanName":  "갈망의 보주",
+                        "rarity":  "Uncommon",
+                        "category":  "academy"
+                    },
+                    {
+                        "slug":  "cloud_bottle",
+                        "gameKey":  "36",
+                        "kind":  "Artifact",
+                        "koreanName":  "구름 병",
+                        "rarity":  "Uncommon",
+                        "category":  "extrium"
+                    },
+                    {
+                        "slug":  "cloud_seed_arrowhead",
+                        "gameKey":  "37",
+                        "kind":  "Artifact",
+                        "koreanName":  "구름씨 화살촉",
+                        "rarity":  "Uncommon",
+                        "category":  "extrium"
+                    },
+                    {
+                        "slug":  "gold_cloak",
+                        "gameKey":  "38",
+                        "kind":  "Artifact",
+                        "koreanName":  "금빛 망토",
+                        "rarity":  "Uncommon",
+                        "category":  "spring_song"
+                    },
+                    {
+                        "slug":  "golden_hand_bell",
+                        "gameKey":  "39",
+                        "kind":  "Artifact",
+                        "koreanName":  "금빛 핸드벨",
+                        "rarity":  "Uncommon",
+                        "category":  "colleague"
+                    },
+                    {
+                        "slug":  "broken_mirror",
+                        "gameKey":  "40",
+                        "kind":  "Artifact",
+                        "koreanName":  "깨진 거울",
+                        "rarity":  "Uncommon",
+                        "category":  "guardian"
+                    },
+                    {
+                        "slug":  "yellow_planet",
+                        "gameKey":  "41",
+                        "kind":  "Artifact",
+                        "koreanName":  "노란 행성",
+                        "rarity":  "Uncommon",
+                        "category":  "planet"
+                    },
+                    {
+                        "slug":  "snowborne",
+                        "gameKey":  "42",
+                        "kind":  "Artifact",
+                        "koreanName":  "눈보라 망치",
+                        "rarity":  "Uncommon",
+                        "category":  "ice_weapon"
+                    },
+                    {
+                        "slug":  "great_blessing",
+                        "gameKey":  "43",
+                        "kind":  "Artifact",
+                        "koreanName":  "대축복",
+                        "rarity":  "Uncommon",
+                        "category":  "mystery"
+                    },
+                    {
+                        "slug":  "ray_known",
+                        "gameKey":  "44",
+                        "kind":  "Artifact",
+                        "koreanName":  "레이에 별조각",
+                        "rarity":  "Uncommon",
+                        "category":  "academy"
+                    },
+                    {
+                        "slug":  "lip_stick",
+                        "gameKey":  "45",
+                        "kind":  "Artifact",
+                        "koreanName":  "리포스테 봉 파편",
+                        "rarity":  "Uncommon",
+                        "category":  "firmness"
+                    },
+                    {
+                        "slug":  "magma_bead",
+                        "gameKey":  "46",
+                        "kind":  "Artifact",
+                        "koreanName":  "마그마 구슬",
+                        "rarity":  "Legend",
+                        "category":  "yinggalbul"
+                    },
+                    {
+                        "slug":  "magic_carrot",
+                        "gameKey":  "47",
+                        "kind":  "Artifact",
+                        "koreanName":  "마법 당근",
+                        "rarity":  "Uncommon",
+                        "category":  "element"
+                    },
+                    {
+                        "slug":  "kaleidoscope",
+                        "gameKey":  "48",
+                        "kind":  "Artifact",
+                        "koreanName":  "만화경",
+                        "rarity":  "Uncommon",
+                        "category":  "precision"
+                    },
+                    {
+                        "slug":  "fascinating_lure",
+                        "gameKey":  "49",
+                        "kind":  "Artifact",
+                        "koreanName":  "매혹하는 루어",
+                        "rarity":  "Uncommon",
+                        "category":  "element,lake"
+                    },
+                    {
+                        "slug":  "water_bag",
+                        "gameKey":  "50",
+                        "kind":  "Artifact",
+                        "koreanName":  "물주머니",
+                        "rarity":  "Uncommon",
+                        "category":  "lake"
+                    },
+                    {
+                        "slug":  "mini_balista",
+                        "gameKey":  "51",
+                        "kind":  "Artifact",
+                        "koreanName":  "미니 발리스타",
+                        "rarity":  "Uncommon",
+                        "category":  "colleague,extrium"
+                    },
+                    {
+                        "slug":  "vane",
+                        "gameKey":  "52",
+                        "kind":  "Artifact",
+                        "koreanName":  "바람개비",
+                        "rarity":  "Uncommon",
+                        "category":  "shadow,spring_song"
+                    },
+                    {
+                        "slug":  "firefly",
+                        "gameKey":  "53",
+                        "kind":  "Artifact",
+                        "koreanName":  "반딧불이",
+                        "rarity":  "Uncommon",
+                        "category":  "magic_engineering"
+                    },
+                    {
+                        "slug":  "balisong",
+                        "gameKey":  "54",
+                        "kind":  "Artifact",
+                        "koreanName":  "발리송",
+                        "rarity":  "Uncommon",
+                        "category":  "precision"
+                    },
+                    {
+                        "slug":  "shield_earring",
+                        "gameKey":  "56",
+                        "kind":  "Artifact",
+                        "koreanName":  "방패 귀고리",
+                        "rarity":  "Uncommon",
+                        "category":  "guardian"
+                    },
+                    {
+                        "slug":  "discarded_gold_ring",
+                        "gameKey":  "57",
+                        "kind":  "Artifact",
+                        "koreanName":  "버려진 금반지",
+                        "rarity":  "Uncommon",
+                        "category":  "firmness"
+                    },
+                    {
+                        "slug":  "lightning_boomerang",
+                        "gameKey":  "58",
+                        "kind":  "Artifact",
+                        "koreanName":  "번개 부메랑",
+                        "rarity":  "Uncommon",
+                        "category":  "magic_engineering"
+                    },
+                    {
+                        "slug":  "phoenix",
+                        "gameKey":  "59",
+                        "kind":  "Artifact",
+                        "koreanName":  "봉황의 날개깃",
+                        "rarity":  "Uncommon",
+                        "category":  "yinggalbul"
+                    },
+                    {
+                        "slug":  "red_snake_eye",
+                        "gameKey":  "60",
+                        "kind":  "Artifact",
+                        "koreanName":  "붉은 뱀의 눈",
+                        "rarity":  "Uncommon",
+                        "category":  "yinggalbul"
+                    },
+                    {
+                        "slug":  "red_dew",
+                        "gameKey":  "61",
+                        "kind":  "Artifact",
+                        "koreanName":  "붉은 이슬",
+                        "rarity":  "Uncommon",
+                        "category":  "precision"
+                    },
+                    {
+                        "slug":  "piece_of_red_cloth",
+                        "gameKey":  "62",
+                        "kind":  "Artifact",
+                        "koreanName":  "붉은 천 조각",
+                        "rarity":  "Uncommon",
+                        "category":  "curse"
+                    },
+                    {
+                        "slug":  "red_planet",
+                        "gameKey":  "63",
+                        "kind":  "Artifact",
+                        "koreanName":  "붉은 행성",
+                        "rarity":  "Uncommon",
+                        "category":  "planet"
+                    },
+                    {
+                        "slug":  "ice_snow",
+                        "gameKey":  "64",
+                        "kind":  "Artifact",
+                        "koreanName":  "빙설덩굴",
+                        "rarity":  "Uncommon",
+                        "category":  "glacier"
+                    },
+                    {
+                        "slug":  "glacier",
+                        "gameKey":  "65",
+                        "kind":  "Artifact",
+                        "koreanName":  "빙하의 메아리",
+                        "rarity":  "Uncommon",
+                        "category":  "glacier"
+                    },
+                    {
+                        "slug":  "point",
+                        "gameKey":  "66",
+                        "kind":  "Artifact",
+                        "koreanName":  "뾰족 도토리",
+                        "rarity":  "Uncommon",
+                        "category":  "extrium"
+                    },
+                    {
+                        "slug":  "storm",
+                        "gameKey":  "67",
+                        "kind":  "Artifact",
+                        "koreanName":  "뾰족 부싯돌",
+                        "rarity":  "Uncommon",
+                        "category":  "element"
+                    },
+                    {
+                        "slug":  "sapote",
+                        "gameKey":  "68",
+                        "kind":  "Artifact",
+                        "koreanName":  "사포테 열매",
+                        "rarity":  "Uncommon",
+                        "category":  "extrium"
+                    },
+                    {
+                        "slug":  "sharp_eye",
+                        "gameKey":  "69",
+                        "kind":  "Artifact",
+                        "koreanName":  "샤프 아이",
+                        "rarity":  "Uncommon",
+                        "category":  "precision"
+                    },
+                    {
+                        "slug":  "frost_dagger",
+                        "gameKey":  "70",
+                        "kind":  "Artifact",
+                        "koreanName":  "서리 단검",
+                        "rarity":  "Uncommon",
+                        "category":  "glacier"
+                    },
+                    {
+                        "slug":  "crossbow_quiver",
+                        "gameKey":  "71",
+                        "kind":  "Artifact",
+                        "koreanName":  "석궁 화살통",
+                        "rarity":  "Uncommon",
+                        "category":  "firmness"
+                    },
+                    {
+                        "slug":  "pure_cloak",
+                        "gameKey":  "72",
+                        "kind":  "Artifact",
+                        "koreanName":  "순백의 망토",
+                        "rarity":  "Uncommon",
+                        "category":  "mystery"
+                    },
+                    {
+                        "slug":  "star_ruby",
+                        "gameKey":  "73",
+                        "kind":  "Artifact",
+                        "koreanName":  "스타 루비",
+                        "rarity":  "Uncommon",
+                        "category":  "lake"
+                    },
+                    {
+                        "slug":  "star_aqua_marine",
+                        "gameKey":  "74",
+                        "kind":  "Artifact",
+                        "koreanName":  "스타 아쿠아마린",
+                        "rarity":  "Uncommon",
+                        "category":  "lake"
+                    },
+                    {
+                        "slug":  "single_tree_charcoal",
+                        "gameKey":  "75",
+                        "kind":  "Artifact",
+                        "koreanName":  "신갈나무 숯",
+                        "rarity":  "Uncommon",
+                        "category":  "yinggalbul"
+                    },
+                    {
+                        "slug":  "agbae_tree_fruit",
+                        "gameKey":  "76",
+                        "kind":  "Artifact",
+                        "koreanName":  "아그배나무 열매",
+                        "rarity":  "Uncommon",
+                        "category":  "academy"
+                    },
+                    {
+                        "slug":  "ice_star",
+                        "gameKey":  "77",
+                        "kind":  "Artifact",
+                        "koreanName":  "아이스 스타",
+                        "rarity":  "Uncommon",
+                        "category":  "ice_weapon"
+                    },
+                    {
+                        "slug":  "sheet_music_bree",
+                        "gameKey":  "78",
+                        "kind":  "Artifact",
+                        "koreanName":  "악보 \u0027바람\u0027",
+                        "rarity":  "Uncommon",
+                        "category":  "spring_song"
+                    },
+                    {
+                        "slug":  "obruss_blood",
+                        "gameKey":  "80",
+                        "kind":  "Artifact",
+                        "koreanName":  "오브러스의 피",
+                        "rarity":  "Uncommon",
+                        "category":  "lake"
+                    },
+                    {
+                        "slug":  "keel_fragment",
+                        "gameKey":  "82",
+                        "kind":  "Artifact",
+                        "koreanName":  "용골 파편",
+                        "rarity":  "Uncommon",
+                        "category":  "mystery"
+                    },
+                    {
+                        "slug":  "ambergris",
+                        "gameKey":  "83",
+                        "kind":  "Artifact",
+                        "koreanName":  "용연향",
+                        "rarity":  "Uncommon",
+                        "category":  "yinggalbul"
+                    },
+                    {
+                        "slug":  "glass_hammer",
+                        "gameKey":  "84",
+                        "kind":  "Artifact",
+                        "koreanName":  "유리 망치",
+                        "rarity":  "Uncommon",
+                        "category":  "firmness"
+                    },
+                    {
+                        "slug":  "silver_bracelet",
+                        "gameKey":  "85",
+                        "kind":  "Artifact",
+                        "koreanName":  "은팔찌",
+                        "rarity":  "Uncommon",
+                        "category":  "spring_song"
+                    },
+                    {
+                        "slug":  "leafy_leather",
+                        "gameKey":  "86",
+                        "kind":  "Artifact",
+                        "koreanName":  "잎새 가죽",
+                        "rarity":  "Uncommon",
+                        "category":  "extrium"
+                    },
+                    {
+                        "slug":  "small_magic",
+                        "gameKey":  "87",
+                        "kind":  "Artifact",
+                        "koreanName":  "작은 마법 고둥",
+                        "rarity":  "Uncommon",
+                        "category":  "ice_weapon"
+                    },
+                    {
+                        "slug":  "mark_of_warrior",
+                        "gameKey":  "88",
+                        "kind":  "Artifact",
+                        "koreanName":  "전사의 증표",
+                        "rarity":  "Uncommon",
+                        "category":  "firmness"
+                    },
+                    {
+                        "slug":  "rat_pendant",
+                        "gameKey":  "89",
+                        "kind":  "Artifact",
+                        "koreanName":  "쥐 마법사의 펜던트",
+                        "rarity":  "Uncommon",
+                        "category":  "academy"
+                    },
+                    {
+                        "slug":  "pearl_powder",
+                        "gameKey":  "90",
+                        "kind":  "Artifact",
+                        "koreanName":  "진주 가루",
+                        "rarity":  "Uncommon",
+                        "category":  "academy"
+                    },
+                    {
+                        "slug":  "gap",
+                        "gameKey":  "94",
+                        "kind":  "Artifact",
+                        "koreanName":  "축사의 검집",
+                        "rarity":  "Uncommon",
+                        "category":  "ice_weapon"
+                    },
+                    {
+                        "slug":  "kunai",
+                        "gameKey":  "95",
+                        "kind":  "Artifact",
+                        "koreanName":  "쿠나이",
+                        "rarity":  "Uncommon",
+                        "category":  "precision"
+                    },
+                    {
+                        "slug":  "terros_soul_powder",
+                        "gameKey":  "96",
+                        "kind":  "Artifact",
+                        "koreanName":  "테로의 영혼 가루",
+                        "rarity":  "Uncommon",
+                        "category":  "colleague,yinggalbul"
+                    },
+                    {
+                        "slug":  "fire_arrow",
+                        "gameKey":  "97",
+                        "kind":  "Artifact",
+                        "koreanName":  "파이어 애로우",
+                        "rarity":  "Uncommon",
+                        "category":  "yinggalbul"
+                    },
+                    {
+                        "slug":  "palas_card",
+                        "gameKey":  "98",
+                        "kind":  "Artifact",
+                        "koreanName":  "팔라스의 카드",
+                        "rarity":  "Uncommon",
+                        "category":  "spring_song"
+                    },
+                    {
+                        "slug":  "blue_planet",
+                        "gameKey":  "100",
+                        "kind":  "Artifact",
+                        "koreanName":  "푸른 행성",
+                        "rarity":  "Uncommon",
+                        "category":  "planet"
+                    },
+                    {
+                        "slug":  "sky_blue_planet",
+                        "gameKey":  "101",
+                        "kind":  "Artifact",
+                        "koreanName":  "하늘색 행성",
+                        "rarity":  "Uncommon",
+                        "category":  "planet"
+                    },
+                    {
+                        "slug":  "haste",
+                        "gameKey":  "102",
+                        "kind":  "Artifact",
+                        "koreanName":  "헤이스트",
+                        "rarity":  "Uncommon",
+                        "category":  "spring_song"
+                    },
+                    {
+                        "slug":  "helenas_staircase",
+                        "gameKey":  "103",
+                        "kind":  "Artifact",
+                        "koreanName":  "헬레나의 계단 모형",
+                        "rarity":  "Uncommon",
+                        "category":  "spring_song"
+                    },
+                    {
+                        "slug":  "fluorescence",
+                        "gameKey":  "104",
+                        "kind":  "Artifact",
+                        "koreanName":  "형광 부적",
+                        "rarity":  "Uncommon",
+                        "category":  "firmness"
+                    },
+                    {
+                        "slug":  "amber",
+                        "gameKey":  "105",
+                        "kind":  "Artifact",
+                        "koreanName":  "호박석",
+                        "rarity":  "Uncommon",
+                        "category":  "mystery"
+                    },
+                    {
+                        "slug":  "flame",
+                        "gameKey":  "106",
+                        "kind":  "Artifact",
+                        "koreanName":  "화염 가리개",
+                        "rarity":  "Uncommon",
+                        "category":  "yinggalbul"
+                    },
+                    {
+                        "slug":  "sword_earring",
+                        "gameKey":  "109",
+                        "kind":  "Artifact",
+                        "koreanName":  "검 귀고리",
+                        "rarity":  "Rare",
+                        "category":  "precision"
+                    },
+                    {
+                        "slug":  "swordsmanship_textbook",
+                        "gameKey":  "110",
+                        "kind":  "Artifact",
+                        "koreanName":  "검술 교본",
+                        "rarity":  "Rare",
+                        "category":  "spring_song"
+                    },
+                    {
+                        "slug":  "flag_of_encouragement",
+                        "gameKey":  "111",
+                        "kind":  "Artifact",
+                        "koreanName":  "격려의 깃발",
+                        "rarity":  "Rare",
+                        "category":  "spring_song"
+                    },
+                    {
+                        "slug":  "employment_sentence_coline",
+                        "gameKey":  "113",
+                        "kind":  "Artifact",
+                        "koreanName":  "고용 문장 \u0027콜린\u0027",
+                        "rarity":  "Rare",
+                        "category":  "colleague"
+                    },
+                    {
+                        "slug":  "pride",
+                        "gameKey":  "114",
+                        "kind":  "Artifact",
+                        "koreanName":  "교만의 금관",
+                        "rarity":  "Rare",
+                        "category":  "precision"
+                    },
+                    {
+                        "slug":  "giraffe_horns",
+                        "gameKey":  "115",
+                        "kind":  "Artifact",
+                        "koreanName":  "기린의 뿔",
+                        "rarity":  "Rare",
+                        "category":  "magic_engineering"
+                    },
+                    {
+                        "slug":  "pot_lid",
+                        "gameKey":  "116",
+                        "kind":  "Artifact",
+                        "koreanName":  "냄비 뚜껑",
+                        "rarity":  "Rare",
+                        "category":  "guardian"
+                    },
+                    {
+                        "slug":  "green_clothes",
+                        "gameKey":  "117",
+                        "kind":  "Artifact",
+                        "koreanName":  "녹색 도복",
+                        "rarity":  "Rare",
+                        "category":  "shadow"
+                    },
+                    {
+                        "slug":  "brain",
+                        "gameKey":  "118",
+                        "kind":  "Artifact",
+                        "koreanName":  "뇌운추적 나침반",
+                        "rarity":  "Legend",
+                        "category":  "magic_engineering"
+                    },
+                    {
+                        "slug":  "multi_use_belt",
+                        "gameKey":  "119",
+                        "kind":  "Artifact",
+                        "koreanName":  "다용도 벨트",
+                        "rarity":  "Rare",
+                        "category":  "mystery"
+                    },
+                    {
+                        "slug":  "libra",
+                        "gameKey":  "120",
+                        "kind":  "Artifact",
+                        "koreanName":  "대립의 천칭",
+                        "rarity":  "Eternal",
+                        "category":  "glacier,yinggalbul"
+                    },
+                    {
+                        "slug":  "lizard_sheet",
+                        "gameKey":  "121",
+                        "kind":  "Artifact",
+                        "koreanName":  "도마뱀 판금 갑옷",
+                        "rarity":  "Rare",
+                        "category":  "guardian"
+                    },
+                    {
+                        "slug":  "library_miniature",
+                        "gameKey":  "122",
+                        "kind":  "Artifact",
+                        "koreanName":  "도서관 분침 미니어처",
+                        "rarity":  "Rare",
+                        "category":  "precision"
+                    },
+                    {
+                        "slug":  "warm_stone",
+                        "gameKey":  "123",
+                        "kind":  "Artifact",
+                        "koreanName":  "따뜻한 돌",
+                        "rarity":  "Rare",
+                        "category":  "precision"
+                    },
+                    {
+                        "slug":  "magic_glasses",
+                        "gameKey":  "124",
+                        "kind":  "Artifact",
+                        "koreanName":  "마법의 안경",
+                        "rarity":  "Rare",
+                        "category":  "shadow"
+                    },
+                    {
+                        "slug":  "magic_gem",
+                        "gameKey":  "125",
+                        "kind":  "Artifact",
+                        "koreanName":  "마법의 정석",
+                        "rarity":  "Rare",
+                        "category":  "element"
+                    },
+                    {
+                        "slug":  "model_beak",
+                        "gameKey":  "126",
+                        "kind":  "Artifact",
+                        "koreanName":  "모형 부리",
+                        "rarity":  "Rare",
+                        "category":  "shadow"
+                    },
+                    {
+                        "slug":  "dull_drop",
+                        "gameKey":  "127",
+                        "kind":  "Artifact",
+                        "koreanName":  "무뎌진 방울",
+                        "rarity":  "Rare",
+                        "category":  "curse"
+                    },
+                    {
+                        "slug":  "colorless_cube",
+                        "gameKey":  "128",
+                        "kind":  "Artifact",
+                        "koreanName":  "무색 큐브",
+                        "rarity":  "Rare",
+                        "category":  "spring_song"
+                    },
+                    {
+                        "slug":  "lightstone",
+                        "gameKey":  "129",
+                        "kind":  "Artifact",
+                        "koreanName":  "번갯돌",
+                        "rarity":  "Rare",
+                        "category":  "extrium"
+                    },
+                    {
+                        "slug":  "jewelry_armor",
+                        "gameKey":  "130",
+                        "kind":  "Artifact",
+                        "koreanName":  "보석 갑옷",
+                        "rarity":  "Rare",
+                        "category":  "academy"
+                    },
+                    {
+                        "slug":  "voluspa",
+                        "gameKey":  "131",
+                        "kind":  "Artifact",
+                        "koreanName":  "볼루스파",
+                        "rarity":  "Rare",
+                        "category":  "ice_weapon"
+                    },
+                    {
+                        "slug":  "broken_root",
+                        "gameKey":  "132",
+                        "kind":  "Artifact",
+                        "koreanName":  "부서진 나무뿌리",
+                        "rarity":  "Rare",
+                        "category":  "lake"
+                    },
+                    {
+                        "slug":  "fire_circus",
+                        "gameKey":  "133",
+                        "kind":  "Artifact",
+                        "koreanName":  "불 서커스",
+                        "rarity":  "Rare",
+                        "category":  "yinggalbul"
+                    },
+                    {
+                        "slug":  "red_thread",
+                        "gameKey":  "134",
+                        "kind":  "Artifact",
+                        "koreanName":  "붉은 실뭉치",
+                        "rarity":  "Rare",
+                        "category":  "yinggalbul"
+                    },
+                    {
+                        "slug":  "freezing_bug",
+                        "gameKey":  "135",
+                        "kind":  "Artifact",
+                        "koreanName":  "빙결충",
+                        "rarity":  "Rare",
+                        "category":  "glacier"
+                    },
+                    {
+                        "slug":  "pointed_bat",
+                        "gameKey":  "136",
+                        "kind":  "Artifact",
+                        "koreanName":  "뾰족한 방망이",
+                        "rarity":  "Rare",
+                        "category":  "precision"
+                    },
+                    {
+                        "slug":  "touch_of_life",
+                        "gameKey":  "137",
+                        "kind":  "Artifact",
+                        "koreanName":  "생명의 손길",
+                        "rarity":  "Rare",
+                        "category":  "firmness"
+                    },
+                    {
+                        "slug":  "serens_wanging_letter",
+                        "gameKey":  "138",
+                        "kind":  "Artifact",
+                        "koreanName":  "세렌의 휘갈긴 편지",
+                        "rarity":  "Rare",
+                        "category":  "guardian"
+                    },
+                    {
+                        "slug":  "agma_projection_sword",
+                        "gameKey":  "139",
+                        "kind":  "Artifact",
+                        "koreanName":  "아그마 투영검 190,191번",
+                        "rarity":  "Rare",
+                        "category":  "firmness"
+                    },
+                    {
+                        "slug":  "academy_brigendin",
+                        "gameKey":  "140",
+                        "kind":  "Artifact",
+                        "koreanName":  "아카데미 브리건딘",
+                        "rarity":  "Rare",
+                        "category":  "academy,guardian"
+                    },
+                    {
+                        "slug":  "alfonsos_horn",
+                        "gameKey":  "141",
+                        "kind":  "Artifact",
+                        "koreanName":  "알폰소의 뿔",
+                        "rarity":  "Rare",
+                        "category":  "colleague"
+                    },
+                    {
+                        "slug":  "arrow_lane",
+                        "gameKey":  "142",
+                        "kind":  "Artifact",
+                        "koreanName":  "애로우 레인",
+                        "rarity":  "Rare",
+                        "category":  "glacier"
+                    },
+                    {
+                        "slug":  "thin_cushion",
+                        "gameKey":  "143",
+                        "kind":  "Artifact",
+                        "koreanName":  "얇은 방석",
+                        "rarity":  "Rare",
+                        "category":  "colleague"
+                    },
+                    {
+                        "slug":  "frozen_egg",
+                        "gameKey":  "144",
+                        "kind":  "Artifact",
+                        "koreanName":  "얼어버린 알",
+                        "rarity":  "Rare",
+                        "category":  "glacier"
+                    },
+                    {
+                        "slug":  "frozen_heart",
+                        "gameKey":  "145",
+                        "kind":  "Artifact",
+                        "koreanName":  "얼어붙은 심장",
+                        "rarity":  "Rare",
+                        "category":  "ice_weapon"
+                    },
+                    {
+                        "slug":  "ice_seagull",
+                        "gameKey":  "146",
+                        "kind":  "Artifact",
+                        "koreanName":  "얼음갈매기의 발",
+                        "rarity":  "Rare",
+                        "category":  "glacier"
+                    },
+                    {
+                        "slug":  "oink_shaman_necklace",
+                        "gameKey":  "147",
+                        "kind":  "Artifact",
+                        "koreanName":  "오잉크 주술사의 목걸이",
+                        "rarity":  "Rare",
+                        "category":  "curse"
+                    },
+                    {
+                        "slug":  "bishopric",
+                        "gameKey":  "148",
+                        "kind":  "Artifact",
+                        "koreanName":  "이각수 관",
+                        "rarity":  "Rare",
+                        "category":  "academy"
+                    },
+                    {
+                        "slug":  "artificial_spirit",
+                        "gameKey":  "149",
+                        "kind":  "Artifact",
+                        "koreanName":  "인공정령 이피엘",
+                        "rarity":  "Rare",
+                        "category":  "lake"
+                    },
+                    {
+                        "slug":  "combat_wizard_gloves",
+                        "gameKey":  "150",
+                        "kind":  "Artifact",
+                        "koreanName":  "전투 마법사의 장갑",
+                        "rarity":  "Rare",
+                        "category":  "academy"
+                    },
+                    {
+                        "slug":  "reloaded_wooden_box",
+                        "gameKey":  "151",
+                        "kind":  "Artifact",
+                        "koreanName":  "재장전용 나무 상자",
+                        "rarity":  "Rare",
+                        "category":  "firmness"
+                    },
+                    {
+                        "slug":  "thunder",
+                        "gameKey":  "152",
+                        "kind":  "Artifact",
+                        "koreanName":  "천둥 갑옷",
+                        "rarity":  "Rare",
+                        "category":  "magic_engineering"
+                    },
+                    {
+                        "slug":  "bronze_mirror",
+                        "gameKey":  "153",
+                        "kind":  "Artifact",
+                        "koreanName":  "청동거울 파편",
+                        "rarity":  "Rare",
+                        "category":  "firmness"
+                    },
+                    {
+                        "slug":  "rabbit_village_guard_helm",
+                        "gameKey":  "154",
+                        "kind":  "Artifact",
+                        "koreanName":  "토끼 마을 경비병 투구",
+                        "rarity":  "Rare",
+                        "category":  "firmness"
+                    },
+                    {
+                        "slug":  "blue_ring",
+                        "gameKey":  "155",
+                        "kind":  "Artifact",
+                        "koreanName":  "푸른 고리",
+                        "rarity":  "Rare",
+                        "category":  "mystery"
+                    },
+                    {
+                        "slug":  "fluffy",
+                        "gameKey":  "156",
+                        "kind":  "Artifact",
+                        "koreanName":  "푹신한 털장갑",
+                        "rarity":  "Rare",
+                        "category":  "glacier"
+                    },
+                    {
+                        "slug":  "white_twig",
+                        "gameKey":  "157",
+                        "kind":  "Artifact",
+                        "koreanName":  "하얀 나뭇가지",
+                        "rarity":  "Rare",
+                        "category":  "lake"
+                    },
+                    {
+                        "slug":  "white_egg_shell",
+                        "gameKey":  "158",
+                        "kind":  "Artifact",
+                        "koreanName":  "하얀 알 껍질",
+                        "rarity":  "Rare",
+                        "category":  "mystery"
+                    },
+                    {
+                        "slug":  "white_planet",
+                        "gameKey":  "159",
+                        "kind":  "Artifact",
+                        "koreanName":  "하얀 행성",
+                        "rarity":  "Rare",
+                        "category":  "planet"
+                    },
+                    {
+                        "slug":  "heart_shaped_carrot",
+                        "gameKey":  "160",
+                        "kind":  "Artifact",
+                        "koreanName":  "하트모양 당근",
+                        "rarity":  "Rare",
+                        "category":  "lake"
+                    },
+                    {
+                        "slug":  "bloodstone_ring",
+                        "gameKey":  "161",
+                        "kind":  "Artifact",
+                        "koreanName":  "혈석 반지",
+                        "rarity":  "Rare",
+                        "category":  "mystery"
+                    },
+                    {
+                        "slug":  "flame_root",
+                        "gameKey":  "163",
+                        "kind":  "Artifact",
+                        "koreanName":  "화염초 뿌리",
+                        "rarity":  "Rare",
+                        "category":  "yinggalbul"
+                    },
+                    {
+                        "slug":  "flame_insect",
+                        "gameKey":  "164",
+                        "kind":  "Artifact",
+                        "koreanName":  "화염충",
+                        "rarity":  "Rare",
+                        "category":  "yinggalbul"
+                    },
+                    {
+                        "slug":  "giant_telescope",
+                        "gameKey":  "165",
+                        "kind":  "Artifact",
+                        "koreanName":  "거대 망원경",
+                        "rarity":  "Rare",
+                        "category":  "planet"
+                    },
+                    {
+                        "slug":  "black_scales",
+                        "gameKey":  "166",
+                        "kind":  "Artifact",
+                        "koreanName":  "검은 비늘",
+                        "rarity":  "Legend",
+                        "category":  "precision"
+                    },
+                    {
+                        "slug":  "humility_crown",
+                        "gameKey":  "167",
+                        "kind":  "Artifact",
+                        "koreanName":  "겸손의 왕관",
+                        "rarity":  "Legend",
+                        "category":  "firmness"
+                    },
+                    {
+                        "slug":  "clay_tablet",
+                        "gameKey":  "168",
+                        "kind":  "Artifact",
+                        "koreanName":  "뇌문 점토판",
+                        "rarity":  "Legend",
+                        "category":  "extrium"
+                    },
+                    {
+                        "slug":  "riley_congregation_clock",
+                        "gameKey":  "169",
+                        "kind":  "Artifact",
+                        "koreanName":  "라일리의 회중시계",
+                        "rarity":  "Legend",
+                        "category":  "academy"
+                    },
+                    {
+                        "slug":  "ruby_brooch",
+                        "gameKey":  "170",
+                        "kind":  "Artifact",
+                        "koreanName":  "루비 브로치",
+                        "rarity":  "Eternal",
+                        "category":  "extrium,yinggalbul"
+                    },
+                    {
+                        "slug":  "meteor_shower",
+                        "gameKey":  "171",
+                        "kind":  "Artifact",
+                        "koreanName":  "메테오 샤워",
+                        "rarity":  "Legend",
+                        "category":  "yinggalbul"
+                    },
+                    {
+                        "slug":  "walter_work_monocle",
+                        "gameKey":  "172",
+                        "kind":  "Artifact",
+                        "koreanName":  "발터의 작업용 단안경",
+                        "rarity":  "Legend",
+                        "category":  "precision"
+                    },
+                    {
+                        "slug":  "berut_sickle",
+                        "gameKey":  "173",
+                        "kind":  "Artifact",
+                        "koreanName":  "베루트의 낫",
+                        "rarity":  "Legend",
+                        "category":  "precision"
+                    },
+                    {
+                        "slug":  "empty_handle",
+                        "gameKey":  "174",
+                        "kind":  "Artifact",
+                        "koreanName":  "비어 있는 검 손잡이",
+                        "rarity":  "Legend",
+                        "category":  "academy"
+                    },
+                    {
+                        "slug":  "shining_hourglass",
+                        "gameKey":  "175",
+                        "kind":  "Artifact",
+                        "koreanName":  "빛나는 모래시계",
+                        "rarity":  "Legend",
+                        "category":  "academy"
+                    },
+                    {
+                        "slug":  "shield_mate",
+                        "gameKey":  "176",
+                        "kind":  "Artifact",
+                        "koreanName":  "실드 메이트",
+                        "rarity":  "Legend",
+                        "category":  "firmness"
+                    },
+                    {
+                        "slug":  "ice_wings",
+                        "gameKey":  "177",
+                        "kind":  "Artifact",
+                        "koreanName":  "얼음 날개",
+                        "rarity":  "Legend",
+                        "category":  "ice_weapon"
+                    },
+                    {
+                        "slug":  "six_leaf_clover",
+                        "gameKey":  "178",
+                        "kind":  "Artifact",
+                        "koreanName":  "여섯 잎 클로버",
+                        "rarity":  "Legend",
+                        "category":  "shadow"
+                    },
+                    {
+                        "slug":  "absolute_ring",
+                        "gameKey":  "179",
+                        "kind":  "Artifact",
+                        "koreanName":  "절대반지",
+                        "rarity":  "Legend",
+                        "category":  "firmness"
+                    },
+                    {
+                        "slug":  "chintamani_stone",
+                        "gameKey":  "180",
+                        "kind":  "Artifact",
+                        "koreanName":  "친타마니 돌",
+                        "rarity":  "Legend",
+                        "category":  "mystery"
+                    },
+                    {
+                        "slug":  "blue_claws",
+                        "gameKey":  "181",
+                        "kind":  "Artifact",
+                        "koreanName":  "푸른 발톱",
+                        "rarity":  "Legend",
+                        "category":  "glacier"
+                    },
+                    {
+                        "slug":  "blue_wrist_guard",
+                        "gameKey":  "182",
+                        "kind":  "Artifact",
+                        "koreanName":  "푸른 손목 보호대",
+                        "rarity":  "Legend",
+                        "category":  "firmness"
+                    },
+                    {
+                        "slug":  "lightning_rod",
+                        "gameKey":  "183",
+                        "kind":  "Artifact",
+                        "koreanName":  "피뢰침",
+                        "rarity":  "Legend",
+                        "category":  "extrium"
+                    },
+                    {
+                        "slug":  "white_bread",
+                        "gameKey":  "185",
+                        "kind":  "Artifact",
+                        "koreanName":  "흰 테두리 빵",
+                        "rarity":  "Legend",
+                        "category":  "guardian"
+                    },
+                    {
+                        "slug":  "iridescent_feathers",
+                        "gameKey":  "186",
+                        "kind":  "Artifact",
+                        "koreanName":  "무지갯빛 깃털",
+                        "rarity":  "Legend",
+                        "category":  "spring_song"
+                    },
+                    {
+                        "slug":  "heitas_soul_powder",
+                        "gameKey":  "187",
+                        "kind":  "Artifact",
+                        "koreanName":  "헤이타의 영혼 가루",
+                        "rarity":  "Uncommon",
+                        "category":  "colleague,glacier"
+                    },
+                    {
+                        "slug":  "meditation_books",
+                        "gameKey":  "188",
+                        "kind":  "Artifact",
+                        "koreanName":  "명상 서적",
+                        "rarity":  "Rare",
+                        "category":  "academy"
+                    },
+                    {
+                        "slug":  "rock_elephant",
+                        "gameKey":  "190",
+                        "kind":  "Artifact",
+                        "koreanName":  "바위코끼리",
+                        "rarity":  "Eternal",
+                        "category":  "guardian,spring_song"
+                    },
+                    {
+                        "slug":  "solis_decree",
+                        "gameKey":  "191",
+                        "kind":  "Artifact",
+                        "koreanName":  "솔리스 데크리",
+                        "rarity":  "Legend",
+                        "category":  "sun_sword"
+                    },
+                    {
+                        "slug":  "cloud_shoulder_ornament",
+                        "gameKey":  "192",
+                        "kind":  "Artifact",
+                        "koreanName":  "운철 어깨 장식",
+                        "rarity":  "Uncommon",
+                        "category":  "sun_sword"
+                    },
+                    {
+                        "slug":  "cloud_iron_earrings",
+                        "gameKey":  "193",
+                        "kind":  "Artifact",
+                        "koreanName":  "운철 귀걸이",
+                        "rarity":  "Rare",
+                        "category":  "sun_sword"
+                    },
+                    {
+                        "slug":  "solis_decusa",
+                        "gameKey":  "194",
+                        "kind":  "Artifact",
+                        "koreanName":  "솔리스 데쿠사",
+                        "rarity":  "Uncommon",
+                        "category":  "sun_sword"
+                    },
+                    {
+                        "slug":  "solis_parvo",
+                        "gameKey":  "195",
+                        "kind":  "Artifact",
+                        "koreanName":  "솔리스 파르보",
+                        "rarity":  "Uncommon",
+                        "category":  "sun_sword"
+                    },
+                    {
+                        "slug":  "eternal_brazier",
+                        "gameKey":  "196",
+                        "kind":  "Artifact",
+                        "koreanName":  "영원의 화로",
+                        "rarity":  "Common",
+                        "category":  "sun_sword"
+                    },
+                    {
+                        "slug":  "sunset_cloak",
+                        "gameKey":  "197",
+                        "kind":  "Artifact",
+                        "koreanName":  "물드는 노을 망토",
+                        "rarity":  "Rare",
+                        "category":  "sun_sword"
+                    },
+                    {
+                        "slug":  "ancient_anvil",
+                        "gameKey":  "198",
+                        "kind":  "Artifact",
+                        "koreanName":  "고대 모루",
+                        "rarity":  "Uncommon",
+                        "category":  "sun_sword"
+                    },
+                    {
+                        "slug":  "solis_pratu",
+                        "gameKey":  "199",
+                        "kind":  "Artifact",
+                        "koreanName":  "솔리스 프라투",
+                        "rarity":  "Common",
+                        "category":  "sun_sword"
+                    },
+                    {
+                        "slug":  "shield_bag",
+                        "gameKey":  "200",
+                        "kind":  "Artifact",
+                        "koreanName":  "방패 가방",
+                        "rarity":  "Eternal",
+                        "category":  "academy,guardian"
+                    },
+                    {
+                        "slug":  "tuning_fork",
+                        "gameKey":  "201",
+                        "kind":  "Artifact",
+                        "koreanName":  "소리굽쇠",
+                        "rarity":  "Eternal",
+                        "category":  "academy,firmness"
+                    },
+                    {
+                        "slug":  "sealed_tejas",
+                        "gameKey":  "202",
+                        "kind":  "Artifact",
+                        "koreanName":  "봉인된 테자스",
+                        "rarity":  "Eternal",
+                        "category":  "glacier,yinggalbul"
+                    },
+                    {
+                        "slug":  "ice_cloud_butterfly",
+                        "gameKey":  "204",
+                        "kind":  "Artifact",
+                        "koreanName":  "얼음구름 나비",
+                        "rarity":  "Eternal",
+                        "category":  "extrium,glacier"
+                    },
+                    {
+                        "slug":  "water_droplets_from_plitvice",
+                        "gameKey":  "205",
+                        "kind":  "Artifact",
+                        "koreanName":  "플리트비체의 물방울",
+                        "rarity":  "Eternal",
+                        "category":  "ice_weapon,lake"
+                    },
+                    {
+                        "slug":  "tactical_manual",
+                        "gameKey":  "206",
+                        "kind":  "Artifact",
+                        "koreanName":  "전술 지침서",
+                        "rarity":  "Eternal",
+                        "category":  "colleague,precision"
+                    },
+                    {
+                        "slug":  "swaying_eyes",
+                        "gameKey":  "207",
+                        "kind":  "Artifact",
+                        "koreanName":  "일렁이는 눈",
+                        "rarity":  "Eternal",
+                        "category":  "precision,shadow"
+                    },
+                    {
+                        "slug":  "sheet_music_storm",
+                        "gameKey":  "208",
+                        "kind":  "Artifact",
+                        "koreanName":  "악보 \u0027폭풍\u0027",
+                        "rarity":  "Eternal",
+                        "category":  "extrium,spring_song"
+                    },
+                    {
+                        "slug":  "sheet_music_galaxy",
+                        "gameKey":  "209",
+                        "kind":  "Artifact",
+                        "koreanName":  "악보 \u0027은하\u0027",
+                        "rarity":  "Eternal",
+                        "category":  "planet,spring_song"
+                    },
+                    {
+                        "slug":  "brass_mirror_fragments",
+                        "gameKey":  "210",
+                        "kind":  "Artifact",
+                        "koreanName":  "황동거울 파편",
+                        "rarity":  "Rare",
+                        "category":  "firmness"
+                    },
+                    {
+                        "slug":  "stabbing_textbook",
+                        "gameKey":  "211",
+                        "kind":  "Artifact",
+                        "koreanName":  "찌르기 교본",
+                        "rarity":  "Uncommon",
+                        "category":  "firmness"
+                    },
+                    {
+                        "slug":  "talisman_of_talent",
+                        "gameKey":  "212",
+                        "kind":  "Artifact",
+                        "koreanName":  "재주의 부적",
+                        "rarity":  "Common",
+                        "category":  "shadow"
+                    },
+                    {
+                        "slug":  "broken_sapphire",
+                        "gameKey":  "213",
+                        "kind":  "Artifact",
+                        "koreanName":  "부서진 사파이어",
+                        "rarity":  "Rare",
+                        "category":  "shadow"
+                    },
+                    {
+                        "slug":  "cloak_of_the_green",
+                        "gameKey":  "214",
+                        "kind":  "Artifact",
+                        "koreanName":  "환록의 망토",
+                        "rarity":  "Uncommon",
+                        "category":  "shadow"
+                    },
+                    {
+                        "slug":  "wings",
+                        "gameKey":  "215",
+                        "kind":  "Artifact",
+                        "koreanName":  "날개",
+                        "rarity":  "Legend",
+                        "category":  "spring_song"
+                    },
+                    {
+                        "slug":  "lightning_chakram",
+                        "gameKey":  "216",
+                        "kind":  "Artifact",
+                        "koreanName":  "전격 차크람",
+                        "rarity":  "Uncommon",
+                        "category":  "magic_engineering"
+                    },
+                    {
+                        "slug":  "lightning_struck_tree_branch",
+                        "gameKey":  "217",
+                        "kind":  "Artifact",
+                        "koreanName":  "번개 맞은 나뭇가지",
+                        "rarity":  "Common",
+                        "category":  "magic_engineering"
+                    },
+                    {
+                        "slug":  "thunders_earrings",
+                        "gameKey":  "218",
+                        "kind":  "Artifact",
+                        "koreanName":  "썬더의 귀걸이",
+                        "rarity":  "Uncommon",
+                        "category":  "magic_engineering"
+                    },
+                    {
+                        "slug":  "ahmads_soul_powder",
+                        "gameKey":  "219",
+                        "kind":  "Artifact",
+                        "koreanName":  "아마드의 영혼 가루",
+                        "rarity":  "Uncommon",
+                        "category":  "colleague,magic_engineering"
+                    },
+                    {
+                        "slug":  "stinging_bug",
+                        "gameKey":  "220",
+                        "kind":  "Artifact",
+                        "koreanName":  "찌릿충",
+                        "rarity":  "Rare",
+                        "category":  "magic_engineering"
+                    },
+                    {
+                        "slug":  "frozen_bow",
+                        "gameKey":  "221",
+                        "kind":  "Artifact",
+                        "koreanName":  "얼어붙은 활",
+                        "rarity":  "Legend",
+                        "category":  "ice_weapon"
+                    },
+                    {
+                        "slug":  "black_planet",
+                        "gameKey":  "222",
+                        "kind":  "Artifact",
+                        "koreanName":  "암흑 행성",
+                        "rarity":  "Legend",
+                        "category":  "planet"
+                    },
+                    {
+                        "slug":  "ashen_planet",
+                        "gameKey":  "223",
+                        "kind":  "Artifact",
+                        "koreanName":  "잿빛 행성",
+                        "rarity":  "Common",
+                        "category":  "planet"
+                    },
+                    {
+                        "slug":  "petrification",
+                        "gameKey":  "224",
+                        "kind":  "Artifact",
+                        "koreanName":  "석화",
+                        "rarity":  "Common",
+                        "category":  "extrium"
+                    },
+                    {
+                        "slug":  "hand_mirror",
+                        "gameKey":  "225",
+                        "kind":  "Artifact",
+                        "koreanName":  "손 거울",
+                        "rarity":  "Rare",
+                        "category":  "guardian"
+                    },
+                    {
+                        "slug":  "eternal_sun",
+                        "gameKey":  "227",
+                        "kind":  "Artifact",
+                        "koreanName":  "영원의 식",
+                        "rarity":  "Eternal",
+                        "category":  "ice_weapon,sun_sword"
+                    },
+                    {
+                        "slug":  "flux_mk2",
+                        "gameKey":  "228",
+                        "kind":  "Artifact",
+                        "koreanName":  "플럭스 결합기 Mk.2",
+                        "rarity":  "Eternal",
+                        "category":  "colleague,extrium"
+                    },
+                    {
+                        "slug":  "overall_armband",
+                        "gameKey":  "229",
+                        "kind":  "Artifact",
+                        "koreanName":  "채굴작업 총괄 완장",
+                        "rarity":  "Legend",
+                        "category":  "colleague"
+                    },
+                    {
+                        "slug":  "badge_of_devotion",
+                        "gameKey":  "230",
+                        "kind":  "Artifact",
+                        "koreanName":  "헌신의 휘장",
+                        "rarity":  "Uncommon",
+                        "category":  "colleague"
+                    },
+                    {
+                        "slug":  "mysterious_weight",
+                        "gameKey":  "231",
+                        "kind":  "Artifact",
+                        "koreanName":  "신비한 무게 추",
+                        "rarity":  "Legend",
+                        "category":  "firmness"
+                    },
+                    {
+                        "slug":  "lucky_medal",
+                        "gameKey":  "232",
+                        "kind":  "Artifact",
+                        "koreanName":  "행운의 메달",
+                        "rarity":  "Uncommon",
+                        "category":  "bargaining"
+                    },
+                    {
+                        "slug":  "neutralizer_black",
+                        "gameKey":  "233",
+                        "kind":  "Artifact",
+                        "koreanName":  "중화제 흑",
+                        "rarity":  "Uncommon",
+                        "category":  "curse"
+                    },
+                    {
+                        "slug":  "green_ink_bottle_v2",
+                        "gameKey":  "234",
+                        "kind":  "Artifact",
+                        "koreanName":  "초록 잉크병",
+                        "rarity":  "Uncommon",
+                        "category":  "curse"
+                    },
+                    {
+                        "slug":  "shock_amplifier",
+                        "gameKey":  "235",
+                        "kind":  "Artifact",
+                        "koreanName":  "충격 증폭기",
+                        "rarity":  "Legend",
+                        "category":  "mystery"
+                    },
+                    {
+                        "slug":  "crystal_of_harmony",
+                        "gameKey":  "236",
+                        "kind":  "Artifact",
+                        "koreanName":  "조화의 수정",
+                        "rarity":  "Legend",
+                        "category":  "mystery"
+                    },
+                    {
+                        "slug":  "eternal_winter",
+                        "gameKey":  "237",
+                        "kind":  "Artifact",
+                        "koreanName":  "영원한 겨울",
+                        "rarity":  "Eternal",
+                        "category":  "firmness,glacier"
+                    },
+                    {
+                        "slug":  "lightning_amulet",
+                        "gameKey":  "238",
+                        "kind":  "Artifact",
+                        "koreanName":  "전격의 부적",
+                        "rarity":  "Common",
+                        "category":  "magic_engineering"
+                    },
+                    {
+                        "slug":  "multicolored_candy_jar",
+                        "gameKey":  "239",
+                        "kind":  "Artifact",
+                        "koreanName":  "오색사탕 유리병",
+                        "rarity":  "Uncommon",
+                        "category":  "element"
+                    },
+                    {
+                        "slug":  "plump_fruits",
+                        "gameKey":  "240",
+                        "kind":  "Artifact",
+                        "koreanName":  "통통열매 양동이",
+                        "rarity":  "Rare",
+                        "category":  "lake"
+                    },
+                    {
+                        "slug":  "defect_probe",
+                        "gameKey":  "241",
+                        "kind":  "Artifact",
+                        "koreanName":  "결함 탐침봉",
+                        "rarity":  "Rare",
+                        "category":  "precision"
+                    },
+                    {
+                        "slug":  "wanderers_necklace",
+                        "gameKey":  "242",
+                        "kind":  "Artifact",
+                        "koreanName":  "유랑자의 목걸이",
+                        "rarity":  "Rare",
+                        "category":  "spring_song"
+                    },
+                    {
+                        "slug":  "heart_of_the_beast",
+                        "gameKey":  "243",
+                        "kind":  "Artifact",
+                        "koreanName":  "야수의 심장",
+                        "rarity":  "Legend",
+                        "category":  "guardian"
+                    },
+                    {
+                        "slug":  "stone_wheel",
+                        "gameKey":  "244",
+                        "kind":  "Artifact",
+                        "koreanName":  "돌 가락바퀴",
+                        "rarity":  "Rare",
+                        "category":  "lake"
+                    },
+                    {
+                        "slug":  "lerids_battleb_racelet",
+                        "gameKey":  "245",
+                        "kind":  "Artifact",
+                        "koreanName":  "레리드의 전투 팔찌",
+                        "rarity":  "Rare",
+                        "category":  "shadow"
+                    },
+                    {
+                        "slug":  "elastic_band",
+                        "gameKey":  "246",
+                        "kind":  "Artifact",
+                        "koreanName":  "탄성 밴드",
+                        "rarity":  "Uncommon",
+                        "category":  "shadow"
+                    },
+                    {
+                        "slug":  "thunder_judgment",
+                        "gameKey":  "248",
+                        "kind":  "Artifact",
+                        "koreanName":  "천둥의 심판",
+                        "rarity":  "Legend",
+                        "category":  "magic_engineering"
+                    },
+                    {
+                        "slug":  "academy_fountain_pen",
+                        "gameKey":  "249",
+                        "kind":  "Artifact",
+                        "koreanName":  "아카데미 만년필",
+                        "rarity":  "Eternal",
+                        "category":  "academy,shadow"
+                    },
+                    {
+                        "slug":  "zorous_watering_can",
+                        "gameKey":  "250",
+                        "kind":  "Artifact",
+                        "koreanName":  "조로우의 물뿌리개",
+                        "rarity":  "Eternal",
+                        "category":  "academy,lake"
+                    },
+                    {
+                        "slug":  "snow_mountain_big_eared_bat",
+                        "gameKey":  "251",
+                        "kind":  "Artifact",
+                        "koreanName":  "설산 큰귀박쥐",
+                        "rarity":  "Eternal",
+                        "category":  "glacier,spring_song"
+                    },
+                    {
+                        "slug":  "plasma_helmet",
+                        "gameKey":  "252",
+                        "kind":  "Artifact",
+                        "koreanName":  "플라즈마 헬맷",
+                        "rarity":  "Eternal",
+                        "category":  "magic_engineering,yinggalbul"
+                    },
+                    {
+                        "slug":  "red_planet_observation_log",
+                        "gameKey":  "253",
+                        "kind":  "Artifact",
+                        "koreanName":  "붉은행성 관찰일지",
+                        "rarity":  "Eternal",
+                        "category":  "planet,yinggalbul"
+                    },
+                    {
+                        "slug":  "water_spirit",
+                        "gameKey":  "254",
+                        "kind":  "Artifact",
+                        "koreanName":  "물의 정령",
+                        "rarity":  "Eternal",
+                        "category":  "lake,precision"
+                    },
+                    {
+                        "slug":  "frost_guillotine",
+                        "gameKey":  "255",
+                        "kind":  "Artifact",
+                        "koreanName":  "혹한의 길로틴",
+                        "rarity":  "Eternal",
+                        "category":  "ice_weapon,magic_engineering"
+                    },
+                    {
+                        "slug":  "archive_sun",
+                        "gameKey":  "256",
+                        "kind":  "Artifact",
+                        "koreanName":  "서고의 태양",
+                        "rarity":  "Eternal",
+                        "category":  "academy,sun_sword"
+                    },
+                    {
+                        "slug":  "yakumo_kodachi",
+                        "gameKey":  "257",
+                        "kind":  "Artifact",
+                        "koreanName":  "소태도 야쿠모",
+                        "rarity":  "Rare",
+                        "category":  "firmness"
+                    },
+                    {
+                        "slug":  "angry_potato",
+                        "gameKey":  "258",
+                        "kind":  "Artifact",
+                        "koreanName":  "화난 감자",
+                        "rarity":  "Rare",
+                        "category":  "alchemy"
+                    },
+                    {
+                        "slug":  "wanderer_blessing",
+                        "gameKey":  "259",
+                        "kind":  "Artifact",
+                        "koreanName":  "나그네의 축복",
+                        "rarity":  "Rare",
+                        "category":  "alchemy"
+                    },
+                    {
+                        "slug":  "alchemist_flask",
+                        "gameKey":  "260",
+                        "kind":  "Artifact",
+                        "koreanName":  "연금술사의 플라스크",
+                        "rarity":  "Uncommon",
+                        "category":  "alchemy"
+                    },
+                    {
+                        "slug":  "courage_amulet",
+                        "gameKey":  "261",
+                        "kind":  "Artifact",
+                        "koreanName":  "용기의 아뮬렛",
+                        "rarity":  "Uncommon",
+                        "category":  "firmness"
+                    },
+                    {
+                        "slug":  "riposte_sword_fragment",
+                        "gameKey":  "273",
+                        "kind":  "Artifact",
+                        "koreanName":  "리포스테 검 조각",
+                        "rarity":  "Uncommon",
+                        "category":  "firmness"
+                    },
+                    {
+                        "slug":  "faded_shield_emblem",
+                        "gameKey":  "274",
+                        "kind":  "Artifact",
+                        "koreanName":  "빛바랜 방패 문장",
+                        "rarity":  "Uncommon",
+                        "category":  "firmness"
+                    },
+                    {
+                        "slug":  "rusted_tsuba",
+                        "gameKey":  "275",
+                        "kind":  "Artifact",
+                        "koreanName":  "녹슨 코등이",
+                        "rarity":  "Uncommon",
+                        "category":  "firmness"
+                    },
+                    {
+                        "slug":  "apprentice_duelist_epaulet",
+                        "gameKey":  "276",
+                        "kind":  "Artifact",
+                        "koreanName":  "수습 결투가의 견장",
+                        "rarity":  "Common",
+                        "category":  "firmness"
+                    },
+                    {
+                        "slug":  "dull_resonance_stone",
+                        "gameKey":  "277",
+                        "kind":  "Artifact",
+                        "koreanName":  "무딘 공명석",
+                        "rarity":  "Uncommon",
+                        "category":  "element"
+                    },
+                    {
+                        "slug":  "stiff_crank",
+                        "gameKey":  "278",
+                        "kind":  "Artifact",
+                        "koreanName":  "뻑뻑한 크랭크",
+                        "rarity":  "Uncommon",
+                        "category":  "firmness"
+                    },
+                    {
+                        "slug":  "midday_whetstone",
+                        "gameKey":  "279",
+                        "kind":  "Artifact",
+                        "koreanName":  "한낮의 숫돌",
+                        "rarity":  "Rare",
+                        "category":  "sun_sword"
+                    },
+                    {
+                        "slug":  "cloud_iron_mirror",
+                        "gameKey":  "280",
+                        "kind":  "Artifact",
+                        "koreanName":  "운철 거울",
+                        "rarity":  "Uncommon",
+                        "category":  "sun_sword"
+                    },
+                    {
+                        "slug":  "blacksmith_tongs",
+                        "gameKey":  "281",
+                        "kind":  "Artifact",
+                        "koreanName":  "대장장이 집게",
+                        "rarity":  "Uncommon",
+                        "category":  "yinggalbul"
+                    },
+                    {
+                        "slug":  "marksman_crank",
+                        "gameKey":  "282",
+                        "kind":  "Artifact",
+                        "koreanName":  "명사수의 크랭크",
+                        "rarity":  "Legend",
+                        "category":  "firmness"
+                    },
+                    {
+                        "slug":  "duelist_epaulet",
+                        "gameKey":  "283",
+                        "kind":  "Artifact",
+                        "koreanName":  "결투가의 견장",
+                        "rarity":  "Uncommon",
+                        "category":  "firmness"
+                    },
+                    {
+                        "slug":  "master_tsuba",
+                        "gameKey":  "284",
+                        "kind":  "Artifact",
+                        "koreanName":  "명인의 코등이",
+                        "rarity":  "Legend",
+                        "category":  "firmness"
+                    },
+                    {
+                        "slug":  "ironwall_emblem",
+                        "gameKey":  "285",
+                        "kind":  "Artifact",
+                        "koreanName":  "철벽의 문장",
+                        "rarity":  "Legend",
+                        "category":  "firmness"
+                    },
+                    {
+                        "slug":  "counterattack_bracelet",
+                        "gameKey":  "286",
+                        "kind":  "Artifact",
+                        "koreanName":  "반격의 팔찌",
+                        "rarity":  "Uncommon",
+                        "category":  "firmness"
+                    },
+                    {
+                        "slug":  "resonance_stone",
+                        "gameKey":  "287",
+                        "kind":  "Artifact",
+                        "koreanName":  "공명석",
+                        "rarity":  "Legend",
+                        "category":  "element"
+                    },
+                    {
+                        "slug":  "shield_sword",
+                        "gameKey":  "1",
+                        "kind":  "Weapon",
+                        "koreanName":  "표준 검과 방패",
+                        "tier":  1
+                    },
+                    {
+                        "slug":  "great_sword",
+                        "gameKey":  "2",
+                        "kind":  "Weapon",
+                        "koreanName":  "강철 대검",
+                        "tier":  1
+                    },
+                    {
+                        "slug":  "dagger",
+                        "gameKey":  "3",
+                        "kind":  "Weapon",
+                        "koreanName":  "단검",
+                        "tier":  1
+                    },
+                    {
+                        "slug":  "crossbow",
+                        "gameKey":  "4",
+                        "kind":  "Weapon",
+                        "koreanName":  "대형 석궁",
+                        "tier":  1
+                    },
+                    {
+                        "slug":  "fraudulent",
+                        "gameKey":  "5",
+                        "kind":  "Weapon",
+                        "koreanName":  "서릿빛 조각",
+                        "tier":  2,
+                        "parentGameKey":  "1"
+                    },
+                    {
+                        "slug":  "magic_wand",
+                        "gameKey":  "6",
+                        "kind":  "Weapon",
+                        "koreanName":  "매직 완드",
+                        "tier":  2,
+                        "parentGameKey":  "1"
+                    },
+                    {
+                        "slug":  "one_workshop",
+                        "gameKey":  "7",
+                        "kind":  "Weapon",
+                        "koreanName":  "공방일체",
+                        "tier":  2,
+                        "parentGameKey":  "1"
+                    },
+                    {
+                        "slug":  "protection",
+                        "gameKey":  "8",
+                        "kind":  "Weapon",
+                        "koreanName":  "솜털의 보호",
+                        "tier":  2,
+                        "parentGameKey":  "1"
+                    },
+                    {
+                        "slug":  "rapier",
+                        "gameKey":  "9",
+                        "kind":  "Weapon",
+                        "koreanName":  "레이피어",
+                        "tier":  2,
+                        "parentGameKey":  "1"
+                    },
+                    {
+                        "slug":  "small_destruction",
+                        "gameKey":  "10",
+                        "kind":  "Weapon",
+                        "koreanName":  "작은 파괴",
+                        "tier":  2,
+                        "parentGameKey":  "1"
+                    },
+                    {
+                        "slug":  "conductor",
+                        "gameKey":  "11",
+                        "kind":  "Weapon",
+                        "koreanName":  "전도체",
+                        "tier":  2,
+                        "parentGameKey":  "1"
+                    },
+                    {
+                        "slug":  "carrot_sword",
+                        "gameKey":  "12",
+                        "kind":  "Weapon",
+                        "koreanName":  "당근 검",
+                        "tier":  2,
+                        "parentGameKey":  "1"
+                    },
+                    {
+                        "slug":  "wandering",
+                        "gameKey":  "13",
+                        "kind":  "Weapon",
+                        "koreanName":  "재의 휘날림",
+                        "tier":  3,
+                        "parentGameKey":  "7"
+                    },
+                    {
+                        "slug":  "amnesty",
+                        "gameKey":  "14",
+                        "kind":  "Weapon",
+                        "koreanName":  "무고원",
+                        "tier":  3,
+                        "parentGameKey":  "7"
+                    },
+                    {
+                        "slug":  "carrot_caliber",
+                        "gameKey":  "15",
+                        "kind":  "Weapon",
+                        "koreanName":  "당근칼리버",
+                        "tier":  3,
+                        "parentGameKey":  "12"
+                    },
+                    {
+                        "slug":  "green_onion_root_sword",
+                        "gameKey":  "17",
+                        "kind":  "Weapon",
+                        "koreanName":  "파 뿌리 검",
+                        "tier":  3,
+                        "parentGameKey":  "12"
+                    },
+                    {
+                        "slug":  "flash",
+                        "gameKey":  "18",
+                        "kind":  "Weapon",
+                        "koreanName":  "섬광의 레이피어",
+                        "tier":  3,
+                        "parentGameKey":  "9"
+                    },
+                    {
+                        "slug":  "glacial_blade",
+                        "gameKey":  "22",
+                        "kind":  "Weapon",
+                        "koreanName":  "빙하의 칼날",
+                        "tier":  3,
+                        "parentGameKey":  "5"
+                    },
+                    {
+                        "slug":  "snowstorm",
+                        "gameKey":  "24",
+                        "kind":  "Weapon",
+                        "koreanName":  "눈보라의 전야",
+                        "tier":  3,
+                        "parentGameKey":  "5"
+                    },
+                    {
+                        "slug":  "twinkle_of_stars",
+                        "gameKey":  "25",
+                        "kind":  "Weapon",
+                        "koreanName":  "별의 반짝임",
+                        "tier":  3,
+                        "parentGameKey":  "8"
+                    },
+                    {
+                        "slug":  "cold_anger",
+                        "gameKey":  "26",
+                        "kind":  "Weapon",
+                        "koreanName":  "차가운 분노",
+                        "tier":  3,
+                        "parentGameKey":  "8"
+                    },
+                    {
+                        "slug":  "tightening_fear",
+                        "gameKey":  "27",
+                        "kind":  "Weapon",
+                        "koreanName":  "조여오는 공포",
+                        "tier":  3,
+                        "parentGameKey":  "10"
+                    },
+                    {
+                        "slug":  "balista_sword",
+                        "gameKey":  "28",
+                        "kind":  "Weapon",
+                        "koreanName":  "발리스타 소드",
+                        "tier":  3,
+                        "parentGameKey":  "11"
+                    },
+                    {
+                        "slug":  "super_conductor",
+                        "gameKey":  "29",
+                        "kind":  "Weapon",
+                        "koreanName":  "초전도체",
+                        "tier":  3,
+                        "parentGameKey":  "11"
+                    },
+                    {
+                        "slug":  "wooden_bat",
+                        "gameKey":  "30",
+                        "kind":  "Weapon",
+                        "koreanName":  "나무 방망이",
+                        "tier":  2,
+                        "parentGameKey":  "2"
+                    },
+                    {
+                        "slug":  "chilled_sword",
+                        "gameKey":  "31",
+                        "kind":  "Weapon",
+                        "koreanName":  "한기가 서린 대검",
+                        "tier":  2,
+                        "parentGameKey":  "2"
+                    },
+                    {
+                        "slug":  "shim_hongs_thorns",
+                        "gameKey":  "34",
+                        "kind":  "Weapon",
+                        "koreanName":  "심홍의 가시",
+                        "tier":  2,
+                        "parentGameKey":  "2"
+                    },
+                    {
+                        "slug":  "bone",
+                        "gameKey":  "35",
+                        "kind":  "Weapon",
+                        "koreanName":  "뼈 장치검",
+                        "tier":  2,
+                        "parentGameKey":  "2"
+                    },
+                    {
+                        "slug":  "uncomfortable_joy",
+                        "gameKey":  "36",
+                        "kind":  "Weapon",
+                        "koreanName":  "불편한 기쁨",
+                        "tier":  2,
+                        "parentGameKey":  "2"
+                    },
+                    {
+                        "slug":  "shadow",
+                        "gameKey":  "37",
+                        "kind":  "Weapon",
+                        "koreanName":  "모이는 그림자",
+                        "tier":  2,
+                        "parentGameKey":  "2"
+                    },
+                    {
+                        "slug":  "hypersensitivity",
+                        "gameKey":  "38",
+                        "kind":  "Weapon",
+                        "koreanName":  "과민성",
+                        "tier":  2,
+                        "parentGameKey":  "2"
+                    },
+                    {
+                        "slug":  "love_gaze",
+                        "gameKey":  "39",
+                        "kind":  "Weapon",
+                        "koreanName":  "사랑의 시선",
+                        "tier":  3,
+                        "parentGameKey":  "38"
+                    },
+                    {
+                        "slug":  "ignoring",
+                        "gameKey":  "40",
+                        "kind":  "Weapon",
+                        "koreanName":  "묵살",
+                        "tier":  3,
+                        "parentGameKey":  "38"
+                    },
+                    {
+                        "slug":  "thorn_bat",
+                        "gameKey":  "41",
+                        "kind":  "Weapon",
+                        "koreanName":  "가시 방망이",
+                        "tier":  3,
+                        "parentGameKey":  "30"
+                    },
+                    {
+                        "slug":  "bunting",
+                        "gameKey":  "42",
+                        "kind":  "Weapon",
+                        "koreanName":  "짖궂은 장난",
+                        "tier":  3,
+                        "parentGameKey":  "30"
+                    },
+                    {
+                        "slug":  "short_self_book",
+                        "gameKey":  "43",
+                        "kind":  "Weapon",
+                        "koreanName":  "짧은 자책",
+                        "tier":  3,
+                        "parentGameKey":  "37"
+                    },
+                    {
+                        "slug":  "first_form",
+                        "gameKey":  "44",
+                        "kind":  "Weapon",
+                        "koreanName":  "태초의 형태",
+                        "tier":  3,
+                        "parentGameKey":  "36"
+                    },
+                    {
+                        "slug":  "legacy",
+                        "gameKey":  "45",
+                        "kind":  "Weapon",
+                        "koreanName":  "환영술사의 유산",
+                        "tier":  3,
+                        "parentGameKey":  "36"
+                    },
+                    {
+                        "slug":  "rajaron",
+                        "gameKey":  "46",
+                        "kind":  "Weapon",
+                        "koreanName":  "라자리온",
+                        "tier":  3,
+                        "parentGameKey":  "36"
+                    },
+                    {
+                        "slug":  "squeezer",
+                        "gameKey":  "47",
+                        "kind":  "Weapon",
+                        "koreanName":  "삐걱이는 척추",
+                        "tier":  3,
+                        "parentGameKey":  "35"
+                    },
+                    {
+                        "slug":  "shim_hong_whirlpool",
+                        "gameKey":  "48",
+                        "kind":  "Weapon",
+                        "koreanName":  "심홍의 소용돌이",
+                        "tier":  3,
+                        "parentGameKey":  "34"
+                    },
+                    {
+                        "slug":  "heretic_questioner",
+                        "gameKey":  "49",
+                        "kind":  "Weapon",
+                        "koreanName":  "이단심문관",
+                        "tier":  3,
+                        "parentGameKey":  "34"
+                    },
+                    {
+                        "slug":  "speech_sword",
+                        "gameKey":  "54",
+                        "kind":  "Weapon",
+                        "koreanName":  "축사의 대검",
+                        "tier":  3,
+                        "parentGameKey":  "31"
+                    },
+                    {
+                        "slug":  "fence",
+                        "gameKey":  "55",
+                        "kind":  "Weapon",
+                        "koreanName":  "만년한검",
+                        "tier":  3,
+                        "parentGameKey":  "31"
+                    },
+                    {
+                        "slug":  "icicle_sword",
+                        "gameKey":  "56",
+                        "kind":  "Weapon",
+                        "koreanName":  "고드름 검",
+                        "tier":  3,
+                        "parentGameKey":  "31"
+                    },
+                    {
+                        "slug":  "passing_door",
+                        "gameKey":  "58",
+                        "kind":  "Weapon",
+                        "koreanName":  "문지방 넘기",
+                        "tier":  2,
+                        "parentGameKey":  "3"
+                    },
+                    {
+                        "slug":  "dry_wind",
+                        "gameKey":  "59",
+                        "kind":  "Weapon",
+                        "koreanName":  "건조한 바람",
+                        "tier":  2,
+                        "parentGameKey":  "3"
+                    },
+                    {
+                        "slug":  "flame_dagger",
+                        "gameKey":  "60",
+                        "kind":  "Weapon",
+                        "koreanName":  "불꽃 단검",
+                        "tier":  2,
+                        "parentGameKey":  "3"
+                    },
+                    {
+                        "slug":  "lightning_dagger",
+                        "gameKey":  "61",
+                        "kind":  "Weapon",
+                        "koreanName":  "번개 단검",
+                        "tier":  2,
+                        "parentGameKey":  "3"
+                    },
+                    {
+                        "slug":  "cotton_leg",
+                        "gameKey":  "62",
+                        "kind":  "Weapon",
+                        "koreanName":  "솜다리",
+                        "tier":  2,
+                        "parentGameKey":  "3"
+                    },
+                    {
+                        "slug":  "jade",
+                        "gameKey":  "63",
+                        "kind":  "Weapon",
+                        "koreanName":  "옥빛 잔영",
+                        "tier":  2,
+                        "parentGameKey":  "3"
+                    },
+                    {
+                        "slug":  "blade_without_light",
+                        "gameKey":  "66",
+                        "kind":  "Weapon",
+                        "koreanName":  "빛없는 칼날",
+                        "tier":  3,
+                        "parentGameKey":  "58"
+                    },
+                    {
+                        "slug":  "absolute_envy",
+                        "gameKey":  "67",
+                        "kind":  "Weapon",
+                        "koreanName":  "절대 선망",
+                        "tier":  3,
+                        "parentGameKey":  "58"
+                    },
+                    {
+                        "slug":  "crawling",
+                        "gameKey":  "68",
+                        "kind":  "Weapon",
+                        "koreanName":  "기어 오는 절망",
+                        "tier":  3,
+                        "parentGameKey":  "59"
+                    },
+                    {
+                        "slug":  "difficult_experiments",
+                        "gameKey":  "71",
+                        "kind":  "Weapon",
+                        "koreanName":  "어려운 실험",
+                        "tier":  3,
+                        "parentGameKey":  "59"
+                    },
+                    {
+                        "slug":  "heated_blade",
+                        "gameKey":  "72",
+                        "kind":  "Weapon",
+                        "koreanName":  "달궈진 칼날",
+                        "tier":  3,
+                        "parentGameKey":  "60"
+                    },
+                    {
+                        "slug":  "teeth",
+                        "gameKey":  "73",
+                        "kind":  "Weapon",
+                        "koreanName":  "타오르는 이빨",
+                        "tier":  3,
+                        "parentGameKey":  "60"
+                    },
+                    {
+                        "slug":  "dried_dark",
+                        "gameKey":  "74",
+                        "kind":  "Weapon",
+                        "koreanName":  "드리운 암운",
+                        "tier":  3,
+                        "parentGameKey":  "61"
+                    },
+                    {
+                        "slug":  "lightning_fury",
+                        "gameKey":  "75",
+                        "kind":  "Weapon",
+                        "koreanName":  "번개의 분노",
+                        "tier":  3,
+                        "parentGameKey":  "61"
+                    },
+                    {
+                        "slug":  "ice_bird_flower",
+                        "gameKey":  "76",
+                        "kind":  "Weapon",
+                        "koreanName":  "얼음새꽃",
+                        "tier":  3,
+                        "parentGameKey":  "62"
+                    },
+                    {
+                        "slug":  "endless_sleep",
+                        "gameKey":  "77",
+                        "kind":  "Weapon",
+                        "koreanName":  "가없는 침잠",
+                        "tier":  3,
+                        "parentGameKey":  "63"
+                    },
+                    {
+                        "slug":  "large_crossbow_reloading_device",
+                        "gameKey":  "79",
+                        "kind":  "Weapon",
+                        "koreanName":  "대형 석궁: 재장전 장치",
+                        "tier":  2,
+                        "parentGameKey":  "4"
+                    },
+                    {
+                        "slug":  "large_crossbow_shotguns",
+                        "gameKey":  "80",
+                        "kind":  "Weapon",
+                        "koreanName":  "대형 석궁: 산탄 격발기",
+                        "tier":  2,
+                        "parentGameKey":  "4"
+                    },
+                    {
+                        "slug":  "large_crossbow_special_bolt_enhancement",
+                        "gameKey":  "82",
+                        "kind":  "Weapon",
+                        "koreanName":  "대형 석궁: 특수볼트 강화",
+                        "tier":  2,
+                        "parentGameKey":  "4"
+                    },
+                    {
+                        "slug":  "large_crossbow_fireworks_mine",
+                        "gameKey":  "83",
+                        "kind":  "Weapon",
+                        "koreanName":  "대형 석궁: 불꽃 지뢰",
+                        "tier":  2,
+                        "parentGameKey":  "4"
+                    },
+                    {
+                        "slug":  "large_crossbow_lightning_marker_unstable",
+                        "gameKey":  "84",
+                        "kind":  "Weapon",
+                        "koreanName":  "대형 석궁: 불안정한 번개 표식",
+                        "tier":  2,
+                        "parentGameKey":  "4"
+                    },
+                    {
+                        "slug":  "large_crossbow_frost_curtain",
+                        "gameKey":  "85",
+                        "kind":  "Weapon",
+                        "koreanName":  "대형 석궁: 서리 장막",
+                        "tier":  2,
+                        "parentGameKey":  "4"
+                    },
+                    {
+                        "slug":  "large_crossbow_acceleration",
+                        "gameKey":  "86",
+                        "kind":  "Weapon",
+                        "koreanName":  "대형 석궁: 가속 코어",
+                        "tier":  3,
+                        "parentGameKey":  "79"
+                    },
+                    {
+                        "slug":  "crossbow_twins",
+                        "gameKey":  "87",
+                        "kind":  "Weapon",
+                        "koreanName":  "석궁: 쌍둥이",
+                        "tier":  3,
+                        "parentGameKey":  "79"
+                    },
+                    {
+                        "slug":  "large_crossbow_gunpowdercho_softness",
+                        "gameKey":  "89",
+                        "kind":  "Weapon",
+                        "koreanName":  "대형 석궁: 화약초 연성",
+                        "tier":  3,
+                        "parentGameKey":  "80"
+                    },
+                    {
+                        "slug":  "large_crossbow_explosive_device",
+                        "gameKey":  "92",
+                        "kind":  "Weapon",
+                        "koreanName":  "대형 석궁: 폭발 장치",
+                        "tier":  3,
+                        "parentGameKey":  "80"
+                    },
+                    {
+                        "slug":  "large_crossbow_speaking_device",
+                        "gameKey":  "93",
+                        "kind":  "Weapon",
+                        "koreanName":  "대형 석궁: 연사 장치",
+                        "tier":  3,
+                        "parentGameKey":  "82"
+                    },
+                    {
+                        "slug":  "large_crossbow_judo_module_mounted",
+                        "gameKey":  "94",
+                        "kind":  "Weapon",
+                        "koreanName":  "대형 석궁: 유도모듈 장착",
+                        "tier":  3,
+                        "parentGameKey":  "83"
+                    },
+                    {
+                        "slug":  "mini_cannon",
+                        "gameKey":  "95",
+                        "kind":  "Weapon",
+                        "koreanName":  "미니 캐논",
+                        "tier":  3,
+                        "parentGameKey":  "83"
+                    },
+                    {
+                        "slug":  "large_crossbow_stabilization_marker",
+                        "gameKey":  "96",
+                        "kind":  "Weapon",
+                        "koreanName":  "대형 석궁: 표식 안정화",
+                        "tier":  3,
+                        "parentGameKey":  "84"
+                    },
+                    {
+                        "slug":  "large_crossbow_cloud_report",
+                        "gameKey":  "97",
+                        "kind":  "Weapon",
+                        "koreanName":  "대형 석궁: 구름 포집기",
+                        "tier":  3,
+                        "parentGameKey":  "84"
+                    },
+                    {
+                        "slug":  "large_crossbow_required_determination",
+                        "gameKey":  "98",
+                        "kind":  "Weapon",
+                        "koreanName":  "대형 석궁: 급랭 결정",
+                        "tier":  3,
+                        "parentGameKey":  "85"
+                    },
+                    {
+                        "slug":  "large_crossbow_expansion_device",
+                        "gameKey":  "99",
+                        "kind":  "Weapon",
+                        "koreanName":  "대형 석궁: 팽창 장치",
+                        "tier":  3,
+                        "parentGameKey":  "85"
+                    },
+                    {
+                        "slug":  "katana",
+                        "gameKey":  "100",
+                        "kind":  "Weapon",
+                        "koreanName":  "도",
+                        "tier":  1
+                    },
+                    {
+                        "slug":  "tachi_onohara",
+                        "gameKey":  "101",
+                        "kind":  "Weapon",
+                        "koreanName":  "태도 \u0027오노하라\u0027",
+                        "tier":  2,
+                        "parentGameKey":  "100"
+                    },
+                    {
+                        "slug":  "hellbanus",
+                        "gameKey":  "102",
+                        "kind":  "Weapon",
+                        "koreanName":  "헬바누스",
+                        "tier":  2,
+                        "parentGameKey":  "100"
+                    },
+                    {
+                        "slug":  "celestial_light_sword_cheongwangsak",
+                        "gameKey":  "103",
+                        "kind":  "Weapon",
+                        "koreanName":  "검참도: 천광삭",
+                        "tier":  2,
+                        "parentGameKey":  "100"
+                    },
+                    {
+                        "slug":  "waiting_blue_radiant_sword",
+                        "gameKey":  "104",
+                        "kind":  "Weapon",
+                        "koreanName":  "기다리는 청휘검",
+                        "tier":  2,
+                        "parentGameKey":  "100"
+                    },
+                    {
+                        "slug":  "library_soul_seal_association_type_1",
+                        "gameKey":  "105",
+                        "kind":  "Weapon",
+                        "koreanName":  "도서관 혼령봉인연구회 제1형",
+                        "tier":  2,
+                        "parentGameKey":  "100"
+                    },
+                    {
+                        "slug":  "winter_blacksmiths_draft",
+                        "gameKey":  "106",
+                        "kind":  "Weapon",
+                        "koreanName":  "겨울 대장장이의 습작",
+                        "tier":  2,
+                        "parentGameKey":  "100"
+                    },
+                    {
+                        "slug":  "renowned_blade_muramasa",
+                        "gameKey":  "107",
+                        "kind":  "Weapon",
+                        "koreanName":  "명도 \u0027무라마사\u0027",
+                        "tier":  3,
+                        "parentGameKey":  "101"
+                    },
+                    {
+                        "slug":  "executioner_blade_hou",
+                        "gameKey":  "108",
+                        "kind":  "Weapon",
+                        "koreanName":  "괵도 \u0027호우\u0027",
+                        "tier":  3,
+                        "parentGameKey":  "101"
+                    },
+                    {
+                        "slug":  "raging_helbanus",
+                        "gameKey":  "109",
+                        "kind":  "Weapon",
+                        "koreanName":  "들끓는 헬바누스",
+                        "tier":  3,
+                        "parentGameKey":  "102"
+                    },
+                    {
+                        "slug":  "heidi",
+                        "gameKey":  "110",
+                        "kind":  "Weapon",
+                        "koreanName":  "하이디",
+                        "tier":  3,
+                        "parentGameKey":  "102"
+                    },
+                    {
+                        "slug":  "slashing_sword_biryuu",
+                        "gameKey":  "111",
+                        "kind":  "Weapon",
+                        "koreanName":  "검참도: 비류",
+                        "tier":  3,
+                        "parentGameKey":  "103"
+                    },
+                    {
+                        "slug":  "slashing_sword_pamu",
+                        "gameKey":  "112",
+                        "kind":  "Weapon",
+                        "koreanName":  "검참도: 파무",
+                        "tier":  3,
+                        "parentGameKey":  "103"
+                    },
+                    {
+                        "slug":  "yuis_short_dagger",
+                        "gameKey":  "113",
+                        "kind":  "Weapon",
+                        "koreanName":  "유이의 소단검",
+                        "tier":  3,
+                        "parentGameKey":  "104"
+                    },
+                    {
+                        "slug":  "adamahs_vow",
+                        "gameKey":  "114",
+                        "kind":  "Weapon",
+                        "koreanName":  "아다마흐의 서약",
+                        "tier":  3,
+                        "parentGameKey":  "104"
+                    },
+                    {
+                        "slug":  "library_soul_seal_association_type_2",
+                        "gameKey":  "115",
+                        "kind":  "Weapon",
+                        "koreanName":  "도서관 혼령봉인연구회 제2형",
+                        "tier":  3,
+                        "parentGameKey":  "105"
+                    },
+                    {
+                        "slug":  "eternal_snow_silence",
+                        "gameKey":  "116",
+                        "kind":  "Weapon",
+                        "koreanName":  "만년설의 침묵",
+                        "tier":  3,
+                        "parentGameKey":  "106"
+                    },
+                    {
+                        "slug":  "nastronds_shard",
+                        "gameKey":  "117",
+                        "kind":  "Weapon",
+                        "koreanName":  "나스트론드의 조각",
+                        "tier":  3,
+                        "parentGameKey":  "106"
+                    },
+                    {
+                        "slug":  "forged_sword_finish",
+                        "gameKey":  "118",
+                        "kind":  "Weapon",
+                        "koreanName":  "잔불 단조검",
+                        "tier":  2,
+                        "parentGameKey":  "2"
+                    },
+                    {
+                        "slug":  "crushing_red_snake",
+                        "gameKey":  "119",
+                        "kind":  "Weapon",
+                        "koreanName":  "붉은 뱀의 분쇄",
+                        "tier":  3,
+                        "parentGameKey":  "118"
+                    },
+                    {
+                        "slug":  "solis_kineris",
+                        "gameKey":  "120",
+                        "kind":  "Weapon",
+                        "koreanName":  "솔리스 키네리스",
+                        "tier":  3,
+                        "parentGameKey":  "118"
+                    },
+                    {
+                        "slug":  "mastermind",
+                        "gameKey":  "121",
+                        "kind":  "Weapon",
+                        "koreanName":  "흑막",
+                        "tier":  3,
+                        "parentGameKey":  "62"
+                    },
+                    {
+                        "slug":  "lightning_bronte",
+                        "gameKey":  "122",
+                        "kind":  "Weapon",
+                        "koreanName":  "전격도 브론테",
+                        "tier":  2,
+                        "parentGameKey":  "100"
+                    },
+                    {
+                        "slug":  "jeon_gwang",
+                        "gameKey":  "123",
+                        "kind":  "Weapon",
+                        "koreanName":  "전광일각",
+                        "tier":  3,
+                        "parentGameKey":  "122"
+                    },
+                    {
+                        "slug":  "kagumede",
+                        "gameKey":  "124",
+                        "kind":  "Weapon",
+                        "koreanName":  "카구메데",
+                        "tier":  2,
+                        "parentGameKey":  "4"
+                    },
+                    {
+                        "slug":  "karim_shape",
+                        "gameKey":  "125",
+                        "kind":  "Weapon",
+                        "koreanName":  "카림의 형상",
+                        "tier":  3,
+                        "parentGameKey":  "124"
+                    },
+                    {
+                        "slug":  "academy_magic_sword",
+                        "gameKey":  "126",
+                        "kind":  "Weapon",
+                        "koreanName":  "아카데미 마법검",
+                        "tier":  2,
+                        "parentGameKey":  "3"
+                    },
+                    {
+                        "slug":  "book_of_lmitation",
+                        "gameKey":  "127",
+                        "kind":  "Weapon",
+                        "koreanName":  "모방의 서",
+                        "tier":  3,
+                        "parentGameKey":  "126"
+                    },
+                    {
+                        "slug":  "academy_magic_sword_liberation",
+                        "gameKey":  "128",
+                        "kind":  "Weapon",
+                        "koreanName":  "아카데미 마법검 - 해방",
+                        "tier":  3,
+                        "parentGameKey":  "126"
+                    },
+                    {
+                        "slug":  "stone_sword",
+                        "gameKey":  "130",
+                        "kind":  "Weapon",
+                        "koreanName":  "바위검",
+                        "tier":  3,
+                        "parentGameKey":  "8"
+                    },
+                    {
+                        "slug":  "m_9199",
+                        "gameKey":  "131",
+                        "kind":  "Weapon",
+                        "koreanName":  "M-9199",
+                        "tier":  2,
+                        "parentGameKey":  "4"
+                    },
+                    {
+                        "slug":  "xra_9",
+                        "gameKey":  "132",
+                        "kind":  "Weapon",
+                        "koreanName":  "XRA-9",
+                        "tier":  3,
+                        "parentGameKey":  "131"
+                    },
+                    {
+                        "slug":  "pallet_bee_palace",
+                        "gameKey":  "133",
+                        "kind":  "Weapon",
+                        "koreanName":  "자갑벌궁",
+                        "tier":  3,
+                        "parentGameKey":  "124"
+                    },
+                    {
+                        "slug":  "staff",
+                        "gameKey":  "134",
+                        "kind":  "Weapon",
+                        "koreanName":  "봉",
+                        "tier":  1
+                    },
+                    {
+                        "slug":  "flame_staff",
+                        "gameKey":  "135",
+                        "kind":  "Weapon",
+                        "koreanName":  "화곤봉",
+                        "tier":  2,
+                        "parentGameKey":  "134"
+                    },
+                    {
+                        "slug":  "mighty_strength_staff",
+                        "gameKey":  "136",
+                        "kind":  "Weapon",
+                        "koreanName":  "대력곤",
+                        "tier":  3,
+                        "parentGameKey":  "135"
+                    },
+                    {
+                        "slug":  "all_element_staff_ilonica",
+                        "gameKey":  "137",
+                        "kind":  "Weapon",
+                        "koreanName":  "정령융합봉 일로니카",
+                        "tier":  3,
+                        "parentGameKey":  "135"
+                    },
+                    {
+                        "slug":  "shinjin_iron_staff",
+                        "gameKey":  "138",
+                        "kind":  "Weapon",
+                        "koreanName":  "신진철곤",
+                        "tier":  2,
+                        "parentGameKey":  "134"
+                    },
+                    {
+                        "slug":  "distant_starlight",
+                        "gameKey":  "140",
+                        "kind":  "Weapon",
+                        "koreanName":  "먼 곳의 별빛",
+                        "tier":  2,
+                        "parentGameKey":  "134"
+                    },
+                    {
+                        "slug":  "assault_spear_gioroid",
+                        "gameKey":  "141",
+                        "kind":  "Weapon",
+                        "koreanName":  "돌격창 기오로이드",
+                        "tier":  2,
+                        "parentGameKey":  "134"
+                    },
+                    {
+                        "slug":  "ember_staff",
+                        "gameKey":  "142",
+                        "kind":  "Weapon",
+                        "koreanName":  "잿불의 봉",
+                        "tier":  2,
+                        "parentGameKey":  "134"
+                    },
+                    {
+                        "slug":  "white_elephant_staff",
+                        "gameKey":  "143",
+                        "kind":  "Weapon",
+                        "koreanName":  "백상의 봉",
+                        "tier":  2,
+                        "parentGameKey":  "134"
+                    },
+                    {
+                        "slug":  "thunderclap_staff",
+                        "gameKey":  "144",
+                        "kind":  "Weapon",
+                        "koreanName":  "뇌정의 봉",
+                        "tier":  2,
+                        "parentGameKey":  "134"
+                    },
+                    {
+                        "slug":  "ocean_weight_staff",
+                        "gameKey":  "145",
+                        "kind":  "Weapon",
+                        "koreanName":  "바다의 추",
+                        "tier":  3,
+                        "parentGameKey":  "138"
+                    },
+                    {
+                        "slug":  "khakkhara_of_no_sorrows",
+                        "gameKey":  "146",
+                        "kind":  "Weapon",
+                        "koreanName":  "무환석장",
+                        "tier":  3,
+                        "parentGameKey":  "138"
+                    },
+                    {
+                        "slug":  "fragment_of_star_sea",
+                        "gameKey":  "147",
+                        "kind":  "Weapon",
+                        "koreanName":  "성해의 편린",
+                        "tier":  3,
+                        "parentGameKey":  "140"
+                    },
+                    {
+                        "slug":  "assault_spear_ruashulea",
+                        "gameKey":  "148",
+                        "kind":  "Weapon",
+                        "koreanName":  "돌격창 루아슐레아",
+                        "tier":  3,
+                        "parentGameKey":  "141"
+                    },
+                    {
+                        "slug":  "assault_spear_puarsuka",
+                        "gameKey":  "149",
+                        "kind":  "Weapon",
+                        "koreanName":  "돌격창 푸아르스카",
+                        "tier":  3,
+                        "parentGameKey":  "141"
+                    },
+                    {
+                        "slug":  "gavel_piaolla",
+                        "gameKey":  "150",
+                        "kind":  "Weapon",
+                        "koreanName":  "피아올라 의사봉",
+                        "tier":  3,
+                        "parentGameKey":  "142"
+                    },
+                    {
+                        "slug":  "solis_bracca",
+                        "gameKey":  "151",
+                        "kind":  "Weapon",
+                        "koreanName":  "솔리스 브라카",
+                        "tier":  3,
+                        "parentGameKey":  "142"
+                    },
+                    {
+                        "slug":  "prophecy_of_shaman",
+                        "gameKey":  "152",
+                        "kind":  "Weapon",
+                        "koreanName":  "무녀의 예언",
+                        "tier":  3,
+                        "parentGameKey":  "143"
+                    },
+                    {
+                        "slug":  "malaspina_staff",
+                        "gameKey":  "153",
+                        "kind":  "Weapon",
+                        "koreanName":  "말라스피나",
+                        "tier":  3,
+                        "parentGameKey":  "143"
+                    },
+                    {
+                        "slug":  "viduka_staff",
+                        "gameKey":  "154",
+                        "kind":  "Weapon",
+                        "koreanName":  "비듀카",
+                        "tier":  3,
+                        "parentGameKey":  "144"
+                    },
+                    {
+                        "slug":  "neporax_staff",
+                        "gameKey":  "155",
+                        "kind":  "Weapon",
+                        "koreanName":  "네포락스",
+                        "tier":  3,
+                        "parentGameKey":  "144"
+                    },
+                    {
+                        "slug":  "incendium",
+                        "gameKey":  "156",
+                        "kind":  "Weapon",
+                        "koreanName":  "인센디움",
+                        "tier":  2,
+                        "parentGameKey":  "1"
+                    },
+                    {
+                        "slug":  "solis_mission",
+                        "gameKey":  "157",
+                        "kind":  "Weapon",
+                        "koreanName":  "솔리스 미시온",
+                        "tier":  3,
+                        "parentGameKey":  "156"
+                    },
+                    {
+                        "slug":  "fire_eating_haetae",
+                        "gameKey":  "158",
+                        "kind":  "Weapon",
+                        "koreanName":  "불먹는 해태",
+                        "tier":  3,
+                        "parentGameKey":  "156"
+                    },
+                    {
+                        "slug":  "solis_eclipse",
+                        "gameKey":  "159",
+                        "kind":  "Weapon",
+                        "koreanName":  "솔리스 에클리",
+                        "tier":  3,
+                        "parentGameKey":  "102"
+                    },
+                    {
+                        "slug":  "broken_armor_blade",
+                        "gameKey":  "160",
+                        "kind":  "Weapon",
+                        "koreanName":  "절갑도",
+                        "tier":  2,
+                        "parentGameKey":  "100"
+                    },
+                    {
+                        "slug":  "armor_piercing_blade",
+                        "gameKey":  "161",
+                        "kind":  "Weapon",
+                        "koreanName":  "파갑도",
+                        "tier":  3,
+                        "parentGameKey":  "160"
+                    },
+                    {
+                        "slug":  "returning_guardian",
+                        "gameKey":  "162",
+                        "kind":  "Weapon",
+                        "koreanName":  "회귀하는 수호",
+                        "tier":  3,
+                        "parentGameKey":  "10"
+                    },
+                    {
+                        "slug":  "black_iron_halberd",
+                        "gameKey":  "163",
+                        "kind":  "Weapon",
+                        "koreanName":  "흑철 할버드",
+                        "tier":  3,
+                        "parentGameKey":  "38"
+                    },
+                    {
+                        "slug":  "sleeping_frost",
+                        "gameKey":  "164",
+                        "kind":  "Weapon",
+                        "koreanName":  "잠든 서리",
+                        "tier":  2,
+                        "parentGameKey":  "3"
+                    },
+                    {
+                        "slug":  "frozen_smelt",
+                        "gameKey":  "165",
+                        "kind":  "Weapon",
+                        "koreanName":  "냉동 빙어",
+                        "tier":  3,
+                        "parentGameKey":  "164"
+                    },
+                    {
+                        "slug":  "dripa",
+                        "gameKey":  "166",
+                        "kind":  "Weapon",
+                        "koreanName":  "드리파",
+                        "tier":  3,
+                        "parentGameKey":  "164"
+                    },
+                    {
+                        "slug":  "solis_ember",
+                        "gameKey":  "167",
+                        "kind":  "Weapon",
+                        "koreanName":  "솔리스 임베르",
+                        "tier":  3,
+                        "parentGameKey":  "60"
+                    },
+                    {
+                        "slug":  "bounty_hunter",
+                        "gameKey":  "168",
+                        "kind":  "Weapon",
+                        "koreanName":  "현상금 사냥꾼",
+                        "tier":  3,
+                        "parentGameKey":  "79"
+                    },
+                    {
+                        "slug":  "barnacle",
+                        "gameKey":  "169",
+                        "kind":  "Weapon",
+                        "koreanName":  "따개비",
+                        "tier":  3,
+                        "parentGameKey":  "80"
+                    },
+                    {
+                        "slug":  "solis_yuvar",
+                        "gameKey":  "170",
+                        "kind":  "Weapon",
+                        "koreanName":  "솔리스 유바르",
+                        "tier":  3,
+                        "parentGameKey":  "83"
+                    },
+                    {
+                        "slug":  "minigun",
+                        "gameKey":  "171",
+                        "kind":  "Weapon",
+                        "koreanName":  "미니건",
+                        "tier":  3,
+                        "parentGameKey":  "84"
+                    },
+                    {
+                        "slug":  "throwing_spear",
+                        "gameKey":  "172",
+                        "kind":  "Weapon",
+                        "koreanName":  "투창",
+                        "tier":  2,
+                        "parentGameKey":  "134"
+                    },
+                    {
+                        "slug":  "holy_jar",
+                        "gameKey":  "173",
+                        "kind":  "Weapon",
+                        "koreanName":  "신성한 항아리",
+                        "tier":  3,
+                        "parentGameKey":  "172"
+                    },
+                    {
+                        "slug":  "formless_dance",
+                        "gameKey":  "174",
+                        "kind":  "Weapon",
+                        "koreanName":  "무형의 춤",
+                        "tier":  3,
+                        "parentGameKey":  "172"
+                    },
+                    {
+                        "slug":  "successor",
+                        "gameKey":  "175",
+                        "kind":  "Weapon",
+                        "koreanName":  "계승자",
+                        "tier":  3,
+                        "parentGameKey":  "172"
+                    },
+                    {
+                        "slug":  "radiant_silence",
+                        "gameKey":  "176",
+                        "kind":  "Weapon",
+                        "koreanName":  "눈부신 침묵",
+                        "tier":  3,
+                        "parentGameKey":  "11"
+                    },
+                    {
+                        "slug":  "frostspike_garden",
+                        "gameKey":  "177",
+                        "kind":  "Weapon",
+                        "koreanName":  "서릿발 화원",
+                        "tier":  3,
+                        "parentGameKey":  "5"
+                    },
+                    {
+                        "slug":  "prismatic_wand",
+                        "gameKey":  "178",
+                        "kind":  "Weapon",
+                        "koreanName":  "프리즘 매직 완드",
+                        "tier":  3,
+                        "parentGameKey":  "6"
+                    },
+                    {
+                        "slug":  "hematic_device_sword",
+                        "gameKey":  "179",
+                        "kind":  "Weapon",
+                        "koreanName":  "방혈 장치검",
+                        "tier":  3,
+                        "parentGameKey":  "35"
+                    },
+                    {
+                        "slug":  "m_9200",
+                        "gameKey":  "180",
+                        "kind":  "Weapon",
+                        "koreanName":  "M-9200",
+                        "tier":  3,
+                        "parentGameKey":  "131"
+                    },
+                    {
+                        "slug":  "azure_cloud_blade_arges",
+                        "gameKey":  "181",
+                        "kind":  "Weapon",
+                        "koreanName":  "창운도 아르게스",
+                        "tier":  3,
+                        "parentGameKey":  "122"
+                    },
+                    {
+                        "slug":  "duelist",
+                        "gameKey":  "duelist",
+                        "kind":  "Miracle",
+                        "koreanName":  "결투가"
+                    },
+                    {
+                        "slug":  "guard",
+                        "gameKey":  "guard",
+                        "kind":  "Miracle",
+                        "koreanName":  "경비병"
+                    },
+                    {
+                        "slug":  "berserker",
+                        "gameKey":  "berserker",
+                        "kind":  "Miracle",
+                        "koreanName":  "광전사"
+                    },
+                    {
+                        "slug":  "meteorologist",
+                        "gameKey":  "meteorologist",
+                        "kind":  "Miracle",
+                        "koreanName":  "기상학자"
+                    },
+                    {
+                        "slug":  "gambler",
+                        "gameKey":  "gambler",
+                        "kind":  "Miracle",
+                        "koreanName":  "도박사"
+                    },
+                    {
+                        "slug":  "log",
+                        "gameKey":  "log",
+                        "kind":  "Miracle",
+                        "koreanName":  "로그"
+                    },
+                    {
+                        "slug":  "hunter",
+                        "gameKey":  "hunter",
+                        "kind":  "Miracle",
+                        "koreanName":  "사냥꾼"
+                    },
+                    {
+                        "slug":  "snowfaller",
+                        "gameKey":  "snowfaller",
+                        "kind":  "Miracle",
+                        "koreanName":  "설원 경비병"
+                    },
+                    {
+                        "slug":  "valet",
+                        "gameKey":  "valet",
+                        "kind":  "Miracle",
+                        "koreanName":  "시종"
+                    },
+                    {
+                        "slug":  "assassin",
+                        "gameKey":  "assassin",
+                        "kind":  "Miracle",
+                        "koreanName":  "어쌔신"
+                    },
+                    {
+                        "slug":  "iceBlacksmith",
+                        "gameKey":  "iceBlacksmith",
+                        "kind":  "Miracle",
+                        "koreanName":  "얼음 대장장이"
+                    },
+                    {
+                        "slug":  "chef",
+                        "gameKey":  "chef",
+                        "kind":  "Miracle",
+                        "koreanName":  "요리사"
+                    },
+                    {
+                        "slug":  "elementalist",
+                        "gameKey":  "elementalist",
+                        "kind":  "Miracle",
+                        "koreanName":  "원소술사"
+                    },
+                    {
+                        "slug":  "general",
+                        "gameKey":  "general",
+                        "kind":  "Miracle",
+                        "koreanName":  "장군"
+                    },
+                    {
+                        "slug":  "informant",
+                        "gameKey":  "informant",
+                        "kind":  "Miracle",
+                        "koreanName":  "정보원"
+                    },
+                    {
+                        "slug":  "astronomer",
+                        "gameKey":  "astronomer",
+                        "kind":  "Miracle",
+                        "koreanName":  "천문학자"
+                    },
+                    {
+                        "slug":  "explorer",
+                        "gameKey":  "explorer",
+                        "kind":  "Miracle",
+                        "koreanName":  "탐험가"
+                    },
+                    {
+                        "slug":  "scholar",
+                        "gameKey":  "scholar",
+                        "kind":  "Miracle",
+                        "koreanName":  "학자"
+                    },
+                    {
+                        "slug":  "fisher",
+                        "gameKey":  "fisher",
+                        "kind":  "Miracle",
+                        "koreanName":  "낚시꾼"
+                    },
+                    {
+                        "slug":  "electromancer",
+                        "gameKey":  "electromancer",
+                        "kind":  "Miracle",
+                        "koreanName":  "전격술사"
+                    },
+                    {
+                        "slug":  "meteoric_smith",
+                        "gameKey":  "meteoric_smith",
+                        "kind":  "Miracle",
+                        "koreanName":  "운철 대장장이"
+                    }
+                ]
+}
