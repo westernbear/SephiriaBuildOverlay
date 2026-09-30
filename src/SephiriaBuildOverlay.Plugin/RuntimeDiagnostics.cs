@@ -13,7 +13,7 @@ internal sealed class RuntimeDiagnostics
     private float _nextRead;
     public RuntimeDiagnostics(string directory) => _directory = directory;
 
-    public void Tick(float now, UnityGameGateway gateway, Func<object> overlayState)
+    public void Tick(float now, UnityGameGateway gateway, Func<object> overlayState, Func<object>? controllerPreview = null)
     {
         if (now < _nextRead) return;
         _nextRead = now + .5f;
@@ -38,7 +38,8 @@ internal sealed class RuntimeDiagnostics
                 gateway.CaptureOnMainThread(freshDiscovery: true);
                 result = new { previewShown = gateway.PreviewGhostRendering(), gameActionsAllowed = false, durationSeconds = 10 };
             }
-            else result = new { error = "Only snapshot/catalog/UI-only preview commands are allowed." };
+            else if (command == "controller-preview" && controllerPreview is not null) result = controllerPreview();
+            else result = new { error = "Only snapshot/catalog/UI-only preview/controller-preview commands are allowed." };
             Directory.CreateDirectory(_directory);
             var output = Path.Combine(_directory, id.ToString("D") + ".json");
             var temporary = output + ".tmp";

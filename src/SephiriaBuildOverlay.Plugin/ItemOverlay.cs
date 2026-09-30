@@ -9,6 +9,8 @@ internal sealed partial class UnityGameGateway
     private GUIStyle? _itemLabel;
     private GUIStyle? _itemWarning;
     private Font? _itemFont;
+    private bool _controllerMode;
+    public void SetControllerMode(bool enabled) => _controllerMode = enabled;
     public void SetItemFont(Font? font)
     {
         _itemFont = font;
@@ -30,6 +32,7 @@ internal sealed partial class UnityGameGateway
         // IMGUI supplies top-left screen coordinates even when the legacy
         // UnityEngine.Input backend is disabled by the game's Input System.
         var mouse = Event.current.mousePosition;
+        var focused = _controllerMode ? NativeFocusedObject() : null;
         try
         {
             foreach (var candidate in _lastSnapshot.Candidates)
@@ -79,7 +82,8 @@ internal sealed partial class UnityGameGateway
                     _nativeLayer?.Box("rotation-bg:" + candidate.Token, detailRect, new Color(.025f, .035f, .055f, .85f));
                     _nativeLayer?.Label("rotation:" + candidate.Token, detailRect, detail, color, Mathf.Round(_nativeFontPixels * scale));
                 }
-                if (target is not null && rect.Contains(mouse))
+                if (target is not null && (_controllerMode ? focused != null &&
+                    (focused.transform == visual.transform || focused.transform.IsChildOf(visual.transform) || visual.transform.IsChildOf(focused.transform)) : rect.Contains(mouse)))
                 {
                     var acquired = state?.EffectiveAcquisitions(target.CatalogKey) ?? 0;
                     var uncertain = state is not null && state.Artifacts.TryGetValue(target.CatalogKey, out var progress) && progress.IsUncertain;
@@ -109,6 +113,16 @@ internal sealed partial class UnityGameGateway
             }
         }
         finally { GUI.color = oldColor; GUI.depth = oldDepth; }
+    }
+
+    private GameObject? NativeFocusedObject()
+    {
+        try
+        {
+            var eventSystem = ReadStatic("UnityEngine.EventSystems.EventSystem", "current");
+            return eventSystem is null ? null : ReadNamedObject(eventSystem, "currentSelectedGameObject") as GameObject;
+        }
+        catch { return null; }
     }
 
     private Rect ScreenRect(RectTransform rect)

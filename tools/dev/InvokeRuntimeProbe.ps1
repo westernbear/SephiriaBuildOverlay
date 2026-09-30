@@ -1,6 +1,6 @@
 param(
     [string]$GameDir = 'C:\Program Files (x86)\Steam\steamapps\common\Sephiria',
-    [ValidateSet('snapshot', 'catalog', 'preview')][string]$Command = 'snapshot',
+    [ValidateSet('snapshot', 'catalog', 'preview', 'controller-preview')][string]$Command = 'snapshot',
     [ValidateRange(1, 60)][int]$TimeoutSeconds = 10
 )
 $ErrorActionPreference = 'Stop'

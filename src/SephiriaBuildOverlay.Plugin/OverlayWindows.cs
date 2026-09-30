@@ -37,8 +37,10 @@ public sealed partial class SephiriaBuildOverlayPlugin
             _pointerOverOverlay = false;
             if (_showImport)
             {
+                if (Event.current.type == EventType.Repaint) _controllerMenu.BeginFrame();
                 _importRect = FitWindow(_importRect, width, height);
                 _importRect = GUI.Window(761331, _importRect, DrawImportWindow, string.Empty);
+                if (Event.current.type == EventType.Repaint) _controllerMenu.EndFrame();
             }
         }
         finally { GUI.skin = oldSkin; GUI.matrix = oldMatrix; GUI.depth = oldDepth; }
@@ -64,7 +66,8 @@ public sealed partial class SephiriaBuildOverlayPlugin
     private void DrawImportWindow(int windowId)
     {
         HandleShortcutEvent();
-        WindowHeader("SEPHIRIA  /  빌드 검토", _importKey.Value.ToString(), _importRect, () => _showImport = false);
+        WindowHeader("SEPHIRIA  /  빌드 검토", _controller.GamepadMode ? _controller.CancelLabel : ImportPrompt, _importRect, () => _showImport = false);
+        if (_controller.GamepadMode || ControllerReviewPreview) { DrawControllerReview(); return; }
         if (_plan is not null && _state is not null)
         {
             GUILayout.BeginHorizontal();
@@ -99,7 +102,7 @@ public sealed partial class SephiriaBuildOverlayPlugin
             GUILayout.BeginVertical(_theme.Card);
             GUILayout.Label("빌드를 불러오면 목표를 검토할 수 있습니다.", _theme.Heading);
             GUILayout.Label("필수 · 추천 · 제외를 구역별로 지정하고, 개별 항목의 횟수와 우선순위를 조정하세요.");
-            GUILayout.Label($"{_overlayKey.Value} 가이드 표시  /  {_confirmKey.Value} 한 동작 확인", _theme.Small);
+            GUILayout.Label($"{OverlayPrompt} 가이드 표시  /  {ConfirmPrompt} 한 동작 확인", _theme.Small);
             GUILayout.EndVertical();
             GUILayout.FlexibleSpace();
             return;
@@ -196,7 +199,7 @@ public sealed partial class SephiriaBuildOverlayPlugin
     {
         HandleShortcutEvent();
         if (_plan is null || _state is null) return;
-        WindowHeader("빌드 가이드", _overlayKey.Value.ToString(), _overlayRect, () => _showOverlay = false);
+        WindowHeader("빌드 가이드", OverlayPrompt, _overlayRect, () => _showOverlay = false);
         GUILayout.Label(_review?.Build.Title ?? "활성 빌드", _theme!.Small);
         GUILayout.BeginHorizontal();
         var tabs = new[] { "다음 행동", "목표", "체크리스트", "상태" };
@@ -223,7 +226,7 @@ public sealed partial class SephiriaBuildOverlayPlugin
                 break;
         }
         GUILayout.EndScrollView();
-        if (GUILayout.Button("빌드 검토 열기  " + _importKey.Value)) _showImport = true;
+        if (GUILayout.Button("빌드 검토 열기  " + ImportPrompt)) _showImport = true;
     }
 
     private void DrawNextAction()
@@ -243,7 +246,7 @@ public sealed partial class SephiriaBuildOverlayPlugin
             if (action.DiceRisk != DiceRisk.None)
                 Badge(action.DiceRisk == DiceRisk.LastSharedDieSpentBeforeMiracle
                     ? "이 행동 후 나무 뿌리 리롤 불가" : "목표 나무 뿌리 획득 전 주사위 소비", OverlayTheme.Danger);
-            Badge(!action.AutomaticBindingAllowed ? "매핑 미검증 · 자동 행동 차단" : _executing ? "이전 요청 처리 중" : $"{_confirmKey.Value}  ·  이 동작 하나 확인",
+            Badge(!action.AutomaticBindingAllowed ? "매핑 미검증 · 자동 행동 차단" : _executing ? "이전 요청 처리 중" : $"{ConfirmPrompt}  ·  이 동작 하나 확인",
                 !action.AutomaticBindingAllowed ? OverlayTheme.Warning : OverlayTheme.Accent);
         }
         GUILayout.EndVertical();

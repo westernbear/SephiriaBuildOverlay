@@ -17,11 +17,20 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
 {
     public const string PluginGuid = "io.github.sephiria.build-overlay";
     public const string PluginName = "Sephiria Build Overlay";
-    public const string PluginVersion = "0.1.4";
+    public const string PluginVersion = "0.1.5";
 
     private ConfigEntry<KeyCode> _importKey = null!;
     private ConfigEntry<KeyCode> _overlayKey = null!;
     private ConfigEntry<KeyCode> _confirmKey = null!;
+    private ConfigEntry<string> _padModifier = null!;
+    private readonly ControllerInputBridge _controller = new(AccessTools.TypeByName);
+    private readonly ControllerInputState _controllerState = new();
+    private readonly ControllerMenu _controllerMenu = new();
+    private int _controllerModalThroughFrame = -1;
+    private bool _controllerModalGateReady;
+    private string ImportPrompt => _controller.GamepadMode ? _controller.Prompt("↑") : _importKey.Value.ToString();
+    private string OverlayPrompt => _controller.GamepadMode ? _controller.Prompt("←") : _overlayKey.Value.ToString();
+    private string ConfirmPrompt => _controller.GamepadMode ? _controller.Prompt("→") : _confirmKey.Value.ToString();
     private ConfigEntry<bool> _acceptVersionMismatch = null!;
     private ConfigEntry<bool> _exportRuntimeCatalog = null!;
     private ConfigEntry<float> _uiScale = null!;
@@ -45,7 +54,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
     private bool _showImport;
     private bool _showOverlay = true;
     private string _locatorText = string.Empty;
-    private string _status = "F6: 빌드 가져오기";
+    private string _status = "빌드 가져오기/검토 창에서 목표를 설정하세요.";
     private Vector2 _reviewScroll;
     private Rect _importRect = new(180, 35, 920, 650);
     private Rect _overlayRect = new(18, 184, 440, 450);
@@ -70,6 +79,9 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
         _importKey = Config.Bind("Keys", "ImportWindow", KeyCode.F6, "빌드 가져오기/검토 창");
         _overlayKey = Config.Bind("Keys", "Overlay", KeyCode.F7, "인게임 오버레이 전환");
         _confirmKey = Config.Bind("Keys", "ConfirmOneAction", KeyCode.F8, "추천 동작 하나 확인");
+        _padModifier = Config.Bind("Gamepad", "Modifier", "selectButton", new ConfigDescription(
+            "게임 패드 모드에서 이 버튼을 누른 채 방향키 ↑ 검토 / ← 표시 / → 한 동작 확인. 기본 View/Back/Share/−. 네이티브 입력은 검토 창 밖에서 차단하지 않음",
+            new AcceptableValueList<string>("selectButton", "leftStickButton", "rightStickButton")));
         _acceptVersionMismatch = Config.Bind("Safety", "AcceptVersionMismatch", false, "빌드/게임 버전 불일치 경고를 확인한 것으로 처리");
         _exportRuntimeCatalog = Config.Bind("Debug", "ExportRuntimeCatalog", false, "게임 엔티티 메타데이터를 로컬 JSON으로 내보내기 (카탈로그 디버깅용)");
         _measurePerformance = Config.Bind("Debug", "MeasurePerformance", false, "10초마다 읽기 전용 스냅샷 비용과 포커스 상태 FPS 기록 (게임 행동 없음)");
@@ -102,10 +114,12 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
     private void Update()
     {
         if (!_updateObserved) { _updateObserved = true; Logger.LogInfo("Update callback active."); }
+        HandleControllerInput();
         _gateway.Performance.Enabled = _measurePerformance.Value;
         var pendingSnapshot = _gateway.Tick();
         if (_runtimeDiagnostics.Value) _diagnostics.Tick(Time.unscaledTime, _gateway,
-            () => new { activeBuild = _plan?.SourceBuildId, importVisible = _showImport, overlayVisible = _showOverlay, recommendation = _recommendation, status = _status, checkpointPath = _reviewStore.CheckpointPath, ghosts = _gateway.GhostCount });
+            () => new { activeBuild = _plan?.SourceBuildId, importVisible = _showImport, overlayVisible = _showOverlay, recommendation = _recommendation, status = _status, checkpointPath = _reviewStore.CheckpointPath, ghosts = _gateway.GhostCount,
+                input = new { scheme = _controller.Scheme, pairedDevice = _controller.DeviceId, pairedGamepads = _controller.PairedGamepads, modalGateReady = _controllerModalGateReady, confirm = ConfirmPrompt, import = ImportPrompt, overlay = OverlayPrompt } }, PreviewControllerReview);
         if (_measurePerformance.Value)
         {
             _gateway.Performance.Frame(Time.unscaledDeltaTime, Application.isFocused);
@@ -170,7 +184,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
         var confirmed = _confirmRequested;
         _confirmRequested = false;
         if (confirmed && (_plan is null || _state is null)) Logger.LogInfo("Confirmation ignored: no active reviewed build.");
-        if (confirmed && _showOverlay && !_gateway.IsGhostPreview && !_showImport && !_importing && !_executing && _plan is not null && _state is not null && _recommendation?.Action is not null)
+        if (confirmed && _showOverlay && !_gateway.IsGhostPreview && !ControllerReviewPreview && !_showImport && !_importing && !_executing && _plan is not null && _state is not null && _recommendation?.Action is not null)
             _ = ConfirmCurrentAsync(_recommendation.Action);
     }
 
@@ -285,6 +299,10 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
             var inputGate = inputType is null ? null : AccessTools.PropertyGetter(inputType, "BlockAvatarInput");
             if (inputGate is not null)
                 _harmony.Patch(inputGate, postfix: new HarmonyMethod(typeof(SephiriaBuildOverlayPlugin), nameof(ApplyReviewInputGate)));
+            // Controller submit must not activate an underlying native button
+            // while the modal review owns it. No native input is intercepted
+            // outside that modal (including warnings about shared dice).
+            InstallControllerModalPatches();
             var gridType = AccessTools.TypeByName("GridInventory");
             if (gridType is null) throw new TypeLoadException("GridInventory");
             var postfix = new HarmonyMethod(typeof(SephiriaBuildOverlayPlugin), nameof(OnLocalArtifactAdded));
@@ -328,10 +346,57 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
 
     private static void ApplyReviewInputGate(ref bool __result)
     {
-        // Keep the game's existing gate. Only avatar/combat input is suppressed while
-        // the modal review is open; native UI and dice-consumption buttons are not blocked.
-        __result |= _instance is { } plugin && (plugin._showImport ||
+        // Keep the game's existing avatar/combat gate. Native controller UI
+        // is isolated only while the modal review owns input; ordinary game
+        // screens and dice-consumption buttons are not intercepted there.
+        __result |= _instance is { } plugin && (plugin._showImport || plugin.ControllerModalOwnsInput ||
             (plugin._showOverlay && plugin._plan is not null && plugin._pointerOverOverlay));
+    }
+
+    private bool ControllerModalOwnsInput => _controller.GamepadMode &&
+        (_showImport || Time.frameCount <= _controllerModalThroughFrame);
+    private static bool AllowNativeModalInput() => _instance is not { } plugin || !plugin.ControllerModalOwnsInput;
+
+    private void InstallControllerModalPatches()
+    {
+        try
+        {
+            foreach (var (typeName, methodName) in new[] {
+                ("UnityEngine.InputSystem.UI.InputSystemUIInputModule", "Process"), ("UIInputModule", "Update") })
+            {
+                var type = AccessTools.TypeByName(typeName) ?? throw new TypeLoadException(typeName);
+                var method = AccessTools.Method(type, methodName) ?? throw new MissingMethodException(typeName, methodName);
+                _harmony!.Patch(method, prefix: new HarmonyMethod(typeof(SephiriaBuildOverlayPlugin), nameof(AllowNativeModalInput)));
+            }
+            _controllerModalGateReady = true;
+        }
+        catch (Exception ex) { Logger.LogWarning("Controller review input disabled: " + ex.Message); }
+    }
+
+    private void HandleControllerInput()
+    {
+        if (_controllerReviewPreviewActive && !ControllerReviewPreview)
+        {
+            _controllerReviewPreviewActive = false; _showImport = _controllerReviewPreviewWasOpen; _controllerMenu.Reset();
+        }
+        var previousMode = _controller.GamepadMode;
+        _controller.Capture(_padModifier.Value);
+        _gateway.SetControllerMode(_controller.GamepadMode);
+        if (_showImport && _controller.GamepadMode) _controllerModalThroughFrame = Time.frameCount + 1;
+        if (previousMode != _controller.GamepadMode) _controllerMenu.Reset();
+        var command = _controllerState.Update(_controller.GamepadMode, Application.isFocused,
+            _controller.DeviceId, _controller.Buttons, _showImport);
+        if (ControllerReviewPreview) return; // UI-only diagnostics can never confirm or edit.
+        switch (command)
+        {
+            case PadCommand.Import: _importToggleRequested = true; _controllerMenu.Reset(); break;
+            case PadCommand.Overlay: _overlayToggleRequested = true; break;
+            case PadCommand.Confirm: if (!_executing && !_importing && !_showImport) _confirmRequested = true; break;
+            case PadCommand.Previous: _controllerMenu.Navigate(-1); break;
+            case PadCommand.Next: _controllerMenu.Navigate(1); break;
+            case PadCommand.Submit: if (_controllerModalGateReady && !_importing && !_executing) _controllerMenu.Activate(); break;
+            case PadCommand.Cancel: if (_controllerModalGateReady) { _showImport = false; _controllerMenu.Reset(); } break;
+        }
     }
 
     private void HandleShortcutEvent()
@@ -349,7 +414,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
 
     private void OnGUI()
     {
-        _gateway.SetBoardPointer(Event.current.mousePosition, Event.current.shift);
+        _gateway.SetBoardPointer(Event.current.mousePosition, !_controller.GamepadMode && Event.current.shift);
         HandleShortcutEvent();
         if (!_guiObserved) { _guiObserved = true; Logger.LogInfo("OnGUI callback active."); }
         DrawStyledWindows();
@@ -360,7 +425,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
             if (_showOverlay && !_showImport)
             {
                 _gateway.DrawPlacementGhosts(_ghostOpacity.Value, _uiScale.Value);
-                _gateway.DrawItemOverlay(_plan, _state, _recommendation?.Action, _confirmKey.Value.ToString(), _importKey.Value.ToString(), _uiScale.Value);
+                _gateway.DrawItemOverlay(_plan, _state, _recommendation?.Action, ConfirmPrompt, ImportPrompt, _uiScale.Value);
                 _gateway.EndNativeOverlay();
             }
         }
