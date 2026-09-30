@@ -25,6 +25,7 @@ internal sealed partial class UnityGameGateway
             overlay = _nativeLayer?.Diagnostics(),
             inventoryMode = statusPanel is null ? null : ReadNamedString(statusPanel, "InventoryMode"),
             pointerRotation = _pointerRotation,
+            enchant = new { active = _enchantMode, ranks = _enchantRanks.Values.ToArray(), gameActionsAllowed = false },
             optimization = new { unavailable = _optimizationUnavailable ?? _optimizationResult?.Unavailable, running = _ghostTask is not null,
                 result = _optimizationResult, nextAction = _optimizationAction, expectedStep = _expectedOptimizationStep },
             ghostAssignments = _ghostAssignments.Select(x => new { x.InstanceId, x.From, x.To }).ToArray(),

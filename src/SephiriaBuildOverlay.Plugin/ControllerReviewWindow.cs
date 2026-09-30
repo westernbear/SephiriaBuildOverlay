@@ -42,7 +42,7 @@ public sealed partial class SephiriaBuildOverlayPlugin
         if (ControllerReviewPreview) GUILayout.Label("읽기 전용 패드 UI 미리보기 · 입력/게임 행동 비활성", _theme.WarningText);
         if (!_controllerModalGateReady)
         {
-            GUILayout.Label("네이티브 UI 입력 분리에 실패했습니다. 패드 검토 조작은 비활성화됩니다. F6으로 닫고 키보드/마우스로 검토하세요.", _theme.WarningText);
+            GUILayout.Label($"네이티브 UI 입력 분리에 실패했습니다. 패드 검토 조작은 비활성화됩니다. {_importKey.Value}로 닫으세요.", _theme.WarningText);
             return;
         }
         if (_controller.DeviceId is null) GUILayout.Label("로컬 패드 연결을 확인하세요. 모호한 장치 입력은 실행하지 않습니다.", _theme.WarningText);

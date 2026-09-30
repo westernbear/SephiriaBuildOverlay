@@ -55,7 +55,14 @@ internal sealed partial class UnityGameGateway
 
     private void CancelGhostCalculation()
     {
-        _ghostCancellation?.Cancel(); _ghostCancellation?.Dispose(); _ghostCancellation = null;
+        var cancellation = _ghostCancellation;
+        var task = _ghostTask;
+        cancellation?.Cancel();
+        if (task is not null)
+            _ = task.ContinueWith(completed => { _ = completed.Exception; cancellation?.Dispose(); },
+                CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+        else cancellation?.Dispose();
+        _ghostCancellation = null;
         _ghostTask = null; _ghostAssignments = Array.Empty<ArtifactAssignment>();
         _ghostResultSignature = ""; _ghostTaskSignature = "";
         _optimizationInput = null; _optimizationResult = null; _expectedOptimizationStep = null; _optimizationAction = null;
@@ -79,6 +86,7 @@ internal sealed partial class UnityGameGateway
 
     private void CaptureBoard(ScreenKind screen, List<ScreenCandidate> candidates, string runId, string playerId, bool owned)
     {
+        _enchantMode = false; _enchantRanks.Clear(); _enchantArtifacts.Clear();
         _slotVisuals.Clear(); _itemSprites.Clear(); _slotLevels.Clear(); _disabledSlots.Clear(); _boardItems.Clear();
         _boardVisible = false; _pointerRotation = null; _boardSignature = "";
         _boardArtifacts.Clear(); _optimizationUnavailable = null; _optimizationAction = null;
@@ -90,6 +98,7 @@ internal sealed partial class UnityGameGateway
         if (_boardPanel == null || !_boardPanel.gameObject.activeInHierarchy || !ReadBool(_boardPanel, "IsOpened") || _boardInventory is null) { CancelGhostCalculation(); return; }
         if (ReadNamedObject(_boardPanel, "PlayerAvatar") is not Component avatar || !ReferenceEquals(ReadNamedObject(avatar, "Inventory"), _boardInventory)) return;
         _boardVisible = true;
+        _enchantMode = owned && screen == ScreenKind.Inventory && ReadNamedObject(_boardPanel, "InventoryMode")?.ToString() == "Enchant";
         if (ReadNamedObject(_boardPanel, "itemIcons") is not IEnumerable icons || ReadNamedObject(_boardInventory, "inventoryMatrix") is not IEnumerable contents) return;
         var width = ReadNamedNullableInt(_boardInventory, "Width") ?? 0;
         var height = ReadNamedNullableInt(_boardInventory, "Height") ?? 0;
@@ -120,6 +129,7 @@ internal sealed partial class UnityGameGateway
             var criteria = charm is null ? null : ReadNamedObject(charm, "criteria");
             var key = entity.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
             var itemId = id.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            if (_enchantMode && charm is not null) CaptureEnchantArtifact(charm, itemId, key);
             _boardItems.Add(new GhostItem(itemId, key, new GridPoint(x.Value, y.Value), charm is null ? 0 : Math.Max(0, ReadNamedNullableInt(charm, "maxLevel") ?? 0),
                 charm is not null && criteria is null && _placementVerified.Contains(key)));
             if (charm is not null) _boardArtifacts.Add(CaptureArtifact(item, charm, itemId, key, new GridPoint(x.Value, y.Value)));
@@ -129,6 +139,7 @@ internal sealed partial class UnityGameGateway
         var tablets = ReadNamedObject(_boardInventory, "CurrentStoneTablets") as IEnumerable;
         _boardConditional = tablets is null || tablets.Cast<object>().Any(x => !string.IsNullOrWhiteSpace(ReadNamedString(x, "conditionQuery")));
         var signature = new StringBuilder(_placementPlan?.SourceBuildId.ToString() ?? "inactive");
+        signature.Append('|').Append(ReadNamedObject(_boardPanel, "InventoryMode")?.ToString());
         signature.Append('|').Append(_boardConditional);
         foreach (var slot in slots.OrderBy(x => x.Position.Y).ThenBy(x => x.Position.X))
             signature.Append('|').Append(slot.Position.X).Append(',').Append(slot.Position.Y).Append(':').Append(slot.Level).Append(':').Append(slot.Disabled);
@@ -141,6 +152,15 @@ internal sealed partial class UnityGameGateway
             foreach (var item in _boardItems.Where(x => _placementPlan.Artifacts.Any(g => g.CatalogKey == x.Key)))
                 if (_slotVisuals.TryGetValue(item.Position, out var icon) && icon.transform is RectTransform rect)
                 { var token = "board:item:" + item.InstanceId; candidates.Add(new ScreenCandidate(token, CandidateKind.Item, item.Key)); _rectangles[token] = rect; }
+        // Enchant is a manual, consumptive native flow. Do not calculate or
+        // retain Move/Rotate actions/ghosts while it is active.
+        if (_enchantMode)
+        {
+            foreach (var rank in EnchantPriority.Rank(_enchantArtifacts, _placementPlan.Artifacts))
+                _enchantRanks["board:item:" + rank.Artifact.Id] = rank;
+            CancelGhostCalculation();
+            return;
+        }
         CapturePointerRotation(screen, candidates);
         try { CalculateOptimization(CaptureOptimizationInput(width, height, storage)); }
         catch (Exception ex) { CancelGhostCalculation(); _optimizationUnavailable = ex.GetBaseException().Message; }
@@ -170,6 +190,7 @@ internal sealed partial class UnityGameGateway
 
     public Recommendation RecommendPlacement(RunSnapshot snapshot)
     {
+        if (_enchantMode) return new Recommendation(null, "인챈트 우선순위 표시 · 강화는 게임에서 수동 확인");
         if (_pointerRotation is { } rotation && snapshot.IsLocalPlayerOwned && !snapshot.ServerRequestPending)
             return new Recommendation(new RecommendedAction(ActionKind.Rotate, rotation.Token,
                 "포인터 아래 석판을 네이티브 방향으로 한 번 회전 (사용자 지정·최적화 아님)", snapshot.Identity,
@@ -184,7 +205,7 @@ internal sealed partial class UnityGameGateway
 
     public void DrawPlacementGhosts(float opacity, float scale)
     {
-        if (Event.current.type != EventType.Repaint || !_boardVisible || _lastSnapshot?.IsLocalPlayerOwned != true || _boardPanel == null || !IsGhostPreview && _ghostResultSignature != _boardSignature) return;
+        if (Event.current.type != EventType.Repaint || _enchantMode || !_boardVisible || _lastSnapshot?.IsLocalPlayerOwned != true || _boardPanel == null || !IsGhostPreview && _ghostResultSignature != _boardSignature) return;
         var zone = ReadNamedObject(_boardPanel, "inventoryZone") as RectTransform;
         if (zone == null) return;
         var clip = ScreenRect(zone);

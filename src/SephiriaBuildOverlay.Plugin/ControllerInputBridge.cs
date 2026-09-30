@@ -9,6 +9,9 @@ internal sealed class ControllerInputBridge
 {
     private readonly PropertyInfo? _current;
     private readonly RuntimeMemberCache _members = new();
+    private static readonly string[] HeldButtons = { "buttonSouth", "buttonEast", "buttonNorth", "buttonWest", "selectButton", "startButton",
+        "leftShoulder", "rightShoulder", "leftTrigger", "rightTrigger", "leftStickButton", "rightStickButton" };
+    private static readonly string[] Directions = { "up", "down", "left", "right" };
     public bool GamepadMode { get; private set; }
     public string? DeviceId { get; private set; }
     public string Scheme { get; private set; } = string.Empty;
@@ -17,12 +20,13 @@ internal sealed class ControllerInputBridge
     public string CancelLabel { get; private set; } = "B";
     public PadButtons Buttons { get; private set; }
     public int PairedGamepads { get; private set; }
+    public bool AnyButtonHeld { get; private set; }
     public ControllerInputBridge(Func<string, Type?> resolve) =>
         _current = resolve("ControlsChangeHandler")?.GetProperty("Current", BindingFlags.Static | BindingFlags.Public);
 
-    public void Capture(string modifier)
+    public void Capture(string modifier, bool readHeldForModal = false)
     {
-        Buttons = PadButtons.None; DeviceId = null; GamepadMode = false; Scheme = string.Empty; PairedGamepads = 0;
+        Buttons = PadButtons.None; DeviceId = null; GamepadMode = false; Scheme = string.Empty; PairedGamepads = 0; AnyButtonHeld = false;
         try
         {
             var handler = _current?.GetValue(null);
@@ -36,6 +40,12 @@ internal sealed class ControllerInputBridge
                 if (device is null || !IsGamepad(device.GetType()) || Read(device, "added") is not true) continue;
                 PairedGamepads++;
                 pad = device;
+                if (readHeldForModal)
+                {
+                    foreach (var name in HeldButtons) AnyButtonHeld |= Pressed(Read(device, name));
+                    var directions = Read(device, "dpad");
+                    foreach (var name in Directions) AnyButtonHeld |= Pressed(Read(directions, name));
+                }
             }
             if (!GamepadMode || PairedGamepads != 1 || pad is null) return;
             var modifierControl = Read(pad, modifier);

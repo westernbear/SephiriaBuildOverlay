@@ -16,7 +16,7 @@ BepInEx/scripts/SephiriaBuildOverlay.Plugin.pdb
 BepInEx/config/com.bepis.bepinex.scriptengine.cfg
 ```
 
-ScriptEngine은 [r11.1 공식 릴리스](https://github.com/BepInEx/BepInEx.Debug/releases/tag/r11.1)의 패키지를 사용했습니다. 설정 템플릿은 `tools/dev/ScriptEngine.cfg`입니다. 기본 F6 재로딩은 이 모드의 가져오기 키와 충돌하므로 `ReloadKey = None`, 파일 감지와 2초 지연을 사용합니다. 같은 Plugin DLL을 plugins와 scripts에 동시에 두지 마세요.
+ScriptEngine은 [r11.1 공식 릴리스](https://github.com/BepInEx/BepInEx.Debug/releases/tag/r11.1)의 패키지를 사용했습니다. 설정 템플릿은 `tools/dev/ScriptEngine.cfg`입니다. 기본 F6 재로딩은 SephPlanner와 충돌할 수 있어 `ReloadKey = None`, 파일 감지와 2초 지연을 사용합니다. 이 모드의 가져오기 기본 키는 F9입니다. 같은 Plugin DLL을 plugins와 scripts에 동시에 두지 마세요.
 
 ```powershell
 .\tools\dev\DeployPlugin.ps1
@@ -57,7 +57,17 @@ MeasurePerformance = true
 
 성능 로그는 스냅샷 평균/p95/최대 시간과 **포커스 상태에서만** 측정한 FPS를 10초마다 기록합니다. 첫 초기화/재로딩 구간은 별도로 제외하고 같은 장면의 안정 구간끼리 비교합니다. 전체 MonoProfiler 활성화는 자체 비용이 커 기본으로 사용하지 않습니다.
 
-## 외부 도구 조사 결과
+## Computer Use 없는 정상 종료 검사
+
+게임을 정상적으로 닫은 상태에서 실행합니다.
+
+```powershell
+./tools/dev/TestExitSmoke.ps1 -ExpectedVersion 0.1.6
+```
+
+Steam에 `--sbo-exit-smoke` 옵션을 전달하고 게임 내부 메인 스레드에서 15초 이후 열린 타이틀의 정상 `QuitGame` 함수만 호출합니다. 로컬 아바타가 있거나 요청 대기 중이면 호출하지 않습니다. 기존 런을 자동 진입/종료하거나 강제 종료하지 않으며, 시간 초과 시 게임을 그대로 둡니다. 일반 실행에는 옵션이 없어 아무 동작도 하지 않습니다. 프로세스 종료 코드, 새 덤프, Unity Crash 로그, 조기 UIA/모드 정리 로그를 검사합니다. `RuntimeDiagnostics`를 켤 필요는 없습니다. 활성 런/외부 UIA 클라이언트 연결 상태의 종료 검증과는 구분합니다.
+
+## 외부 도구 참고
 
 - [Surity](https://github.com/olavim/Surity)는 Unity 모드용 C# 및 IEnumerator 테스트 프레임워크입니다. `Surity.BepInEx`와 `Surity.CLI`를 이용하면 게임 내부 Unity API를 코드로 검사할 수 있습니다. CLI는 게임을 batchmode로 실행하고 결과를 받습니다. **Sephiria/Steam 재실행 경로에서의 호환성은 아직 검증하지 않았으므로**, 현재 통과 기록은 자체 읽기 전용 진단과 xUnit 결과만 사용합니다.
 - [UnityExplorer C# Console](https://github.com/sinai-dev/UnityExplorer#c-console)은 게임 내부 코드를 호출할 수 있지만 범용 코드 실행이 가능하고 별도 런타임 호환성 확인이 필요합니다. 설치하지 않았습니다.

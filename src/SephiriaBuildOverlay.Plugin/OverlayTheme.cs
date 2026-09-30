@@ -89,10 +89,15 @@ internal sealed class OverlayTheme : IDisposable
         return texture;
     }
 
-    public void Dispose()
+    public void Dispose() => Dispose(true);
+    public void Dispose(bool destroyUnityObjects)
     {
-        foreach (var texture in _textures) UnityEngine.Object.Destroy(texture);
-        if (_ownedFont != null) UnityEngine.Object.Destroy(_ownedFont);
-        UnityEngine.Object.Destroy(Skin);
+        if (destroyUnityObjects)
+        {
+            foreach (var texture in _textures) UnityEngine.Object.Destroy(texture);
+            if (_ownedFont != null) UnityEngine.Object.Destroy(_ownedFont);
+            UnityEngine.Object.Destroy(Skin);
+        }
+        _textures.Clear();
     }
 }

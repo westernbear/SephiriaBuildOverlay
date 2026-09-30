@@ -22,6 +22,11 @@ namespace SephiriaBuildOverlay.Tests
             bridge.Capture("selectButton");
             Assert.False(bridge.GamepadMode); Assert.Null(bridge.DeviceId); Assert.Equal(PadButtons.None, bridge.Buttons);
             Assert.Equal(1, bridge.PairedGamepads);
+            bridge.Capture("selectButton", readHeldForModal: true);
+            Assert.True(bridge.AnyButtonHeld); // Closing drain survives switching to keyboard.
+            local.selectButton.isPressed = false; local.dpad.right.isPressed = false;
+            bridge.Capture("selectButton", readHeldForModal: true);
+            Assert.False(bridge.AnyButtonHeld);
         }
 
         [Fact]
@@ -33,6 +38,9 @@ namespace SephiriaBuildOverlay.Tests
             FakeHandler.Current = new FakeHandler { PlayerInput = player };
             var bridge = new ControllerInputBridge(_ => typeof(FakeHandler));
             bridge.Capture("selectButton"); Assert.Null(bridge.DeviceId); Assert.Equal(2, bridge.PairedGamepads);
+            local.buttonSouth.isPressed = true;
+            bridge.Capture("selectButton", readHeldForModal: true);
+            Assert.Null(bridge.DeviceId); Assert.True(bridge.AnyButtonHeld);
             player.devices = new object[] { local }; local.added = false;
             bridge.Capture("selectButton"); Assert.Null(bridge.DeviceId);
             local.added = true;

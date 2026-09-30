@@ -191,6 +191,11 @@ internal sealed partial class UnityGameGateway
             if (Members.Find(target.GetType(), name) is PropertyInfo property && property.PropertyType.IsEnum)
                 property.SetValue(target, Enum.Parse(property.PropertyType, value));
         }
-        public void Dispose() { _elements.Clear(); if (_root != null) UnityEngine.Object.Destroy(_root); }
+        public void Dispose() => Dispose(true);
+        public void Dispose(bool destroyUnityObjects)
+        {
+            _elements.Clear();
+            if (destroyUnityObjects && _root != null) UnityEngine.Object.Destroy(_root);
+        }
     }
 }

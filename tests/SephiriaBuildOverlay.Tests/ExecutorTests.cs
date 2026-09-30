@@ -125,6 +125,22 @@ public sealed class ExecutorTests
         Assert.Equal(1, gateway.SendCount);
     }
 
+    [Fact]
+    public async Task PluginShutdownCancelsServerWaitAndPreventsNextSend()
+    {
+        var snapshot = Snapshot(screen: ScreenKind.ArtifactReward,
+            candidates: new[] { new ScreenCandidate("target", CandidateKind.Artifact, "a") });
+        var gateway = new FakeGateway(snapshot) { HoldConfirmation = true };
+        var executor = new ConfirmedActionExecutor(gateway);
+        using var lifetime = new SephiriaBuildOverlay.Plugin.PluginLifetime();
+        var pending = executor.ConfirmOnceAsync(Action(snapshot), lifetime.Token);
+        await gateway.Sent.Task;
+        lifetime.Stop();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => pending);
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => executor.ConfirmOnceAsync(Action(snapshot), lifetime.Token));
+        Assert.Equal(1, gateway.SendCount);
+    }
+
     private static RecommendedAction Action(RunSnapshot snapshot) =>
         new(ActionKind.Select, "target", "test", snapshot.Identity);
 

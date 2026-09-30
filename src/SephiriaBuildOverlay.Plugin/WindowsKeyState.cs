@@ -9,6 +9,14 @@ internal static class WindowsKeyState
     [DllImport("user32.dll")]
     private static extern short GetAsyncKeyState(int virtualKey);
 
+    public static bool AnyModalInputHeld()
+    {
+        // Read only. Called while closing a modal, never creates input.
+        for (var key = 1; key < 255; key++)
+            if ((GetAsyncKeyState(key) & 0x8000) != 0) return true;
+        return false;
+    }
+
     public static bool IsReleased(KeyCode key)
     {
         int code = (int)key;

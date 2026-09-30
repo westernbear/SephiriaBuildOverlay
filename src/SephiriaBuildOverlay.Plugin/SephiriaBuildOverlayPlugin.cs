@@ -17,7 +17,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
 {
     public const string PluginGuid = "io.github.sephiria.build-overlay";
     public const string PluginName = "Sephiria Build Overlay";
-    public const string PluginVersion = "0.1.5";
+    public const string PluginVersion = "0.1.6";
 
     private ConfigEntry<KeyCode> _importKey = null!;
     private ConfigEntry<KeyCode> _overlayKey = null!;
@@ -26,7 +26,10 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
     private readonly ControllerInputBridge _controller = new(AccessTools.TypeByName);
     private readonly ControllerInputState _controllerState = new();
     private readonly ControllerMenu _controllerMenu = new();
-    private int _controllerModalThroughFrame = -1;
+    private readonly ModalInputCapture _modalInput = new();
+    private readonly PluginLifetime _lifetime = new();
+    private bool _quitting;
+    private GameObject? _nativeFocusBeforeModal;
     private bool _controllerModalGateReady;
     private string ImportPrompt => _controller.GamepadMode ? _controller.Prompt("↑") : _importKey.Value.ToString();
     private string OverlayPrompt => _controller.GamepadMode ? _controller.Prompt("←") : _overlayKey.Value.ToString();
@@ -51,7 +54,22 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
     private ActiveBuildState? _state;
     private Recommendation? _recommendation;
     private RecommendationEngine? _recommendationEngine;
-    private bool _showImport;
+    private bool _showImport
+    {
+        get => _modalInput.Visible;
+        set
+        {
+            if (_lifetime.Stopped || value == _modalInput.Visible) return;
+            if (value && !_controllerModalGateReady)
+            {
+                Logger.LogWarning("Review window blocked: exclusive native input gate unavailable.");
+                return;
+            }
+            _modalInput.SetVisible(value);
+            _confirmRequested = false;
+            ResetNativeUiInput(rememberSelection: value);
+        }
+    }
     private bool _showOverlay = true;
     private string _locatorText = string.Empty;
     private string _status = "빌드 가져오기/검토 창에서 목표를 설정하세요.";
@@ -76,7 +94,10 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
 
     private void Awake()
     {
-        _importKey = Config.Bind("Keys", "ImportWindow", KeyCode.F6, "빌드 가져오기/검토 창");
+        _importKey = Config.Bind("Keys", "ImportWindow", KeyCode.F9, "빌드 가져오기/검토 창 (SephPlanner F6 충돌 방지)");
+        var migrated = Config.Bind("Keys", "ImportF9MigrationApplied", false, "기존 기본 F6을 F9로 한 번 이전. 이후 사용자 지정은 보존");
+        _importKey.Value = (KeyCode)ImportShortcutMigration.Migrate((int)_importKey.Value, (int)KeyCode.F6, (int)KeyCode.F9, migrated.Value);
+        if (!migrated.Value) { migrated.Value = true; Config.Save(); }
         _overlayKey = Config.Bind("Keys", "Overlay", KeyCode.F7, "인게임 오버레이 전환");
         _confirmKey = Config.Bind("Keys", "ConfirmOneAction", KeyCode.F8, "추천 동작 하나 확인");
         _padModifier = Config.Bind("Gamepad", "Modifier", "selectButton", new ConfigDescription(
@@ -102,24 +123,47 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
         Logger.LogInfo($"{PluginName} {PluginVersion} loaded. Game={Application.version}, PID={System.Diagnostics.Process.GetCurrentProcess().Id}");
     }
 
-    private void OnDestroy()
+    private void OnApplicationQuit()
     {
-        _source.Dispose();
-        _gateway.Dispose();
-        _harmony?.UnpatchSelf();
-        _instance = null;
-        _theme?.Dispose();
+        if (_quitting || _lifetime.Stopped) return;
+        _quitting = true;
+        // Dump 47392: CleanupModule_Accessibility pumps WM_ACTIVATE after
+        // NewInput has shut down. Disconnect providers while input is alive.
+        WindowsExitCleanup.DisconnectProviders(Logger.LogInfo, Logger.LogWarning);
+        Shutdown();
+    }
+
+    private void OnDestroy() => Shutdown();
+
+    private void Shutdown()
+    {
+        if (_lifetime.Stopped) return;
+        if (!_quitting && _modalInput.Capturing) ResetNativeUiInput(restoreSelection: true);
+        _instance = null; // Patches become inert BEFORE cancellation continuations.
+        _lifetime.Stop();
+        _confirmRequested = false;
+        _source?.Dispose();
+        _gateway?.Dispose(destroyUnityObjects: !_quitting);
+        // Live ScriptEngine unload still unpatches. Process shutdown must not
+        // rewrite methods/detours while Unity is dismantling the runtime.
+        if (!_quitting) _harmony?.UnpatchSelf();
+        _theme?.Dispose(destroyUnityObjects: !_quitting);
+        _theme = null;
+        _lifetime.Dispose();
+        Logger.LogInfo("Overlay shutdown complete; pending work cancelled. Quit=" + _quitting);
     }
 
     private void Update()
     {
+        if (_quitting || _lifetime.Stopped) return;
         if (!_updateObserved) { _updateObserved = true; Logger.LogInfo("Update callback active."); }
+        TickTitleExitSmoke();
         HandleControllerInput();
         _gateway.Performance.Enabled = _measurePerformance.Value;
         var pendingSnapshot = _gateway.Tick();
         if (_runtimeDiagnostics.Value) _diagnostics.Tick(Time.unscaledTime, _gateway,
             () => new { activeBuild = _plan?.SourceBuildId, importVisible = _showImport, overlayVisible = _showOverlay, recommendation = _recommendation, status = _status, checkpointPath = _reviewStore.CheckpointPath, ghosts = _gateway.GhostCount,
-                input = new { scheme = _controller.Scheme, pairedDevice = _controller.DeviceId, pairedGamepads = _controller.PairedGamepads, modalGateReady = _controllerModalGateReady, confirm = ConfirmPrompt, import = ImportPrompt, overlay = OverlayPrompt } }, PreviewControllerReview);
+                input = new { scheme = _controller.Scheme, pairedDevice = _controller.DeviceId, pairedGamepads = _controller.PairedGamepads, modalGateReady = _controllerModalGateReady, modalCapturing = _modalInput.Capturing, confirm = ConfirmPrompt, import = ImportPrompt, overlay = OverlayPrompt } }, PreviewControllerReview);
         if (_measurePerformance.Value)
         {
             _gateway.Performance.Frame(Time.unscaledDeltaTime, Application.isFocused);
@@ -184,7 +228,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
         var confirmed = _confirmRequested;
         _confirmRequested = false;
         if (confirmed && (_plan is null || _state is null)) Logger.LogInfo("Confirmation ignored: no active reviewed build.");
-        if (confirmed && _showOverlay && !_gateway.IsGhostPreview && !ControllerReviewPreview && !_showImport && !_importing && !_executing && _plan is not null && _state is not null && _recommendation?.Action is not null)
+        if (confirmed && _showOverlay && !_gateway.IsGhostPreview && !ControllerReviewPreview && !_modalInput.Capturing && !_importing && !_executing && _plan is not null && _state is not null && _recommendation?.Action is not null)
             _ = ConfirmCurrentAsync(_recommendation.Action);
     }
 
@@ -193,11 +237,14 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
         _executing = true;
         try
         {
-            var result = await _executor.ConfirmOnceAsync(action);
+            var result = await _executor.ConfirmOnceAsync(action, _lifetime.Token);
+            if (_lifetime.Stopped) return;
             Logger.LogInfo($"Confirmed action result: kind={action.Kind}, result={result.Status}, message={result.Message}");
             lock (_uiStateGate) _status = result.Message;
         }
-        catch (Exception ex)
+        catch (OperationCanceledException) when (_lifetime.Stopped) { }
+        catch (Exception) when (_lifetime.Stopped) { }
+        catch (Exception ex) when (!_lifetime.Stopped)
         {
             Logger.LogError(ex);
             lock (_uiStateGate) _status = "행동 실행 오류: " + ex.Message;
@@ -210,7 +257,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
 
     private async Task ImportAsync()
     {
-        if (_importing || _executing) return;
+        if (_lifetime.Stopped || _importing || _executing) return;
         if (!BuildLocator.TryParse(_locatorText, out var locator, out var error))
         {
             _status = error!;
@@ -225,7 +272,8 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
             Logger.LogInfo($"Import started: {locator!.Id}");
             // Mono's HTTP handler may perform synchronous DNS/TLS work before its first await.
             // Keep that work off the Unity main thread; resume here for Unity-only inspection.
-            var result = await Task.Run(() => _source.ImportAsync(locator!));
+            var result = await Task.Run(() => _source.ImportAsync(locator!, _lifetime.Token), _lifetime.Token);
+            if (_lifetime.Stopped) return;
             Logger.LogInfo($"Import response parsed: sections={result.Build.Sections.Count}, origin={result.Origin}");
             var review = new BuildReviewSession(result.Build, _catalog);
             // Unity objects must be inspected on the main thread. ContinueWith is avoided; Unity's context returns here.
@@ -248,7 +296,9 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
             try { _reviewStore.Save(ReviewCheckpoint.Capture(review, false)); }
             catch (Exception ex) { Logger.LogWarning("Review checkpoint save failed: " + ex.Message); }
         }
-        catch (Exception ex)
+        catch (OperationCanceledException) when (_lifetime.Stopped) { }
+        catch (Exception) when (_lifetime.Stopped) { }
+        catch (Exception ex) when (!_lifetime.Stopped)
         {
             Logger.LogWarning(ex);
             lock (_uiStateGate) _status = "가져오기 실패: " + ex.Message;
@@ -297,8 +347,8 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
             _harmony = new Harmony(PluginGuid + ".progress");
             var inputType = AccessTools.TypeByName("PlayerInputController");
             var inputGate = inputType is null ? null : AccessTools.PropertyGetter(inputType, "BlockAvatarInput");
-            if (inputGate is not null)
-                _harmony.Patch(inputGate, postfix: new HarmonyMethod(typeof(SephiriaBuildOverlayPlugin), nameof(ApplyReviewInputGate)));
+            if (inputGate is null) throw new MissingMethodException("PlayerInputController.BlockAvatarInput");
+            _harmony.Patch(inputGate, postfix: new HarmonyMethod(typeof(SephiriaBuildOverlayPlugin), nameof(ApplyReviewInputGate)));
             // Controller submit must not activate an underlying native button
             // while the modal review owns it. No native input is intercepted
             // outside that modal (including warnings about shared dice).
@@ -322,7 +372,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
     private static void OnLocalArtifactAdded(object __instance, int instanceID, int entityID, bool isReward, object __result)
     {
         var plugin = _instance;
-        if (plugin?._state is null || !isReward || !WasAdditionSuccessful(__result) || !plugin._gateway.IsLocalInventory(__instance)) return;
+        if (plugin?._state is null || plugin._quitting || !isReward || !WasAdditionSuccessful(__result) || !plugin._gateway.IsLocalInventory(__instance)) return;
         var catalogKey = plugin._catalog.Entries.FirstOrDefault(x => x.Kind == CatalogKind.Artifact && x.GameKey == entityID.ToString())?.GameKey;
         if (catalogKey is null) return;
         var eventKey = plugin._state.RunId + ":" + Time.frameCount + ":" + instanceID;
@@ -349,28 +399,66 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
         // Keep the game's existing avatar/combat gate. Native controller UI
         // is isolated only while the modal review owns input; ordinary game
         // screens and dice-consumption buttons are not intercepted there.
-        __result |= _instance is { } plugin && (plugin._showImport || plugin.ControllerModalOwnsInput ||
+        __result |= _instance is { } plugin && (plugin._quitting || plugin._showImport || plugin.ControllerModalOwnsInput ||
             (plugin._showOverlay && plugin._plan is not null && plugin._pointerOverOverlay));
     }
 
-    private bool ControllerModalOwnsInput => _controller.GamepadMode &&
-        (_showImport || Time.frameCount <= _controllerModalThroughFrame);
-    private static bool AllowNativeModalInput() => _instance is not { } plugin || !plugin.ControllerModalOwnsInput;
+    private bool ControllerModalOwnsInput => _modalInput.Capturing;
+    private static bool AllowNativeModalInput() => _instance is not { } plugin || (!plugin._quitting && !plugin.ControllerModalOwnsInput);
 
     private void InstallControllerModalPatches()
     {
         try
         {
             foreach (var (typeName, methodName) in new[] {
-                ("UnityEngine.InputSystem.UI.InputSystemUIInputModule", "Process"), ("UIInputModule", "Update") })
+                ("UnityEngine.InputSystem.UI.InputSystemUIInputModule", "Process"), ("UIInputModule", "Update"),
+                ("UI_CharacterStatusPanel", "Update") })
             {
                 var type = AccessTools.TypeByName(typeName) ?? throw new TypeLoadException(typeName);
                 var method = AccessTools.Method(type, methodName) ?? throw new MissingMethodException(typeName, methodName);
                 _harmony!.Patch(method, prefix: new HarmonyMethod(typeof(SephiriaBuildOverlayPlugin), nameof(AllowNativeModalInput)));
             }
+            // Raw InputAction polling (discard, rotate, close, shop etc.) is
+            // separate from EventSystem.Process. IMGUI and our paired-pad
+            // ButtonControls remain usable; no native action is changed at rest.
+            var actionType = AccessTools.TypeByName("UnityEngine.InputSystem.InputAction") ?? throw new TypeLoadException("InputAction");
+            var uiType = AccessTools.TypeByName("UnityEngine.InputSystem.UI.InputSystemUIInputModule");
+            if (uiType is null || AccessTools.Method(uiType, "ResetPointers") is null)
+                throw new MissingMethodException("InputSystemUIInputModule.ResetPointers");
+            foreach (var methodName in new[] { "WasPressedThisFrame", "WasReleasedThisFrame", "IsPressed" })
+                _harmony!.Patch(AccessTools.Method(actionType, methodName) ?? throw new MissingMethodException(methodName),
+                    prefix: new HarmonyMethod(typeof(SephiriaBuildOverlayPlugin), nameof(AllowNativeActionPoll)));
             _controllerModalGateReady = true;
         }
         catch (Exception ex) { Logger.LogWarning("Controller review input disabled: " + ex.Message); }
+    }
+
+    private static bool AllowNativeActionPoll(ref bool __result)
+    {
+        if (AllowNativeModalInput()) return true;
+        __result = false;
+        return false;
+    }
+
+    private void ResetNativeUiInput(bool rememberSelection = false, bool restoreSelection = false)
+    {
+        try
+        {
+            var type = AccessTools.TypeByName("UnityEngine.EventSystems.EventSystem");
+            var system = type is null ? null : AccessTools.PropertyGetter(type, "current")?.Invoke(null, null);
+            var module = system is null ? null : AccessTools.PropertyGetter(type!, "currentInputModule")?.Invoke(system, null);
+            var selected = system is null ? null : AccessTools.PropertyGetter(type!, "currentSelectedGameObject")?.Invoke(system, null) as GameObject;
+            if (rememberSelection && selected != null) _nativeFocusBeforeModal = selected;
+            // DeactivateModule is a no-op on this game's InputSystem module.
+            // ResetPointers clears queued press/release/hover WITHOUT disabling
+            // action maps or synthesizing a click/drop on underlying items.
+            if (module is not null) AccessTools.Method(module.GetType(), "ResetPointers")?.Invoke(module, null);
+            var selection = restoreSelection && selected == null && _nativeFocusBeforeModal != null && _nativeFocusBeforeModal.activeInHierarchy
+                ? _nativeFocusBeforeModal : restoreSelection ? selected : null;
+            if (system is not null) AccessTools.Method(type!, "SetSelectedGameObject", new[] { typeof(GameObject) })?.Invoke(system, new object?[] { selection });
+            if (restoreSelection) _nativeFocusBeforeModal = null;
+        }
+        catch (Exception ex) { Logger.LogWarning("Modal pointer reset unavailable: " + ex.Message); }
     }
 
     private void HandleControllerInput()
@@ -380,9 +468,12 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
             _controllerReviewPreviewActive = false; _showImport = _controllerReviewPreviewWasOpen; _controllerMenu.Reset();
         }
         var previousMode = _controller.GamepadMode;
-        _controller.Capture(_padModifier.Value);
+        _controller.Capture(_padModifier.Value, _modalInput.Capturing);
         _gateway.SetControllerMode(_controller.GamepadMode);
-        if (_showImport && _controller.GamepadMode) _controllerModalThroughFrame = Time.frameCount + 1;
+        var wasCapturing = _modalInput.Capturing;
+        if (_modalInput.Capturing && !_showImport)
+            _modalInput.Tick(Time.frameCount, Application.isFocused, _controller.AnyButtonHeld || WindowsKeyState.AnyModalInputHeld());
+        if (wasCapturing && !_modalInput.Capturing) ResetNativeUiInput(restoreSelection: true);
         if (previousMode != _controller.GamepadMode) _controllerMenu.Reset();
         var command = _controllerState.Update(_controller.GamepadMode, Application.isFocused,
             _controller.DeviceId, _controller.Buttons, _showImport);
@@ -391,7 +482,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
         {
             case PadCommand.Import: _importToggleRequested = true; _controllerMenu.Reset(); break;
             case PadCommand.Overlay: _overlayToggleRequested = true; break;
-            case PadCommand.Confirm: if (!_executing && !_importing && !_showImport) _confirmRequested = true; break;
+            case PadCommand.Confirm: if (!_executing && !_importing && !_modalInput.Capturing) _confirmRequested = true; break;
             case PadCommand.Previous: _controllerMenu.Navigate(-1); break;
             case PadCommand.Next: _controllerMenu.Navigate(1); break;
             case PadCommand.Submit: if (_controllerModalGateReady && !_importing && !_executing) _controllerMenu.Activate(); break;
@@ -408,12 +499,13 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
         {
             if (keyEvent.keyCode == _importKey.Value && _shortcutLatch.Press((int)keyEvent.keyCode)) _importToggleRequested = true;
             else if (keyEvent.keyCode == _overlayKey.Value && _shortcutLatch.Press((int)keyEvent.keyCode)) _overlayToggleRequested = true;
-            else if (keyEvent.keyCode == _confirmKey.Value && _shortcutLatch.Press((int)keyEvent.keyCode)) _confirmRequested = true;
+            else if (keyEvent.keyCode == _confirmKey.Value && _shortcutLatch.Press((int)keyEvent.keyCode) && !_modalInput.Capturing) _confirmRequested = true;
         }
     }
 
     private void OnGUI()
     {
+        if (_quitting || _lifetime.Stopped) return;
         _gateway.SetBoardPointer(Event.current.mousePosition, !_controller.GamepadMode && Event.current.shift);
         HandleShortcutEvent();
         if (!_guiObserved) { _guiObserved = true; Logger.LogInfo("OnGUI callback active."); }

@@ -23,6 +23,7 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
     private float _nextConfirmationPoll;
     private readonly bool _exportRuntimeCatalog;
     private float _nextBridgeWarning;
+    private bool _disposed;
     internal readonly RuntimePerformance Performance = new();
     private static readonly RuntimeMemberCache Members = new();
     private readonly Dictionary<string, Type?> _gameTypes = new(StringComparer.Ordinal);
@@ -51,6 +52,7 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
 
     public RunSnapshot CaptureOnMainThread(bool freshDiscovery = false)
     {
+        if (_disposed) throw new ObjectDisposedException(nameof(UnityGameGateway));
         var started = RuntimePerformance.Start();
         if (freshDiscovery || Time.unscaledTime >= _nextDiscoveryAt) DiscoverSceneReferences();
         var playerId = FindLocalPlayerId(out var owned, out var localPlayer);
@@ -98,6 +100,7 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
 
     public RunSnapshot? Tick()
     {
+        if (_disposed) return null;
         if (_confirmation is null || Time.unscaledTime < _nextConfirmationPoll) return null;
         _nextConfirmationPoll = Time.unscaledTime + .1f;
         var snapshot = CaptureOnMainThread();
@@ -125,6 +128,7 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
     public Task<GameActionReceipt> SendThroughNormalRequestPathAsync(RecommendedAction action, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        if (_disposed) throw new ObjectDisposedException(nameof(UnityGameGateway));
         if (!_actions.TryGetValue(action.TargetToken, out var invoke))
             return Task.FromResult(new GameActionReceipt(Guid.NewGuid().ToString("N"), false, "게임 대상이 사라졌습니다."));
         if (_lastSnapshot is null || _requestPending)
@@ -285,8 +289,11 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
         GUI.color = old;
     }
 
-    public void Dispose()
+    public void Dispose() => Dispose(destroyUnityObjects: true);
+    public void Dispose(bool destroyUnityObjects)
     {
+        if (_disposed) return;
+        _disposed = true;
         SceneManager.sceneLoaded -= OnSceneLoaded;
         SceneManager.sceneUnloaded -= OnSceneUnloaded;
         SceneManager.activeSceneChanged -= OnActiveSceneChanged;
@@ -295,7 +302,7 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
         _requestPending = false;
         _actions.Clear(); _rectangles.Clear(); _panels.Clear();
         CancelGhostCalculation(); _slotVisuals.Clear(); _itemSprites.Clear();
-        _nativeLayer?.Dispose(); _nativeLayer = null;
+        _nativeLayer?.Dispose(destroyUnityObjects); _nativeLayer = null; _nativeFont = null;
         _playerComponents = Array.Empty<Component>(); _componentOwner = null; _fallbackAvatar = null;
     }
 
@@ -431,6 +438,7 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
     private void OnActiveSceneChanged(Scene previous, Scene next) => InvalidateSceneReferences();
     private void InvalidateSceneReferences()
     {
+        if (_disposed) return;
         _nextDiscoveryAt = 0; _nextComponentsAt = 0;
         _panels.Clear(); _fallbackAvatar = null;
         _actions.Clear(); _rectangles.Clear();

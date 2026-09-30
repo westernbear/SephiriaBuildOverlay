@@ -37,11 +37,21 @@ public sealed partial class SephiriaBuildOverlayPlugin
             _pointerOverOverlay = false;
             if (_showImport)
             {
+                var priorColor = GUI.color;
+                GUI.color = new Color(0, 0, 0, .55f);
+                GUI.DrawTexture(new Rect(0, 0, width, height), Texture2D.whiteTexture);
+                GUI.color = priorColor;
                 if (Event.current.type == EventType.Repaint) _controllerMenu.BeginFrame();
                 _importRect = FitWindow(_importRect, width, height);
                 _importRect = GUI.Window(761331, _importRect, DrawImportWindow, string.Empty);
+                GUI.BringWindowToFront(761331);
+                GUI.FocusWindow(761331);
                 if (Event.current.type == EventType.Repaint) _controllerMenu.EndFrame();
             }
+            // Consume outside clicks/scroll/keys too, after our controls have
+            // processed them. Never let the closing event hit another IMGUI UI.
+            if (_modalInput.Capturing && Event.current.type is EventType.MouseDown or EventType.MouseUp or EventType.MouseDrag
+                or EventType.ScrollWheel or EventType.KeyDown or EventType.KeyUp) Event.current.Use();
         }
         finally { GUI.skin = oldSkin; GUI.matrix = oldMatrix; GUI.depth = oldDepth; }
     }

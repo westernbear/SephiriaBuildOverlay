@@ -83,6 +83,17 @@
 - 실제 1.0.33 런에서 Keyboard&Mouse, 로컬 패드 0개, 모달 훅 설치 성공과 승인된 빌드 복원/프레임/고스트/게임 폰트의 읽기 전용 회귀 검사가 통과했습니다. 10초 비실행 패드 창 미리보기에서 분류/횟수/우선순위/활성화 버튼 배치를 확인했고 돈 500·주사위 1은 유지됐습니다.
 - 실제 패드가 없어 물리 입력, Steam Input 버튼 매핑, 패드 제출의 뒤쪽 UI 동시 실행 여부는 미검증입니다. 게임/Steam 재매핑으로 View와 방향키의 네이티브 행동이 겹치면 설정 Modifier를 바꾸세요. 직접 문자열 입력은 키보드 모드, 패드에서는 클립보드 붙여넣기를 사용합니다.
 
+## v0.1.6 입력·인챈트·종료 수정 (Computer Use 미사용)
+
+- 가져오기 기본 키 F9, 기존 F6 기본값의 일회 이전, 사용자 지정 키 보존. 실제 설치 설정에서 `ImportWindow = F9`, `ImportF9MigrationApplied = true`를 확인했습니다.
+- 모든 입력 모드의 검토 패널을 모달화했습니다. 네이티브 UI Process/취소 처리, 인벤토리 Update, InputAction의 버튼 폴링을 보호하고 패널 밖 IMGUI 클릭/스크롤을 소비합니다. 닫는 입력을 놓은 뒤 두 프레임까지 보호하며, 현재 게임 DLL에서 확인한 `ResetPointers`로 누적 포인터 상태를 지웁니다. 네이티브 포커스는 유효한 객체에 한해 복원합니다. 다른 모드의 독자적인 원시 입력은 통제하지 않습니다.
+- 인챈트 화면의 목표 인스턴스마다 강화 순위를 표시합니다. 필수/빌드 우선/현재 개선/낮은 강화 횟수 순서, 네이티브 최대 강화 횟수, 중복 인스턴스와 불명 상태를 검증했습니다. 강화 자동 실행은 없고 인챈트 중 Move/Rotate 추천과 고스트를 중단합니다.
+- 136개 자동 테스트 통과, Release 빌드 경고/오류 0. 추가 테스트는 순수 모달 상태·F9 이전·강화 순위·종료 취소·타이틀 종료 안전 조건입니다. 신규 패널 클릭 관통과 인챈트 렌더링의 실게임 상호작용은 미검증입니다.
+- PID 47392의 기존 두 덤프를 Windows CDB와 Unity 공식 심볼로 로컬 분석했습니다. `CleanupEngine → CleanupModule_Accessibility → UiaDisconnectAllProviders → COM message pump → PlayerMainWndProc → win::NewInput::Activate+0x92`, 이미 null인 입력 싱글턴 역참조입니다. 첫 덤프는 `c0000005`, 두 번째는 `c000041d`. 이는 모드의 관리 예외나 폰트 해제라고 확정할 수 없는 Unity 네이티브 종료 순서 문제입니다. 덤프/게임 바이너리는 저장소에 포함하지 않습니다.
+- Microsoft의 [UIA 종료 정리 지침](https://learn.microsoft.com/en-us/windows/win32/api/uiautomationcoreapi/nf-uiautomationcoreapi-uiadisconnectallproviders)에 따라 Input System이 살아 있는 OnApplicationQuit에서 접근성 제공자를 먼저 끊습니다. 현재 프로세스 창에서 정리 호출 중에만 WM_GETOBJECT 재등록을 방지하고 즉시 훅을 해제합니다. 프로세스 강제 종료, 크래시 핸들러 비활성화, 엔진 바이너리 패치는 없습니다. 동기 SendMessage 처리 중이면 안전하게 건너뛰고 로그를 남깁니다.
+- 종료 시 입력/보상 관찰을 중단하고 가져오기·서버 대기·솔버 작업을 취소합니다. 프로세스 종료에서는 Harmony detour 재작성과 Unity 객체 수동 파괴를 피하며, 라이브 재로딩에서는 기존 정리를 유지합니다.
+- 실제 Steam 실행 + 타이틀 `QuitGame` 코드 기반 검증 2회: PID 10040, 2756, 둘 다 종료 코드 0, 새 덤프 0개, 조기 UIA 정리/관리 종료 완료 로그 확인. 두 번째는 최종 코드입니다. 활성 런을 끝내는 경로 또는 외부 UIA 클라이언트가 연결된 원래 충돌 조건의 완전 재현은 미검증입니다. 기존 덤프는 보존했습니다. RuntimeDiagnostics/MeasurePerformance는 false로 유지했습니다.
+
 ## 로그와 프로세스
 
 `BepInEx/LogOutput.log`는 UTF-8로 읽습니다. `loaded ... PID=`와 현재 게임 PID 및 로그 수정 시각을 함께 비교하세요. 게임 실행 직후 Steam이 프로세스를 교체하면 첫 프로세스의 정상 로드 로그만 남을 수 있습니다. 화면에 보이는 프로세스가 같은지 반드시 확인합니다.

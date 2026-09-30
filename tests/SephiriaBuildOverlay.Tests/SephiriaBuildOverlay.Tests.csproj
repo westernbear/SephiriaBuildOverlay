@@ -21,6 +21,10 @@
     <None Update="Fixtures\*.json" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\RuntimeMemberCache.cs" Link="RuntimeMemberCache.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\ControllerInputState.cs" Link="ControllerInputState.cs" />
+    <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\ModalInputCapture.cs" Link="ModalInputCapture.cs" />
+    <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\PluginLifetime.cs" Link="PluginLifetime.cs" />
+    <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\TitleExitSmokePolicy.cs" Link="TitleExitSmokePolicy.cs" />
+    <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\EnchantPriority.cs" Link="EnchantPriority.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\ControllerInputBridge.cs" Link="ControllerInputBridge.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\RuntimePerformance.cs" Link="RuntimePerformance.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\ReviewCheckpoint.cs" Link="ReviewCheckpoint.cs" />

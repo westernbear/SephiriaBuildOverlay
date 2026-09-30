@@ -41,7 +41,8 @@ internal sealed partial class UnityGameGateway
                 var rect = ScreenRect(visual);
                 if (rect.width < 4 || rect.height < 4) continue;
                 var target = plan?.Artifacts.FirstOrDefault(x => x.CatalogKey == candidate.CatalogKey);
-                var selected = action?.TargetToken == candidate.Token;
+                _enchantRanks.TryGetValue(candidate.Token, out var enchantRank);
+                var selected = !_enchantMode && action?.TargetToken == candidate.Token;
                 var otherTarget = candidate.CatalogKey is not null && plan is not null &&
                     (plan.WeaponPath.Contains(candidate.CatalogKey) || plan.MiracleTarget == candidate.CatalogKey);
                 var frame = CandidateFramePolicy.Resolve(plan is not null, target?.Role, otherTarget, selected);
@@ -52,6 +53,7 @@ internal sealed partial class UnityGameGateway
                     CandidateFrameKind.Required => new Color(1f, .83f, .35f),
                     _ => new Color(.45f, .8f, 1f)
                 };
+                if (enchantRank?.Rank == 1) color = new Color(.9f, .55f, 1f);
                 var thickness = CandidateFramePolicy.Thickness(frame, scale);
                 // Draw outside the existing card, leaving its rarity frame and
                 // item artwork intact. A second frame distinguishes F8 without
@@ -61,6 +63,15 @@ internal sealed partial class UnityGameGateway
                 _nativeLayer?.Border("candidate-contrast:" + candidate.Token, outline, new Color(.025f, .015f, .04f, .95f), thickness + 2);
                 _nativeLayer?.Border("candidate:" + candidate.Token, outer, color, thickness);
                 _nativeLayer?.Corners("candidate-corners:" + candidate.Token, outer, new Color(1f, 1f, .95f), Math.Max(12, rect.width * .18f), Math.Max(2, thickness / 2));
+                if (_enchantMode)
+                {
+                    var badgeText = enchantRank is null ? "강화 —" : $"강화 {enchantRank.Rank}";
+                    var badge = new Rect(rect.x, rect.y, Math.Max(rect.width, 58 * scale), 22 * scale);
+                    _nativeLayer?.Box("enchant-bg:" + candidate.Token, badge, new Color(.035f, .015f, .055f, .92f));
+                    _nativeLayer?.Label("enchant:" + candidate.Token, badge, badgeText, enchantRank is null ? new Color(.65f, .65f, .7f) : color, Mathf.Round(_nativeFontPixels * scale));
+                    if (enchantRank?.Rank == 1)
+                        _nativeLayer?.Border("enchant-first:" + candidate.Token, new Rect(outer.x - 3, outer.y - 3, outer.width + 6, outer.height + 6), color, 2 * scale);
+                }
                 if (selected)
                 {
                     var halo = new Rect(outer.x - thickness - 2, outer.y - thickness - 2, outer.width + (thickness + 2) * 2, outer.height + (thickness + 2) * 2);
@@ -87,7 +98,7 @@ internal sealed partial class UnityGameGateway
                 {
                     var acquired = state?.EffectiveAcquisitions(target.CatalogKey) ?? 0;
                     var uncertain = state is not null && state.Artifacts.TryGetValue(target.CatalogKey, out var progress) && progress.IsUncertain;
-                    var detail = $"{(target.Role == TargetRole.Required ? "필수" : "추천")} · {(uncertain ? "최소 " : "")}{acquired}/{target.DesiredAcquisitions}";
+                    var detail = _enchantMode ? (enchantRank?.Reason ?? "강화 한도 또는 상태 확인 필요 · 수동 선택") : $"{(target.Role == TargetRole.Required ? "필수" : "추천")} · {(uncertain ? "최소 " : "")}{acquired}/{target.DesiredAcquisitions}";
                     var detailWidth = Math.Min(Screen.width - 4, Math.Max(rect.width, _itemLabel.CalcSize(new GUIContent(detail)).x + 12));
                     var detailRect = new Rect(Mathf.Clamp(rect.center.x - detailWidth / 2, 2, Screen.width - detailWidth - 2), Math.Max(2, rect.y - 28 * scale), detailWidth, 24 * scale);
                     _nativeLayer?.Box("detail-bg:" + candidate.Token, detailRect, new Color(.025f, .035f, .055f, .85f));
