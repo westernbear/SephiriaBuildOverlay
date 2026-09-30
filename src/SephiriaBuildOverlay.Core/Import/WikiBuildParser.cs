@@ -70,7 +70,8 @@ public static class WikiBuildParser
             sections,
             talents,
             combos,
-            OptionalString(data, "costume"));
+            OptionalString(data, "costume"),
+            OptionalString(data, "preset_code"));
     }
 
     private static string RequiredString(JObject obj, string property)

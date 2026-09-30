@@ -1,7 +1,7 @@
 param(
     [string]$GameDir = 'C:\Program Files (x86)\Steam\steamapps\common\Sephiria',
     [string]$SteamExe = 'C:\Program Files (x86)\Steam\steam.exe',
-    [string]$ExpectedVersion = '0.1.6',
+    [string]$ExpectedVersion = '0.1.7',
     [ValidateRange(30, 180)][int]$TimeoutSeconds = 120
 )
 $ErrorActionPreference = 'Stop'
@@ -27,11 +27,15 @@ Start-Sleep -Seconds 3
 $newDumps = @(Get-ChildItem -LiteralPath $dumpDirectory -Filter 'Sephiria*.dmp' -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -notin $before -or $_.LastWriteTimeUtc -ge $started })
 $log = Get-Content -LiteralPath (Join-Path $GameDir 'BepInEx\LogOutput.log') -Raw -Encoding UTF8
 if ($log -notmatch [Regex]::Escape("Sephiria Build Overlay $ExpectedVersion loaded.")) { throw 'Expected plugin version was not loaded.' }
-if ($log -notmatch 'Exit smoke: native title QuitGame') { throw 'Normal native title exit path was not observed.' }
-if ($log -notmatch 'Overlay shutdown complete; pending work cancelled. Quit=True') { throw 'Managed shutdown did not finish.' }
 $playerLogPath = Join-Path $env:USERPROFILE 'AppData\LocalLow\TEAMHORAY\Sephiria\Player.log'
 $playerLog = Get-Content -LiteralPath $playerLogPath -Raw -Encoding UTF8
+# BepInEx's asynchronous file writer may omit the last shutdown lines; Unity's
+# native logger still flushes them. Both files must belong to this launch.
+if ($log -notmatch "PID=$($gameProcess.Id)\b" -or (Get-Item -LiteralPath $playerLogPath).LastWriteTimeUtc -lt $started) { throw 'Logs do not belong to this process/launch.' }
+$combinedLog = $log + "`n" + $playerLog
+if ($combinedLog -notmatch 'Exit smoke: native title QuitGame') { throw 'Normal native title exit path was not observed.' }
+if ($combinedLog -notmatch 'Overlay shutdown complete; pending work cancelled. Quit=True') { throw 'Managed shutdown did not finish.' }
 if ($gameProcess.ExitCode -ne 0 -or $newDumps.Count -gt 0 -or $playerLog -match 'Crash!!!') {
     throw "Exit failed: code=$($gameProcess.ExitCode), new dumps=$($newDumps.Count). Dumps and game logs were preserved."
 }
-[PSCustomObject]@{ passed = $true; pid = $gameProcess.Id; exitCode = $gameProcess.ExitCode; version = $ExpectedVersion; newDumps = $newDumps.Count; earlyUiaCleanup = $log -match 'Early UIA provider cleanup completed'; computerUse = $false; scope = 'title-only normal native quit, not an active-run/attached-UIA reproduction' } | ConvertTo-Json
+[PSCustomObject]@{ passed = $true; pid = $gameProcess.Id; exitCode = $gameProcess.ExitCode; version = $ExpectedVersion; newDumps = $newDumps.Count; earlyUiaCleanup = $combinedLog -match 'Early UIA provider cleanup completed'; computerUse = $false; scope = 'title-only normal native quit, not an active-run/attached-UIA reproduction' } | ConvertTo-Json

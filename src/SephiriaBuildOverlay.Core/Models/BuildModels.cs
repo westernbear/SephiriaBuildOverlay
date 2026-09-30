@@ -32,7 +32,8 @@ public sealed class ImportedBuild
         IReadOnlyList<ImportedSection> sections,
         IReadOnlyDictionary<string, int> talents,
         IReadOnlyList<string>? combos = null,
-        string? costumeSlug = null)
+        string? costumeSlug = null,
+        string? nativePresetCode = null)
     {
         Id = id;
         Title = title ?? string.Empty;
@@ -43,6 +44,7 @@ public sealed class ImportedBuild
         Talents = talents ?? throw new ArgumentNullException(nameof(talents));
         Combos = combos ?? Array.Empty<string>();
         CostumeSlug = costumeSlug;
+        NativePresetCode = nativePresetCode;
     }
 
     public Guid Id { get; }
@@ -54,6 +56,7 @@ public sealed class ImportedBuild
     public IReadOnlyDictionary<string, int> Talents { get; }
     public IReadOnlyList<string> Combos { get; }
     public string? CostumeSlug { get; }
+    public string? NativePresetCode { get; }
 }
 
 public sealed class ImportedSection

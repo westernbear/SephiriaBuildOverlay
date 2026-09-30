@@ -17,7 +17,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
 {
     public const string PluginGuid = "io.github.sephiria.build-overlay";
     public const string PluginName = "Sephiria Build Overlay";
-    public const string PluginVersion = "0.1.6";
+    public const string PluginVersion = "0.1.7";
 
     private ConfigEntry<KeyCode> _importKey = null!;
     private ConfigEntry<KeyCode> _overlayKey = null!;
@@ -66,6 +66,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
                 return;
             }
             _modalInput.SetVisible(value);
+            if (!value) ReleaseSystemCursor();
             _confirmRequested = false;
             ResetNativeUiInput(rememberSelection: value);
         }
@@ -138,6 +139,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
     private void Shutdown()
     {
         if (_lifetime.Stopped) return;
+        ReleaseSystemCursor();
         if (!_quitting && _modalInput.Capturing) ResetNativeUiInput(restoreSelection: true);
         _instance = null; // Patches become inert BEFORE cancellation continuations.
         _lifetime.Stop();
@@ -264,6 +266,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
             return;
         }
         _importing = true;
+        var startingContext = _gateway.StartingPresetContext();
         _recommendation = null;
         _gateway.SetHighlight(null);
         _status = "Wiki에서 빌드를 가져오는 중...";
@@ -295,6 +298,8 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
             }
             try { _reviewStore.Save(ReviewCheckpoint.Capture(review, false)); }
             catch (Exception ex) { Logger.LogWarning("Review checkpoint save failed: " + ex.Message); }
+            var presetStatus = await _gateway.ApplyStartingPresetAsync(result.Build, startingContext, _lifetime.Token);
+            if (!_lifetime.Stopped) _status += "\n" + presetStatus;
         }
         catch (OperationCanceledException) when (_lifetime.Stopped) { }
         catch (Exception) when (_lifetime.Stopped) { }
@@ -521,6 +526,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
                 _gateway.EndNativeOverlay();
             }
         }
+        UpdateModalCursor();
     }
 
 

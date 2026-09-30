@@ -28,6 +28,12 @@ ScriptEngine은 [r11.1 공식 릴리스](https://github.com/BepInEx/BepInEx.Debu
 
 ## Computer Use 없이 실제 런 상태 검사
 
+게임을 실행하지 않고 설치된 네이티브 프리셋 API/해금 경로/요청 큐의 계약을 검사하려면 다음을 실행합니다. 게임 DLL은 메타데이터로만 읽으며 코드를 실행하거나 저장 데이터를 변경하지 않습니다.
+
+```powershell
+.\tools\dev\TestStartingPresetContract.ps1
+```
+
 개발 중에만 `BepInEx/config/io.github.sephiria.build-overlay.cfg`에서 아래를 켭니다.
 
 ```ini

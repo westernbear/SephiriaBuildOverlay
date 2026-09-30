@@ -57,8 +57,20 @@ $packageDocsDirectory = Join-Path $packageDirectory 'docs'
 [System.IO.Directory]::CreateDirectory($packageDocsDirectory) | Out-Null
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'docs\DEBUGGING.md') -Destination $packageDocsDirectory -Force
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'docs\FAST_TESTING.md') -Destination $packageDocsDirectory -Force
+Copy-Item -LiteralPath (Join-Path $repositoryRoot 'docs\VERIFICATION.md') -Destination $packageDocsDirectory -Force
 
-Compress-Archive -Path (Join-Path $packageDirectory '*') -DestinationPath $archivePath -CompressionLevel Optimal
+& (Join-Path $PSScriptRoot 'packaging\BundleBepInEx.ps1') -PackageDirectory $packageDirectory
+# Compress-Archive silently omits hidden entries such as .doorstop_version.
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$zip = [System.IO.Compression.ZipFile]::Open($archivePath, [System.IO.Compression.ZipArchiveMode]::Create)
+try {
+    foreach ($file in Get-ChildItem -LiteralPath $packageDirectory -Recurse -File -Force) {
+        $entryName = $file.FullName.Substring($packageFullPath.Length + 1).Replace('\', '/')
+        [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $file.FullName, $entryName, [System.IO.Compression.CompressionLevel]::Optimal) | Out-Null
+    }
+} finally { $zip.Dispose() }
+& (Join-Path $PSScriptRoot 'packaging\TestReleasePackage.ps1') -ArchivePath $archivePath
+& (Join-Path $PSScriptRoot 'packaging\TestPackagingGuards.ps1') -ArchivePath $archivePath
 $hash = (Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash.ToLowerInvariant()
 Set-Content -LiteralPath $checksumPath -Value "$hash  $([System.IO.Path]::GetFileName($archivePath))" -Encoding ascii
 

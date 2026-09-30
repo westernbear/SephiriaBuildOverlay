@@ -34,7 +34,7 @@ jobs:
       - name: Test
         run: dotnet test SephiriaBuildOverlay.sln -c Release --no-restore -p:Version="${{ steps.version.outputs.value }}"
 
-      - name: Build paste-ready package
+      - name: Build and validate BepInEx-inclusive package
         shell: pwsh
         run: ./tools/BuildRelease.ps1 -Version "${{ steps.version.outputs.value }}"
 

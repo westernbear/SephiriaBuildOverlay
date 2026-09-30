@@ -13,6 +13,7 @@ public sealed partial class SephiriaBuildOverlayPlugin
     private int _guideTab;
     private Vector2 _sectionScroll;
     private Vector2 _guideScroll;
+    private Vector2 _importStatusScroll;
     private bool _showDetails;
     private bool _onlyUnresolved;
 
@@ -106,7 +107,10 @@ public sealed partial class SephiriaBuildOverlayPlugin
         GUI.enabled = true;
         GUILayout.EndHorizontal();
         GUILayout.Label("sephiria.wiki/builds/UUID 또는 UUID  ·  모든 구역을 분류한 뒤 활성화하세요", _theme!.Small);
-        GUILayout.Label(new GUIContent(_status, _status), _theme.WarningText, GUILayout.Height(44));
+        GUILayout.Label("로비에서는 시작 프리셋도 적용합니다. 해금/현재 포인트만 사용 · 구매/영구 소비/저장 슬롯 덮어쓰기 없음", _theme.Small);
+        _importStatusScroll = GUILayout.BeginScrollView(_importStatusScroll, GUILayout.Height(70));
+        GUILayout.Label(new GUIContent(_status, _status), _theme.WarningText);
+        GUILayout.EndScrollView();
         if (_review is null)
         {
             GUILayout.BeginVertical(_theme.Card);

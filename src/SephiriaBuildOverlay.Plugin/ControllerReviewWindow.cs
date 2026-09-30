@@ -51,7 +51,8 @@ public sealed partial class SephiriaBuildOverlayPlugin
         PadButton("progress-tab", "획득 횟수 보정", () => { _guideTab = 1; _controllerMenu.Reset(); }, _plan is not null);
         PadButton("checklist-tab", "체크리스트", () => { _guideTab = 2; _controllerMenu.Reset(); }, _plan is not null);
         GUILayout.EndHorizontal();
-        GUILayout.Label(_status, _theme.WarningText, GUILayout.Height(44));
+        GUILayout.Label("로비 가져오기: 시작 프리셋 포함 · 구매/영구 소비/저장 슬롯 덮어쓰기 없음", _theme.Small);
+        GUILayout.Label(_status, _theme.WarningText, GUILayout.Height(70));
         if (_guideTab == 1 && _plan is not null && _state is not null) { DrawPadProgress(); return; }
         if (_guideTab == 2 && _plan is not null) { DrawPadChecklist(); return; }
 
