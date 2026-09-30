@@ -65,6 +65,17 @@ internal sealed partial class UnityGameGateway
                     _nativeLayer?.Box("key-bg:" + candidate.Token, badge, new Color(.025f, .035f, .055f, .9f));
                     _nativeLayer?.Label("key:" + candidate.Token, badge, key, color, Mathf.Round(_nativeFontPixels * scale));
                 }
+                if (selected && action?.Kind == ActionKind.Rotate && rect.Contains(mouse))
+                {
+                    var detail = action.ExpectedResult;
+                    var pixels = Mathf.Round(_nativeFontPixels * scale);
+                    var measured = _nativeLayer?.MeasureLabel("rotation:" + candidate.Token, detail, pixels) ?? new Vector2(detail.Length * pixels, pixels * 1.5f);
+                    var detailWidth = Math.Min(Screen.width - 4, Math.Max(rect.width, measured.x + 16 * scale));
+                    var detailHeight = Math.Max(24 * scale, measured.y + 6 * scale);
+                    var detailRect = new Rect(Mathf.Clamp(rect.center.x - detailWidth / 2, 2, Screen.width - detailWidth - 2), Math.Max(2, rect.y - detailHeight - 4 * scale), detailWidth, detailHeight);
+                    _nativeLayer?.Box("rotation-bg:" + candidate.Token, detailRect, new Color(.025f, .035f, .055f, .85f));
+                    _nativeLayer?.Label("rotation:" + candidate.Token, detailRect, detail, color, Mathf.Round(_nativeFontPixels * scale));
+                }
                 if (target is not null && rect.Contains(mouse))
                 {
                     var acquired = state?.EffectiveAcquisitions(target.CatalogKey) ?? 0;

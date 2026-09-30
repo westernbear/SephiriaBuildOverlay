@@ -42,6 +42,7 @@ internal sealed partial class UnityGameGateway
         private readonly GameObject _root;
         private readonly Type _textType;
         private readonly Type _imageType;
+        private readonly MethodInfo? _preferredValues;
         private readonly Dictionary<string, Element> _elements = new(StringComparer.Ordinal);
         private UnityEngine.Object _font = null!;
         private int _generation;
@@ -56,10 +57,15 @@ internal sealed partial class UnityGameGateway
             public float FontSize;
             public Color Color;
             public Sprite? Sprite;
+            public string? MeasuredText;
+            public UnityEngine.Object? MeasuredFont;
+            public float MeasuredPixels;
+            public Vector2 MeasuredSize;
         }
         public NativeOverlayLayer(Type textType, Type imageType)
         {
             _textType = textType; _imageType = imageType;
+            _preferredValues = textType.GetMethod("GetPreferredValues", new[] { typeof(string) });
             _root = new GameObject("SephiriaBuildOverlay.Native", typeof(RectTransform), typeof(Canvas));
             UnityEngine.Object.DontDestroyOnLoad(_root);
             _root.hideFlags = HideFlags.HideAndDontSave;
@@ -111,6 +117,33 @@ internal sealed partial class UnityGameGateway
             if (element.Text != text) { Set(element.Component, "text", text); element.Text = text; }
             if (element.FontSize != pixels) { Set(element.Component, "fontSize", pixels); element.FontSize = pixels; }
             if (element.Color != color) { Set(element.Component, "color", color); element.Color = color; }
+        }
+        public Vector2 MeasureLabel(string key, string text, float pixels)
+        {
+            var measurementKey = "measure:" + key;
+            if (!_elements.TryGetValue(measurementKey, out var element))
+            {
+                element = Get(measurementKey, Rect.zero, _textType);
+                Set(element.Component, "text", string.Empty); element.Text = string.Empty;
+                element.Object.SetActive(false);
+            }
+            else element.Generation = _generation;
+            if (element.MeasuredText == text && element.MeasuredFont == _font && element.MeasuredPixels == pixels)
+                return element.MeasuredSize;
+            if (element.Font != _font) { Set(element.Component, "font", _font); element.Font = _font; }
+            if (element.FontSize != pixels) { Set(element.Component, "fontSize", pixels); element.FontSize = pixels; }
+            // Measure with the actual game TMP asset, not the IMGUI fallback
+            // font. Cache per label so this does not recalculate every frame.
+            var size = new Vector2(text.Length * pixels, pixels * 1.5f);
+            try
+            {
+                if (_preferredValues?.Invoke(element.Component, new object[] { text }) is Vector2 preferred &&
+                    preferred.x > 0 && preferred.y > 0 && !float.IsInfinity(preferred.x) && !float.IsInfinity(preferred.y))
+                    size = preferred;
+            }
+            catch { /* Conservative visible fallback on TMP schema changes. */ }
+            element.MeasuredText = text; element.MeasuredFont = _font; element.MeasuredPixels = pixels; element.MeasuredSize = size;
+            return size;
         }
         public void Box(string key, Rect rectangle, Color color, Sprite? sprite = null)
         {

@@ -24,6 +24,7 @@ internal sealed partial class UnityGameGateway
             font = NativeFontDiagnostic(statusPanel),
             overlay = _nativeLayer?.Diagnostics(),
             inventoryMode = statusPanel is null ? null : ReadNamedString(statusPanel, "InventoryMode"),
+            pointerRotation = _pointerRotation,
             ghostAssignments = _ghostAssignments.Select(x => new { x.InstanceId, x.From, x.To }).ToArray(),
             boardItems = _boardItems.Select(x => new { x.InstanceId, x.Key, x.Position, x.MaxLevel, x.CanRelocate }).ToArray(),
             levels = _slotLevels.Select(x => new { position = x.Key, value = x.Value }).ToArray(),
@@ -38,6 +39,7 @@ internal sealed partial class UnityGameGateway
                 id = ReadNamedNullableInt(x, "instanceID"), entity = ReadNamedNullableInt(x, "entityID"),
                 x = ReadNamedNullableInt(x, "xIdx"), y = ReadNamedNullableInt(x, "yIdx"), rotation = ReadNamedNullableInt(x, "rotation"),
                 rotatable = ReadBool(x, "isRotatable"),
+                nativeRotatable = NativeCanRotate(x),
                 query = ReadNamedString(x, "query"), condition = ReadNamedString(x, "conditionQuery"),
                 effects = DiagnosticRange(ReadNamedObject(x, "EffectRange") as IEnumerable),
                 criteria = DiagnosticRange(ReadNamedObject(x, "CriteriaRange") as IEnumerable)
@@ -77,5 +79,16 @@ internal sealed partial class UnityGameGateway
         .Select(x => ReadNamedObject(x, "Inventory")).FirstOrDefault(x => x?.GetType().Name == "GridInventory");
 
     private static object[]? DiagnosticRange(IEnumerable? sequence) => sequence?.Cast<object>()
-        .Select(x => (object)new { type = x.GetType().Name, x = ReadNamedNullableInt(x, "x", "X"), y = ReadNamedNullableInt(x, "y", "Y"), value = ReadNamedString(x, "level", "value", "criteria") }).ToArray();
+        .Select(x =>
+        {
+            var position = ReadNamedObject(x, "position");
+            return (object)new
+            {
+                type = x.GetType().Name,
+                x = position is null ? ReadNamedNullableInt(x, "x", "X") : ReadNamedNullableInt(position, "x"),
+                y = position is null ? ReadNamedNullableInt(x, "y", "Y") : ReadNamedNullableInt(position, "y"),
+                effect = ReadNamedString(x, "effectType"),
+                value = ReadNamedString(x, "levelParam", "level", "value", "criteria")
+            };
+        }).ToArray();
 }

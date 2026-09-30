@@ -89,7 +89,7 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
         var currentWeapon = ReadCurrentWeapon(localPlayer);
         var miracleKeys = GetLocalMiracleKeys(localPlayer);
         var currentMiracle = miracleKeys.FirstOrDefault();
-        var revision = StableRevision(runId, playerId, screen, candidates, inventory, currentWeapon, string.Join(",", miracleKeys.OrderBy(x => x, StringComparer.Ordinal)), money, dice);
+        var revision = StableRevision(runId, playerId, screen, candidates, inventory, currentWeapon, string.Join(",", miracleKeys.OrderBy(x => x, StringComparer.Ordinal)), money, dice, _boardSignature);
         _lastSnapshot = new RunSnapshot(runId, playerId, revision, screen, candidates, inventory,
             currentWeapon, currentMiracle, money, dice, owned, _requestPending, miracleKeys);
         Performance.SnapshotCompleted(started);
@@ -570,13 +570,14 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
     }
 
     private static long StableRevision(string runId, string playerId, ScreenKind screen, IReadOnlyList<ScreenCandidate> candidates,
-        IReadOnlyList<InventoryArtifact> inventory, string? weapon, string? miracle, int money, int dice)
+        IReadOnlyList<InventoryArtifact> inventory, string? weapon, string? miracle, int money, int dice, string boardSignature)
     {
         unchecked
         {
             long hash = 1469598103934665603L;
             void Add(string? value) { foreach (var c in value ?? string.Empty) { hash ^= c; hash *= 1099511628211L; } }
             Add(runId); Add(playerId); Add(screen.ToString()); Add(weapon); Add(miracle); Add(money.ToString()); Add(dice.ToString());
+            Add(boardSignature);
             foreach (var candidate in candidates.OrderBy(x => x.Token)) { Add(candidate.Token); Add(candidate.CatalogKey); Add(candidate.Kind.ToString()); Add(candidate.MoneyCost.ToString()); Add(candidate.DiceCost.ToString()); Add(candidate.IsSelectable.ToString()); Add(candidate.IsFreeReroll.ToString()); }
             foreach (var item in inventory.OrderBy(x => x.InstanceId)) { Add(item.InstanceId); Add(item.CatalogKey); Add(item.X.ToString()); Add(item.Y.ToString()); }
             return hash;

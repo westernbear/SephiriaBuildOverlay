@@ -79,7 +79,7 @@ internal sealed partial class UnityGameGateway
     private void CaptureBoard(ScreenKind screen, List<ScreenCandidate> candidates)
     {
         _slotVisuals.Clear(); _itemSprites.Clear(); _slotLevels.Clear(); _disabledSlots.Clear(); _boardItems.Clear();
-        _boardVisible = false; _nextMoveToken = null;
+        _boardVisible = false; _nextMoveToken = null; _pointerRotation = null; _boardSignature = "";
         _boardInventory = LocalInventory();
         var manager = ReadStatic("UIManager", "Instance");
         var registry = manager is null ? null : ReadNamedObject(manager, "uiElementsByTypename") as IDictionary;
@@ -130,8 +130,10 @@ internal sealed partial class UnityGameGateway
             signature.Append('|').Append(slot.Position.X).Append(',').Append(slot.Position.Y).Append(':').Append(slot.Level).Append(':').Append(slot.Disabled);
         foreach (var item in _boardItems.OrderBy(x => x.InstanceId, StringComparer.Ordinal))
             signature.Append('|').Append(item.InstanceId).Append(':').Append(item.Key).Append(':').Append(item.Position.X).Append(',').Append(item.Position.Y).Append(':').Append(item.MaxLevel).Append(':').Append(item.CanRelocate);
+        AppendTabletState(signature, tablets);
         _boardSignature = signature.ToString();
         if (_placementPlan is null) return;
+        CapturePointerRotation(screen, candidates);
         if (_ghostTask is { IsCompleted: true })
         {
             if (_ghostTask.Status == TaskStatus.RanToCompletion && _ghostTaskSignature == _boardSignature)
@@ -195,6 +197,11 @@ internal sealed partial class UnityGameGateway
 
     public Recommendation RecommendPlacement(RunSnapshot snapshot)
     {
+        if (_pointerRotation is { } rotation && snapshot.IsLocalPlayerOwned && !snapshot.ServerRequestPending)
+            return new Recommendation(new RecommendedAction(ActionKind.Rotate, rotation.Token,
+                "포인터 아래 석판을 네이티브 방향으로 한 번 회전 (사용자 지정·최적화 아님)", snapshot.Identity,
+                expectedResult: $"회전 {rotation.Rotation * 90}° → {rotation.NextRotation * 90}° · 소비 없음"),
+                "포인터 아래 석판 한 번 회전");
         if (_nextMoveToken is null || !snapshot.IsLocalPlayerOwned || snapshot.ServerRequestPending || _ghostResultSignature != _boardSignature)
             return new Recommendation(null, "배치 고스트는 안내용입니다. 조건부 효과와 점유 칸은 수동으로 확인하세요.");
         return new Recommendation(new RecommendedAction(ActionKind.Move, _nextMoveToken, "현재 석판 기준 더 높은 레벨의 빈 슬롯으로 이동", snapshot.Identity), "고스트 슬롯으로 한 아이템 이동");
