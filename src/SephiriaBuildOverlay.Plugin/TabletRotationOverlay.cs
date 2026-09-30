@@ -10,10 +10,11 @@ internal sealed partial class UnityGameGateway
 {
     private Vector2 _boardPointer;
     private TabletRotationTarget? _pointerRotation;
+    private bool _manualRotationRequested;
     private MethodInfo? _nativeRotateRequest;
     private MethodInfo? _nativeCanRotate;
 
-    public void SetBoardPointer(Vector2 position) => _boardPointer = position;
+    public void SetBoardPointer(Vector2 position, bool manualRotation = false) { _boardPointer = position; _manualRotationRequested = manualRotation; }
 
     private bool NativeCanRotate(object tablet)
     {
@@ -23,7 +24,7 @@ internal sealed partial class UnityGameGateway
         catch { return false; }
     }
 
-    private bool RotationMatches(TabletRotationTarget expected, Component visual, bool forRequest)
+    private bool RotationMatches(TabletRotationTarget expected, Component visual, bool forRequest, bool requirePointer = true)
     {
         if (_boardInventory is null || _boardPanel == null || visual == null) return false;
         var item = ReadNamedObject(visual, "Item");
@@ -38,17 +39,18 @@ internal sealed partial class UnityGameGateway
         var position = new GridPoint(x.Value, y.Value); var rotation = ReadNamedNullableInt(tablet, "rotation");
         if (!forRequest) return TabletRotationGuard.IsObserved(expected, id, key, position, rotation, sameInventory);
         var zone = ReadNamedObject(_boardPanel, "inventoryZone") as RectTransform;
+        var shown = zone != null && visual.transform is RectTransform iconRect && ScreenRect(zone).Contains(ScreenRect(iconRect).center);
         return TabletRotationGuard.CanRequest(expected, id, key, position, rotation, sameInventory,
             _boardVisible && ReadNamedString(_boardPanel, "InventoryMode") == "None", NativeCanRotate(tablet),
-            visual.gameObject.activeInHierarchy && ReadBool(visual, "Showing"),
-            zone != null && ScreenRect(zone).Contains(_boardPointer) &&
+            shown && visual.gameObject.activeInHierarchy && (!requirePointer || ReadBool(visual, "Showing")),
+            !requirePointer || zone != null && ScreenRect(zone).Contains(_boardPointer) &&
             visual.transform is RectTransform rect && ScreenRect(rect).Contains(_boardPointer));
     }
 
     private void CapturePointerRotation(ScreenKind screen, List<ScreenCandidate> candidates)
     {
         _pointerRotation = null;
-        if (screen != ScreenKind.Inventory || _placementPlan is null || !_boardVisible || _boardPanel == null) return;
+        if (!_manualRotationRequested || screen != ScreenKind.Inventory || _placementPlan is null || !_boardVisible || _boardPanel == null) return;
         foreach (var pair in _slotVisuals)
         {
             var visual = pair.Value;

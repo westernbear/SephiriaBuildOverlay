@@ -26,5 +26,8 @@
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\CandidateFramePolicy.cs" Link="CandidateFramePolicy.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\SlotMoveGuard.cs" Link="SlotMoveGuard.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\TabletRotationGuard.cs" Link="TabletRotationGuard.cs" />
+    <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\BoardOptimizationModels.cs" Link="BoardOptimizationModels.cs" />
+    <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\JointBoardPlanner.cs" Link="JointBoardPlanner.cs" />
+    <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\BoardOptimizationStep.cs" Link="BoardOptimizationStep.cs" />
   </ItemGroup>
 </Project>

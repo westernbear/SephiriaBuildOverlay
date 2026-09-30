@@ -162,6 +162,17 @@ internal sealed partial class UnityGameGateway
             Box(key + "l", new Rect(rect.x, rect.y, width, rect.height), color);
             Box(key + "r", new Rect(rect.xMax - width, rect.y, width, rect.height), color);
         }
+        public void Corners(string key, Rect rect, Color color, float length, float width)
+        {
+            Box(key + "tlh", new Rect(rect.x, rect.y, length, width), color);
+            Box(key + "tlv", new Rect(rect.x, rect.y, width, length), color);
+            Box(key + "trh", new Rect(rect.xMax - length, rect.y, length, width), color);
+            Box(key + "trv", new Rect(rect.xMax - width, rect.y, width, length), color);
+            Box(key + "blh", new Rect(rect.x, rect.yMax - width, length, width), color);
+            Box(key + "blv", new Rect(rect.x, rect.yMax - length, width, length), color);
+            Box(key + "brh", new Rect(rect.xMax - length, rect.yMax - width, length, width), color);
+            Box(key + "brv", new Rect(rect.xMax - width, rect.yMax - length, width, length), color);
+        }
         public void End()
         {
             foreach (var key in _elements.Where(x => x.Value.Generation != _generation).Select(x => x.Key).ToArray())

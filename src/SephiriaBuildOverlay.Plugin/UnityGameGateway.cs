@@ -78,7 +78,7 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
 
         var runId = FindRunId(playerId);
         var inventory = ReadInventory(localPlayer);
-        try { CaptureBoard(screen, candidates); }
+        try { CaptureBoard(screen, candidates, runId, playerId, owned); }
         catch (Exception ex)
         {
             _boardVisible = false; CancelGhostCalculation();

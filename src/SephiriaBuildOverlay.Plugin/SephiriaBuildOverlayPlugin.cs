@@ -17,7 +17,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
 {
     public const string PluginGuid = "io.github.sephiria.build-overlay";
     public const string PluginName = "Sephiria Build Overlay";
-    public const string PluginVersion = "0.1.3";
+    public const string PluginVersion = "0.1.4";
 
     private ConfigEntry<KeyCode> _importKey = null!;
     private ConfigEntry<KeyCode> _overlayKey = null!;
@@ -349,7 +349,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
 
     private void OnGUI()
     {
-        _gateway.SetBoardPointer(Event.current.mousePosition);
+        _gateway.SetBoardPointer(Event.current.mousePosition, Event.current.shift);
         HandleShortcutEvent();
         if (!_guiObserved) { _guiObserved = true; Logger.LogInfo("OnGUI callback active."); }
         DrawStyledWindows();

@@ -21,8 +21,9 @@ internal sealed partial class UnityGameGateway
     private Func<RunSnapshot, bool>? _pendingActionOutcome;
     private readonly List<GhostItem> _boardItems = new();
     private string _boardSignature = "";
+    private string _boardContext = "";
     private string _ghostResultSignature = "";
-    private Task<IReadOnlyList<ArtifactAssignment>>? _ghostTask;
+    private Task<BoardOptimizationResult>? _ghostTask;
     private string _ghostTaskSignature = "";
     private CancellationTokenSource? _ghostCancellation;
     private IReadOnlyList<ArtifactAssignment> _ghostAssignments = Array.Empty<ArtifactAssignment>();
@@ -30,7 +31,6 @@ internal sealed partial class UnityGameGateway
     private bool _boardVisible;
     private object? _boardInventory;
     private Component? _boardPanel;
-    private string? _nextMoveToken;
     internal int GhostCount => _ghostResultSignature == _boardSignature ? _ghostAssignments.Count : 0;
     private float _ghostPreviewUntil;
     private IReadOnlyList<ArtifactAssignment> _ghostPreview = Array.Empty<ArtifactAssignment>();
@@ -58,6 +58,7 @@ internal sealed partial class UnityGameGateway
         _ghostCancellation?.Cancel(); _ghostCancellation?.Dispose(); _ghostCancellation = null;
         _ghostTask = null; _ghostAssignments = Array.Empty<ArtifactAssignment>();
         _ghostResultSignature = ""; _ghostTaskSignature = "";
+        _optimizationInput = null; _optimizationResult = null; _expectedOptimizationStep = null; _optimizationAction = null;
     }
 
     private static Dictionary<GridPoint, int> ReadCellMap(object inventory, string name)
@@ -76,15 +77,17 @@ internal sealed partial class UnityGameGateway
         return result;
     }
 
-    private void CaptureBoard(ScreenKind screen, List<ScreenCandidate> candidates)
+    private void CaptureBoard(ScreenKind screen, List<ScreenCandidate> candidates, string runId, string playerId, bool owned)
     {
         _slotVisuals.Clear(); _itemSprites.Clear(); _slotLevels.Clear(); _disabledSlots.Clear(); _boardItems.Clear();
-        _boardVisible = false; _nextMoveToken = null; _pointerRotation = null; _boardSignature = "";
+        _boardVisible = false; _pointerRotation = null; _boardSignature = "";
+        _boardArtifacts.Clear(); _optimizationUnavailable = null; _optimizationAction = null;
+        _boardContext = $"{runId}:{playerId}:{owned}";
         _boardInventory = LocalInventory();
         var manager = ReadStatic("UIManager", "Instance");
         var registry = manager is null ? null : ReadNamedObject(manager, "uiElementsByTypename") as IDictionary;
         _boardPanel = registry?["UI_CharacterStatusPanel"] as Component;
-        if (_boardPanel == null || !_boardPanel.gameObject.activeInHierarchy || !ReadBool(_boardPanel, "IsOpened") || _boardInventory is null) return;
+        if (_boardPanel == null || !_boardPanel.gameObject.activeInHierarchy || !ReadBool(_boardPanel, "IsOpened") || _boardInventory is null) { CancelGhostCalculation(); return; }
         if (ReadNamedObject(_boardPanel, "PlayerAvatar") is not Component avatar || !ReferenceEquals(ReadNamedObject(avatar, "Inventory"), _boardInventory)) return;
         _boardVisible = true;
         if (ReadNamedObject(_boardPanel, "itemIcons") is not IEnumerable icons || ReadNamedObject(_boardInventory, "inventoryMatrix") is not IEnumerable contents) return;
@@ -119,6 +122,7 @@ internal sealed partial class UnityGameGateway
             var itemId = id.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
             _boardItems.Add(new GhostItem(itemId, key, new GridPoint(x.Value, y.Value), charm is null ? 0 : Math.Max(0, ReadNamedNullableInt(charm, "maxLevel") ?? 0),
                 charm is not null && criteria is null && _placementVerified.Contains(key)));
+            if (charm is not null) _boardArtifacts.Add(CaptureArtifact(item, charm, itemId, key, new GridPoint(x.Value, y.Value)));
             var itemEntity = ReadNamedObject(item, "Entity");
             if (itemEntity is not null && ReadNamedObject(itemEntity, "icon") is Sprite sprite && sprite != null) _itemSprites[itemId] = sprite;
         }
@@ -132,47 +136,16 @@ internal sealed partial class UnityGameGateway
             signature.Append('|').Append(item.InstanceId).Append(':').Append(item.Key).Append(':').Append(item.Position.X).Append(',').Append(item.Position.Y).Append(':').Append(item.MaxLevel).Append(':').Append(item.CanRelocate);
         AppendTabletState(signature, tablets);
         _boardSignature = signature.ToString();
-        if (_placementPlan is null) return;
+        if (_placementPlan is null || !owned) { CancelGhostCalculation(); return; }
+        if (screen == ScreenKind.Inventory)
+            foreach (var item in _boardItems.Where(x => _placementPlan.Artifacts.Any(g => g.CatalogKey == x.Key)))
+                if (_slotVisuals.TryGetValue(item.Position, out var icon) && icon.transform is RectTransform rect)
+                { var token = "board:item:" + item.InstanceId; candidates.Add(new ScreenCandidate(token, CandidateKind.Item, item.Key)); _rectangles[token] = rect; }
         CapturePointerRotation(screen, candidates);
-        if (_ghostTask is { IsCompleted: true })
-        {
-            if (_ghostTask.Status == TaskStatus.RanToCompletion && _ghostTaskSignature == _boardSignature)
-            {
-                _ghostAssignments = _ghostTask.Result; _ghostResultSignature = _ghostTaskSignature;
-            }
-            else if (_ghostTask.IsFaulted) _log.LogWarning("Placement preview failed: " + _ghostTask.Exception?.GetBaseException().Message);
-            _ghostTask = null;
-        }
-        if (_ghostTaskSignature != _boardSignature)
-        {
-            CancelGhostCalculation();
-            _ghostTaskSignature = _boardSignature;
-            _ghostCancellation = new CancellationTokenSource();
-            var token = _ghostCancellation.Token;
-            var inputItems = _boardItems.ToArray(); var inputSlots = slots.ToArray();
-            var goals = _placementPlan.Artifacts.Where(x => _placementVerified.Contains(x.CatalogKey)).ToArray();
-            var conditional = _boardConditional;
-            // No Unity object, native entity or request delegate enters this job.
-            _ghostTask = Task.Run(() => new SlotGhostPlanner().Solve(inputItems, inputSlots, goals, conditional, token), token);
-        }
+        try { CalculateOptimization(CaptureOptimizationInput(width, height, storage)); }
+        catch (Exception ex) { CancelGhostCalculation(); _optimizationUnavailable = ex.GetBaseException().Message; }
         if (screen != ScreenKind.Inventory || _ghostResultSignature != _boardSignature) return;
-        foreach (var assignment in _ghostAssignments)
-        {
-            var source = _boardItems.FirstOrDefault(x => x.InstanceId == assignment.InstanceId);
-            if (source is null || !_slotVisuals.TryGetValue(assignment.To, out var visual) || visual == null) continue;
-            // Move only into an empty slot. Cycles and occupied destinations
-            // remain ghost/manual guidance until safe swap sequencing is added.
-            if (_boardItems.Any(x => x.Position.Equals(assignment.To))) continue;
-            var method = _boardInventory.GetType().GetMethod("Swap", BindingFlags.Instance | BindingFlags.Public);
-            if (method is null || !CanMoveIntoEmptySlot(source, assignment.To)) continue;
-            var token = "move:" + source.InstanceId + ":" + assignment.To.X + ":" + assignment.To.Y;
-            candidates.Add(new ScreenCandidate(token, CandidateKind.Item, source.Key));
-            var inventory = _boardInventory;
-            _actions[token] = () => method.Invoke(inventory, new object[] { checked((sbyte)assignment.From.X), checked((sbyte)assignment.From.Y), checked((sbyte)assignment.To.X), checked((sbyte)assignment.To.Y) });
-            _rectangles[token] = visual.transform as RectTransform ?? visual.GetComponent<RectTransform>();
-            _actionOutcomes[token] = snapshot => snapshot.Inventory.Any(x => x.InstanceId == assignment.InstanceId && x.X == assignment.To.X && x.Y == assignment.To.Y);
-            _nextMoveToken ??= token;
-        }
+        CaptureOptimizationAction(candidates);
     }
 
     private bool CanMoveIntoEmptySlot(GhostItem item, GridPoint destination)
@@ -201,15 +174,17 @@ internal sealed partial class UnityGameGateway
             return new Recommendation(new RecommendedAction(ActionKind.Rotate, rotation.Token,
                 "포인터 아래 석판을 네이티브 방향으로 한 번 회전 (사용자 지정·최적화 아님)", snapshot.Identity,
                 expectedResult: $"회전 {rotation.Rotation * 90}° → {rotation.NextRotation * 90}° · 소비 없음"),
-                "포인터 아래 석판 한 번 회전");
-        if (_nextMoveToken is null || !snapshot.IsLocalPlayerOwned || snapshot.ServerRequestPending || _ghostResultSignature != _boardSignature)
-            return new Recommendation(null, "배치 고스트는 안내용입니다. 조건부 효과와 점유 칸은 수동으로 확인하세요.");
-        return new Recommendation(new RecommendedAction(ActionKind.Move, _nextMoveToken, "현재 석판 기준 더 높은 레벨의 빈 슬롯으로 이동", snapshot.Identity), "고스트 슬롯으로 한 아이템 이동");
+                "포인터 아래 석판 한 번 회전 (Shift)");
+        if (_optimizationAction is { } optimized && snapshot.IsLocalPlayerOwned && !snapshot.ServerRequestPending)
+            return new Recommendation(new RecommendedAction(optimized.Kind, optimized.TargetToken, optimized.Reason, snapshot.Identity,
+                expectedResult: optimized.ExpectedResult), "석판·아티팩트 통합 배치 개선 (제한 탐색)");
+        return new Recommendation(null, _optimizationUnavailable ?? _optimizationResult?.Unavailable ??
+            (_ghostTask is not null ? "석판·아티팩트 배치를 계산 중입니다." : "현재 탐색에서 더 나은 배치를 찾지 못했습니다."));
     }
 
     public void DrawPlacementGhosts(float opacity, float scale)
     {
-        if (Event.current.type != EventType.Repaint || !_boardVisible || _boardPanel == null || !IsGhostPreview && _ghostResultSignature != _boardSignature) return;
+        if (Event.current.type != EventType.Repaint || !_boardVisible || _lastSnapshot?.IsLocalPlayerOwned != true || _boardPanel == null || !IsGhostPreview && _ghostResultSignature != _boardSignature) return;
         var zone = ReadNamedObject(_boardPanel, "inventoryZone") as RectTransform;
         if (zone == null) return;
         var clip = ScreenRect(zone);
@@ -229,8 +204,9 @@ internal sealed partial class UnityGameGateway
                 _itemLabel ??= new GUIStyle(GUI.skin.label) { font = _itemFont, alignment = TextAnchor.MiddleCenter, wordWrap = true };
                 _itemLabel.fontSize = Mathf.RoundToInt(11 * scale); _itemLabel.normal.textColor = new Color(.55f, 1f, .8f);
                 GUI.color = Color.white;
-                var manual = _boardItems.Any(x => x.Position.Equals(assignment.To)) ? " · 수동" : "";
-                _nativeLayer?.Label("ghost-label:" + assignment.InstanceId, new Rect(rect.x, rect.yMax - 25 * scale, rect.width, 25 * scale), IsGhostPreview ? "표시 검증\n비실행" : "목표 배치" + manual, new Color(.55f, 1f, .8f), Mathf.Round(_nativeFontPixels * scale));
+                var tablet = _optimizationInput?.Tablets.FirstOrDefault(x => x.Id == assignment.InstanceId);
+                var detail = tablet is not null && _optimizationResult is not null ? $"{_optimizationResult.Layout.Rotations[tablet.Id] * 90}°" : "";
+                _nativeLayer?.Label("ghost-label:" + assignment.InstanceId, new Rect(rect.x, rect.yMax - 25 * scale, rect.width, 25 * scale), IsGhostPreview ? "표시 검증\n비실행" : detail, new Color(.55f, 1f, .8f), Mathf.Round(_nativeFontPixels * scale));
             }
         }
         finally { GUI.color = previous; }

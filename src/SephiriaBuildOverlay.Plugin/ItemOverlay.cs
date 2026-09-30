@@ -49,23 +49,26 @@ internal sealed partial class UnityGameGateway
                     CandidateFrameKind.Required => new Color(1f, .83f, .35f),
                     _ => new Color(.45f, .8f, 1f)
                 };
-                var thickness = Math.Max(2, Mathf.Round(2 * scale));
+                var thickness = CandidateFramePolicy.Thickness(frame, scale);
                 // Draw outside the existing card, leaving its rarity frame and
                 // item artwork intact. A second frame distinguishes F8 without
                 // relying on color alone; no flashing / per-frame animation.
                 var outer = new Rect(rect.x - thickness, rect.y - thickness, rect.width + thickness * 2, rect.height + thickness * 2);
+                var outline = new Rect(outer.x - 2, outer.y - 2, outer.width + 4, outer.height + 4);
+                _nativeLayer?.Border("candidate-contrast:" + candidate.Token, outline, new Color(.025f, .015f, .04f, .95f), thickness + 2);
                 _nativeLayer?.Border("candidate:" + candidate.Token, outer, color, thickness);
+                _nativeLayer?.Corners("candidate-corners:" + candidate.Token, outer, new Color(1f, 1f, .95f), Math.Max(12, rect.width * .18f), Math.Max(2, thickness / 2));
                 if (selected)
                 {
                     var halo = new Rect(outer.x - thickness - 2, outer.y - thickness - 2, outer.width + (thickness + 2) * 2, outer.height + (thickness + 2) * 2);
-                    _nativeLayer?.Border("candidate-next:" + candidate.Token, halo, new Color(color.r, color.g, color.b, .4f), thickness);
+                    _nativeLayer?.Border("candidate-next:" + candidate.Token, halo, new Color(color.r, color.g, color.b, .75f), Math.Max(2, thickness / 2));
                     var key = action!.AutomaticBindingAllowed ? confirmKey : "수동";
                     var badgeWidth = Math.Max(28 * scale, _itemLabel.CalcSize(new GUIContent(key)).x + 8);
                     var badge = new Rect(rect.xMax - badgeWidth, rect.yMax - 22 * scale, badgeWidth, 22 * scale);
                     _nativeLayer?.Box("key-bg:" + candidate.Token, badge, new Color(.025f, .035f, .055f, .9f));
                     _nativeLayer?.Label("key:" + candidate.Token, badge, key, color, Mathf.Round(_nativeFontPixels * scale));
                 }
-                if (selected && action?.Kind == ActionKind.Rotate && rect.Contains(mouse))
+                if (selected && action is not null && (action.Kind == ActionKind.Rotate || action.Kind == ActionKind.Move))
                 {
                     var detail = action.ExpectedResult;
                     var pixels = Mathf.Round(_nativeFontPixels * scale);
