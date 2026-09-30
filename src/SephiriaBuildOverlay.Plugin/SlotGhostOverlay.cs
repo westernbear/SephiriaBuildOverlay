@@ -16,6 +16,7 @@ internal sealed partial class UnityGameGateway
     private readonly Dictionary<GridPoint, Component> _slotVisuals = new();
     private readonly Dictionary<string, Sprite> _itemSprites = new(StringComparer.Ordinal);
     private readonly Dictionary<GridPoint, int> _slotLevels = new();
+    private readonly HashSet<GridPoint> _disabledSlots = new();
     private readonly Dictionary<string, Func<RunSnapshot, bool>> _actionOutcomes = new(StringComparer.Ordinal);
     private Func<RunSnapshot, bool>? _pendingActionOutcome;
     private readonly List<GhostItem> _boardItems = new();
@@ -77,7 +78,7 @@ internal sealed partial class UnityGameGateway
 
     private void CaptureBoard(ScreenKind screen, List<ScreenCandidate> candidates)
     {
-        _slotVisuals.Clear(); _itemSprites.Clear(); _slotLevels.Clear(); _boardItems.Clear();
+        _slotVisuals.Clear(); _itemSprites.Clear(); _slotLevels.Clear(); _disabledSlots.Clear(); _boardItems.Clear();
         _boardVisible = false; _nextMoveToken = null;
         _boardInventory = LocalInventory();
         var manager = ReadStatic("UIManager", "Instance");
@@ -103,6 +104,7 @@ internal sealed partial class UnityGameGateway
             _slotVisuals[position] = icon;
             levels.TryGetValue(position, out var level); disabled.TryGetValue(position, out var disable);
             _slotLevels[position] = level;
+            if (disable > 0) _disabledSlots.Add(position);
             slots.Add(new GhostSlot(position, level, disable > 0));
         }
         foreach (var pair in contents)
@@ -173,15 +175,20 @@ internal sealed partial class UnityGameGateway
 
     private bool CanMoveIntoEmptySlot(GhostItem item, GridPoint destination)
     {
-        if (_boardInventory is null || ReadNamedObject(_boardPanel!, "InventoryMode")?.ToString() != "None") return false;
-        var method = _boardInventory.GetType().GetMethod("CanAddItemAtPositionForSwap", BindingFlags.Instance | BindingFlags.Public);
-        var positionType = GameType("ItemPosition");
-        if (method is null || positionType is null) return false;
+        if (_boardInventory is null || _boardPanel == null) return false;
+        var find = _boardInventory.GetType().GetMethod("FindItem", new[] { typeof(sbyte), typeof(sbyte) });
+        if (find is null) return false;
         try
         {
-            var position = Activator.CreateInstance(positionType, new object[] { checked((sbyte)destination.X), checked((sbyte)destination.Y) });
-            var result = method.Invoke(_boardInventory, new object[] { int.Parse(item.Key), (sbyte)1, position! });
-            return result?.ToString() == "Success";
+            var source = find.Invoke(_boardInventory, new object[] { checked((sbyte)item.Position.X), checked((sbyte)item.Position.Y) });
+            var target = find.Invoke(_boardInventory, new object[] { checked((sbyte)destination.X), checked((sbyte)destination.Y) });
+            // CanAddItemAtPositionForSwap checks an ADD across inventories and
+            // rejects unique effects already owned at the source. Normal Swap
+            // moves the existing whole instance; it does not acquire a copy.
+            return SlotMoveGuard.CanMove(item, source is null ? null : ReadNamedString(source, "InstanceID"),
+                source is null ? null : ReadNamedString(source, "EntityID"), target is null,
+                ReadNamedObject(_boardPanel, "InventoryMode")?.ToString() == "None",
+                _slotVisuals.ContainsKey(item.Position), _slotVisuals.ContainsKey(destination), _disabledSlots.Contains(destination));
         }
         catch { return false; }
     }

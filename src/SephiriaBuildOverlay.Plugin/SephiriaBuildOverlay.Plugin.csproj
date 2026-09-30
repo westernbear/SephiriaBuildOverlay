@@ -3,7 +3,7 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <AssemblyName>SephiriaBuildOverlay.Plugin</AssemblyName>
     <RootNamespace>SephiriaBuildOverlay.Plugin</RootNamespace>
-    <Version>0.1.1</Version>
+    <Version>0.1.2</Version>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\SephiriaBuildOverlay.Core\SephiriaBuildOverlay.Core.csproj" />

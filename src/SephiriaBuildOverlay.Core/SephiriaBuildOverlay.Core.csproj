@@ -3,7 +3,7 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <AssemblyName>SephiriaBuildOverlay.Core</AssemblyName>
     <RootNamespace>SephiriaBuildOverlay.Core</RootNamespace>
-    <Version>0.1.1</Version>
+    <Version>0.1.2</Version>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591</NoWarn>
   </PropertyGroup>

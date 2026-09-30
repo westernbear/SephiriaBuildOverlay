@@ -24,5 +24,6 @@
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\ReviewCheckpoint.cs" Link="ReviewCheckpoint.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\SlotGhostPlanner.cs" Link="SlotGhostPlanner.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\CandidateFramePolicy.cs" Link="CandidateFramePolicy.cs" />
+    <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\SlotMoveGuard.cs" Link="SlotMoveGuard.cs" />
   </ItemGroup>
 </Project>
