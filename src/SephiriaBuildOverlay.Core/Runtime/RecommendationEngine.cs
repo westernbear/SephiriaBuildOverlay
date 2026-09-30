@@ -30,6 +30,7 @@ public sealed class RecommendationEngine
     private Recommendation RecommendArtifact(BuildPlan plan, ActiveBuildState state, RunSnapshot snapshot, bool shop)
     {
         var remaining = plan.Artifacts
+            .Where(target => target.Role is TargetRole.Required or TargetRole.Recommended)
             .Select(target => new { Target = target, Remaining = target.DesiredAcquisitions - state.EffectiveAcquisitions(target.CatalogKey) })
             .Where(x => x.Remaining > 0)
             .OrderBy(x => x.Target.Role == TargetRole.Required ? 0 : 1)
@@ -96,7 +97,7 @@ public sealed class RecommendationEngine
     private Recommendation RecommendMiracle(BuildPlan plan, ActiveBuildState state, RunSnapshot snapshot)
     {
         if (string.IsNullOrEmpty(plan.MiracleTarget)) return new Recommendation(null, "나무 뿌리 목표가 없습니다.");
-        if (state.MiracleAcquired || snapshot.CurrentMiracle == plan.MiracleTarget)
+        if (state.MiracleAcquired || snapshot.MiracleKeys.Contains(plan.MiracleTarget!))
             return new Recommendation(null, "목표 나무 뿌리 능력을 이미 획득했습니다.");
         var target = snapshot.Candidates.FirstOrDefault(x => x.IsSelectable && x.Kind == CandidateKind.Miracle && x.CatalogKey == plan.MiracleTarget);
         if (target is not null)
@@ -120,7 +121,7 @@ public sealed class RecommendationEngine
 
     private static DiceRisk DiceWarning(BuildPlan plan, ActiveBuildState state, RunSnapshot snapshot, ScreenCandidate candidate)
     {
-        if (state.MiracleAcquired || string.IsNullOrEmpty(plan.MiracleTarget) || candidate.DiceCost <= 0 || candidate.IsFreeReroll)
+        if (state.MiracleAcquired || string.IsNullOrEmpty(plan.MiracleTarget) || snapshot.MiracleKeys.Contains(plan.MiracleTarget!) || candidate.DiceCost <= 0 || candidate.IsFreeReroll)
             return DiceRisk.None;
         if (snapshot.Screen == ScreenKind.MiracleChoice) return DiceRisk.None;
         return snapshot.SharedDice - candidate.DiceCost <= 0
@@ -129,7 +130,7 @@ public sealed class RecommendationEngine
     }
 
     private bool IsAutomaticAllowed(string catalogKey) =>
-        !_bindings.TryGetValue(catalogKey, out var binding) || binding.AllowsAutomaticAction;
+        _bindings.TryGetValue(catalogKey, out var binding) && binding.AllowsAutomaticAction;
 
     private static int IndexOf(IReadOnlyList<string> list, string value)
     {

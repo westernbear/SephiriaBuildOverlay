@@ -18,5 +18,11 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\SephiriaBuildOverlay.Core\SephiriaBuildOverlay.Core.csproj" />
+    <None Update="Fixtures\*.json" CopyToOutputDirectory="PreserveNewest" />
+    <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\RuntimeMemberCache.cs" Link="RuntimeMemberCache.cs" />
+    <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\RuntimePerformance.cs" Link="RuntimePerformance.cs" />
+    <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\ReviewCheckpoint.cs" Link="ReviewCheckpoint.cs" />
+    <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\SlotGhostPlanner.cs" Link="SlotGhostPlanner.cs" />
+    <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\CandidateFramePolicy.cs" Link="CandidateFramePolicy.cs" />
   </ItemGroup>
 </Project>

@@ -19,7 +19,7 @@ public sealed class WikiBuildSource : IBuildSource, IDisposable
     public WikiBuildSource(HttpClient? httpClient = null, BuildCache? cache = null, Func<DateTimeOffset>? utcNow = null)
     {
         _ownsClient = httpClient is null;
-        _httpClient = httpClient ?? new HttpClient();
+        _httpClient = httpClient ?? new HttpClient(new HttpClientHandler { UseCookies = false, AllowAutoRedirect = false });
         _cache = cache ?? new BuildCache();
         _utcNow = utcNow ?? (() => DateTimeOffset.UtcNow);
     }
@@ -46,8 +46,13 @@ public sealed class WikiBuildSource : IBuildSource, IDisposable
             var json = await ReadLimitedAsync(stream, timeout.Token).ConfigureAwait(false);
             var build = WikiBuildParser.Parse(json, locator.Id);
             var now = _utcNow();
-            await _cache.SaveAsync(locator.Id, json, now, cancellationToken).ConfigureAwait(false);
-            return new BuildImportResult(build, ImportOrigin.Network, now);
+            string? cacheWarning = null;
+            try { await _cache.SaveAsync(locator.Id, json, now, cancellationToken).ConfigureAwait(false); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                cacheWarning = "최신 빌드 조회 성공. 캐시 저장 실패: " + ex.Message;
+            }
+            return new BuildImportResult(build, ImportOrigin.Network, now, cacheWarning);
         }
         catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
         {

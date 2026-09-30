@@ -1,3 +1,5 @@
+using System.Numerics;
+
 namespace SephiriaBuildOverlay.Core.Solvers;
 
 public sealed class MovableArtifact
@@ -52,36 +54,46 @@ public sealed class ArtifactAssignmentResult
 
 public sealed class ArtifactAssignmentSolver
 {
-    private const long Impossible = 4_000_000_000_000L;
-
     public ArtifactAssignmentResult Solve(IReadOnlyList<MovableArtifact> artifacts, IReadOnlyList<ArtifactDestination> destinations,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var size = Math.Max(artifacts.Count, destinations.Count);
         if (size == 0) return new ArtifactAssignmentResult(Array.Empty<ArtifactAssignment>(), 0, 0);
-        var costs = new long[size, size];
+        if (destinations.Any(x => x.RequiredQuantityValue < 0 || x.RequiredEffectValue < 0 || x.RecommendedValue < 0 || x.ComboValue < 0))
+            throw new ArgumentException("Objective values must be nonnegative.", nameof(destinations));
+        // Each radix exceeds the maximum total contribution of every lower tier.
+        // BigInteger avoids overflow for large boards or manually edited priorities.
+        var movementBound = (BigInteger)size * (artifacts.Count == 0 || destinations.Count == 0 ? 0 :
+            artifacts.Max(a => destinations.Max(d => a.Position.ManhattanDistance(d.Position))));
+        BigInteger Sum(Func<ArtifactDestination, int> selector) => destinations.Aggregate(BigInteger.Zero, (total, d) => total + selector(d));
+        var comboWeight = movementBound + 1;
+        var recommendedWeight = Sum(d => d.ComboValue) * comboWeight + movementBound + 1;
+        var effectWeight = Sum(d => d.RecommendedValue) * recommendedWeight + recommendedWeight;
+        var quantityWeight = Sum(d => d.RequiredEffectValue) * effectWeight + effectWeight;
+        var totalBenefit = Sum(d => d.RequiredQuantityValue) * quantityWeight + quantityWeight;
+        var impossible = totalBenefit + movementBound + 1;
+        var costs = new BigInteger[size, size];
         for (var row = 0; row < size; row++)
         for (var column = 0; column < size; column++)
         {
             if (row >= artifacts.Count || column >= destinations.Count) { costs[row, column] = 0; continue; }
             var artifact = artifacts[row]; var destination = destinations[column];
-            if (artifact.CatalogKey != destination.CatalogKey) { costs[row, column] = Impossible; continue; }
-            // Fixed positional weights encode the documented lexicographic objective; normal boards cannot overflow a lower tier.
-            var benefit = destination.RequiredQuantityValue * 1_000_000_000L
-                        + destination.RequiredEffectValue * 1_000_000L
-                        + destination.RecommendedValue * 10_000L
-                        + destination.ComboValue * 100L;
+            if (artifact.CatalogKey != destination.CatalogKey) { costs[row, column] = impossible; continue; }
+            var benefit = destination.RequiredQuantityValue * quantityWeight
+                        + destination.RequiredEffectValue * effectWeight
+                        + destination.RecommendedValue * recommendedWeight
+                        + destination.ComboValue * comboWeight;
             costs[row, column] = artifact.Position.ManhattanDistance(destination.Position) - benefit;
         }
 
-        var assignment = Hungarian(costs, cancellationToken);
+        var assignment = Hungarian(costs, (impossible + totalBenefit + movementBound + 1) * (size + 2), cancellationToken);
         var moves = new List<ArtifactAssignment>();
         var matchedSlots = new HashSet<int>();
         for (var row = 0; row < artifacts.Count; row++)
         {
             var column = assignment[row];
-            if (column < 0 || column >= destinations.Count || costs[row, column] >= Impossible) continue;
+            if (column < 0 || column >= destinations.Count || costs[row, column] >= impossible) continue;
             // Non-beneficial slots are allowed only when they describe an exact already-desired location.
             var from = artifacts[row].Position; var to = destinations[column].Position;
             moves.Add(new ArtifactAssignment(artifacts[row].InstanceId, from, to, from.ManhattanDistance(to)));
@@ -93,21 +105,21 @@ public sealed class ArtifactAssignmentSolver
     }
 
     // O(n^3) minimum-cost perfect assignment, deterministic by row/column order.
-    private static int[] Hungarian(long[,] cost, CancellationToken cancellationToken)
+    private static int[] Hungarian(BigInteger[,] cost, BigInteger infinity, CancellationToken cancellationToken)
     {
         var n = cost.GetLength(0);
-        var u = new long[n + 1]; var v = new long[n + 1]; var p = new int[n + 1]; var way = new int[n + 1];
+        var u = new BigInteger[n + 1]; var v = new BigInteger[n + 1]; var p = new int[n + 1]; var way = new int[n + 1];
         for (var i = 1; i <= n; i++)
         {
             cancellationToken.ThrowIfCancellationRequested();
             p[0] = i;
             var j0 = 0;
-            var min = Enumerable.Repeat(long.MaxValue / 4, n + 1).ToArray();
+            var min = Enumerable.Repeat(infinity, n + 1).ToArray();
             var used = new bool[n + 1];
             do
             {
                 used[j0] = true;
-                var i0 = p[j0]; var delta = long.MaxValue / 4; var j1 = 0;
+                var i0 = p[j0]; var delta = infinity; var j1 = 0;
                 for (var j = 1; j <= n; j++)
                 {
                     if (used[j]) continue;

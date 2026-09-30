@@ -61,10 +61,10 @@ public sealed class ActiveBuildState
         {
             var progress = state.GetOrCreate(target.CatalogKey);
             if (heldCounts.TryGetValue(target.CatalogKey, out var held))
-                progress.UncertainMinimum = Math.Max(progress.UncertainMinimum, held);
+                progress.UncertainMinimum = Math.Max(progress.UncertainMinimum, Math.Max(0, held - progress.ConfirmedAcquisitions));
         }
         state.MiracleAcquired = state.MiracleAcquired ||
-            (!string.IsNullOrEmpty(plan.MiracleTarget) && snapshot.CurrentMiracle == plan.MiracleTarget);
+            (!string.IsNullOrEmpty(plan.MiracleTarget) && snapshot.MiracleKeys.Contains(plan.MiracleTarget!));
         return state;
     }
 

@@ -8,6 +8,38 @@ namespace SephiriaBuildOverlay.Tests;
 public sealed class ReviewAndProgressTests
 {
     [Fact]
+    public void UnknownRecommendedItemRemainsVisibleChecklistButRequiredBlocks()
+    {
+        var build = new ImportedBuild(Guid.NewGuid(), "unknown", "1.0.33", null, null,
+            new[] { new ImportedSection("s", "section", "", new[] { new ImportedItem("one", "missing") }) },
+            new Dictionary<string, int>());
+        var review = new BuildReviewSession(build, new VersionedCatalog("1.0.33", Array.Empty<CatalogEntry>()));
+        review.VerifyBindings(Array.Empty<GameEntityDescriptor>());
+        review.Sections[0].Role = TargetRole.Recommended;
+        var plan = review.CreatePlan("1.0.33");
+        Assert.Empty(plan.Artifacts);
+        Assert.Contains(plan.Checklist, line => line.Contains("missing") && line.Contains("수동 확인"));
+        review.Sections[0].Role = TargetRole.Required;
+        Assert.Throws<InvalidOperationException>(() => review.CreatePlan("1.0.33"));
+    }
+
+    [Fact]
+    public void ReactivationDoesNotCountConfirmedInventoryAgain()
+    {
+        var plan = Plan(desired: 3);
+        var empty = Snapshot();
+        var state = ActiveBuildState.Activate(plan, empty);
+        state.RecordArtifact("a", ArtifactProgressEvent.RewardAcquired);
+        var held = Snapshot(inventory: new[] { new InventoryArtifact("held", "a") });
+        Assert.Same(state, ActiveBuildState.Activate(plan, held, state));
+        Assert.Equal(1, state.EffectiveAcquisitions("a"));
+        Assert.False(state.Artifacts["a"].IsUncertain);
+        state.RecordArtifact("a", ArtifactProgressEvent.RewardAcquired); // wisdom merge leaves one instance
+        ActiveBuildState.Activate(plan, held, state);
+        Assert.Equal(2, state.EffectiveAcquisitions("a"));
+    }
+
+    [Fact]
     public void EmbeddedCatalogContainsCompleteVersionedDataAndWeaponParents()
     {
         var catalog = VersionedCatalog.LoadEmbedded("1.0.33");
@@ -15,9 +47,17 @@ public sealed class ReviewAndProgressTests
         Assert.True(catalog.Entries.Count(x => x.Kind == CatalogKind.Artifact) >= 250);
         Assert.True(catalog.Entries.Count(x => x.Kind == CatalogKind.Weapon) >= 150);
         Assert.True(catalog.Entries.Count(x => x.Kind == CatalogKind.Miracle) >= 20);
-        Assert.Equal("181", catalog.FindBySlug("blue_claws", CatalogKind.Artifact)!.GameKey);
+        Assert.Equal("1145", catalog.FindBySlug("blue_claws", CatalogKind.Artifact)!.GameKey);
+        var needle = catalog.FindBySlug("unalloyed_gold_needle", CatalogKind.Artifact);
+        Assert.NotNull(needle);
+        Assert.Equal("1289", needle!.GameKey);
+        Assert.Equal(string.Empty, needle.Category); // artifacts without combos must not be omitted
+        Assert.False(needle.IsDual);
+        var dual = catalog.FindBySlug("ice_cloud_butterfly", CatalogKind.Artifact)!;
+        Assert.Equal("Rare", dual.Rarity);
+        Assert.True(dual.IsDual);
         var path = catalog.BuildWeaponPath("eternal_snow_silence");
-        Assert.Equal("116", path[^1]);
+        Assert.Equal("420", path[^1]);
         Assert.True(path.Count >= 3);
         foreach (var weapon in catalog.Entries.Where(x => x.Kind == CatalogKind.Weapon))
             Assert.Equal(weapon.GameKey, catalog.BuildWeaponPath(weapon.Slug)[^1]);
@@ -53,6 +93,16 @@ public sealed class ReviewAndProgressTests
         Assert.True(review.ValidateForActivation("1.0.33").CanActivate);
         Assert.Equal(BindingStatus.MetadataMismatch, review.Bindings["a"].Status);
         Assert.False(review.Bindings["a"].AllowsAutomaticAction);
+    }
+
+    [Fact]
+    public void IntermediateWeaponPathBindingsAreVerified()
+    {
+        var (review, entities) = CreateReview();
+        review.VerifyBindings(entities);
+        Assert.Equal(BindingStatus.Verified, review.Bindings["weapon-root"].Status);
+        review.VerifyBindings(entities.Where(x => x.GameKey != "weapon-root"));
+        Assert.False(review.Bindings["weapon-root"].AllowsAutomaticAction);
     }
 
     [Fact]

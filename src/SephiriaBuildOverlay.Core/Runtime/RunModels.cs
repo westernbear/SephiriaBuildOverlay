@@ -82,16 +82,18 @@ public sealed class RunSnapshot
         int money,
         int sharedDice,
         bool isLocalPlayerOwned = true,
-        bool serverRequestPending = false)
+        bool serverRequestPending = false,
+        IReadOnlyList<string>? miracleKeys = null)
     {
         RunId = runId;
         LocalPlayerId = localPlayerId;
         Revision = revision;
         Screen = screen;
-        Candidates = candidates;
-        Inventory = inventory;
+        Candidates = Array.AsReadOnly(candidates.ToArray());
+        Inventory = Array.AsReadOnly(inventory.ToArray());
         CurrentWeapon = currentWeapon;
         CurrentMiracle = currentMiracle;
+        MiracleKeys = Array.AsReadOnly((miracleKeys ?? (currentMiracle is null ? Array.Empty<string>() : new[] { currentMiracle })).ToArray());
         Money = money;
         SharedDice = sharedDice;
         IsLocalPlayerOwned = isLocalPlayerOwned;
@@ -106,6 +108,7 @@ public sealed class RunSnapshot
     public IReadOnlyList<InventoryArtifact> Inventory { get; }
     public string? CurrentWeapon { get; }
     public string? CurrentMiracle { get; }
+    public IReadOnlyList<string> MiracleKeys { get; }
     public int Money { get; }
     public int SharedDice { get; }
     public bool IsLocalPlayerOwned { get; }

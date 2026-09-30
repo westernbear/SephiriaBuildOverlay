@@ -22,6 +22,8 @@ public sealed class BuildLocatorTests
     [Theory]
     [InlineData("http://sephiria.wiki/builds/c4fa31fc-5b95-4e04-a08b-dfb752f3bf21")]
     [InlineData("https://evil.example/builds/c4fa31fc-5b95-4e04-a08b-dfb752f3bf21")]
+    [InlineData("https://user@sephiria.wiki/builds/c4fa31fc-5b95-4e04-a08b-dfb752f3bf21")]
+    [InlineData("https://sephiria.wiki:8443/builds/c4fa31fc-5b95-4e04-a08b-dfb752f3bf21")]
     [InlineData("https://sephiria.wiki/api/builds/c4fa31fc-5b95-4e04-a08b-dfb752f3bf21")]
     [InlineData("https://sephiria.wiki/builds/c4fa31fc-5b95-4e04-a08b-dfb752f3bf21?x=1")]
     [InlineData("{c4fa31fc-5b95-4e04-a08b-dfb752f3bf21}")]
@@ -31,11 +33,68 @@ public sealed class BuildLocatorTests
 
 public sealed class WikiBuildSourceTests : IDisposable
 {
+    [Fact]
+    public async Task RecordedPublicBuildPreservesActualCountsAndAllSections()
+    {
+        // Public API response, 2026-09-30. Descriptive prose was removed from the fixture.
+        var json = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "Fixtures", "wiki-c4fa31fc.json"));
+        using var source = Source(new StubHandler(_ => JsonResponse(json)));
+        var result = await source.ImportAsync(BuildLocator.Parse(BuildId.ToString("D")));
+        Assert.Equal(5, result.Build.Sections.Count);
+        var items = result.Build.Sections.SelectMany(section => section.Items).ToArray();
+        Assert.Equal(49, items.Length);
+        Assert.Equal(4, items.Count(item => item.Slug == "unalloyed_gold_needle"));
+        Assert.Equal(2, items.Count(item => item.Slug == "blue_claws"));
+        Assert.Equal(49, items.Select(item => item.InstanceId).Distinct().Count());
+        var review = new SephiriaBuildOverlay.Core.Review.BuildReviewSession(result.Build,
+            SephiriaBuildOverlay.Core.Catalog.VersionedCatalog.LoadEmbedded());
+        Assert.False(review.ValidateForActivation("1.0.33").CanActivate);
+        Assert.All(items, item => Assert.NotNull(SephiriaBuildOverlay.Core.Catalog.VersionedCatalog.LoadEmbedded().FindBySlug(item.Slug)));
+    }
+
     private readonly string _cacheDirectory = Path.Combine(Path.GetTempPath(), "sbo-tests-" + Guid.NewGuid().ToString("N"));
     private static readonly Guid BuildId = Guid.Parse("c4fa31fc-5b95-4e04-a08b-dfb752f3bf21");
 
     [Fact]
-    public async Task ParsesRealResponseShapeAndPreservesEveryDuplicateOccurrence()
+    public async Task RequestsOnlyFixedPublicApiWithoutUserCredentials()
+    {
+        using var source = Source(new StubHandler(request =>
+        {
+            Assert.Equal($"https://www.sephiria.wiki/api/builds/{BuildId:D}", request.RequestUri!.AbsoluteUri);
+            Assert.Equal(HttpMethod.Get, request.Method);
+            Assert.Null(request.Headers.Authorization);
+            Assert.False(request.Headers.Contains("Cookie"));
+            return JsonResponse(ExampleJson());
+        }));
+        await source.ImportAsync(BuildLocator.Parse(BuildId.ToString("D")));
+    }
+
+    [Fact]
+    public async Task CacheWriteFailureDoesNotDiscardFreshSuccessfulResponse()
+    {
+        Directory.CreateDirectory(_cacheDirectory);
+        var path = Path.Combine(_cacheDirectory, "not-a-directory");
+        await File.WriteAllTextAsync(path, "test");
+        using var source = new WikiBuildSource(new HttpClient(new StubHandler(_ => JsonResponse(ExampleJson()))), new BuildCache(path));
+        var result = await source.ImportAsync(BuildLocator.Parse(BuildId.ToString("D")));
+        Assert.Equal(ImportOrigin.Network, result.Origin);
+        Assert.Contains("캐시 저장 실패", result.Warning);
+    }
+
+    [Fact]
+    public async Task RejectsStreamingResponseWithoutContentLengthAtByteLimit()
+    {
+        using var source = Source(new StubHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StreamContent(new NonSeekableStream(new byte[WikiBuildSource.MaximumResponseBytes + 1]))
+        }));
+        var error = await Assert.ThrowsAsync<BuildImportException>(() => source.ImportAsync(BuildLocator.Parse(BuildId.ToString("D"))));
+        Assert.Contains("2 MiB", error.Message);
+        Assert.False(Directory.Exists(_cacheDirectory));
+    }
+
+    [Fact]
+    public async Task ParsesSyntheticResponseShapeAndPreservesEveryDuplicateOccurrence()
     {
         var handler = new StubHandler(_ => JsonResponse(ExampleJson()));
         using var source = Source(handler);
@@ -104,7 +163,7 @@ public sealed class WikiBuildSourceTests : IDisposable
     };
 
     private static string ExampleJson() => """
-    {"data":{"postUuid":"$BUILD_ID$","title":"recorded 1.0.33 example","version":"1.0.33",
+    {"data":{"postUuid":"$BUILD_ID$","title":"synthetic 1.0.33 example","version":"1.0.33",
     "weapon":"eternal_snow_silence","miracle":"explorer","costume":"wings_lost_bat","combo":["glacier","precision"],
     "content":[
       {"label":"start","description":"","items":[{"id":"1","value":"blue_claws"},{"id":"2","value":"blue_claws"}]},
@@ -126,5 +185,11 @@ public sealed class WikiBuildSourceTests : IDisposable
         public StubHandler(Func<HttpRequestMessage, HttpResponseMessage> handler) => _handler = handler;
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
             Task.FromResult(_handler(request));
+    }
+
+    private sealed class NonSeekableStream : MemoryStream
+    {
+        public NonSeekableStream(byte[] data) : base(data) { }
+        public override bool CanSeek => false;
     }
 }

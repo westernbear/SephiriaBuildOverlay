@@ -28,6 +28,10 @@ public sealed class CatalogEntry
     [JsonProperty("rarity")]
     public string? Rarity { get; set; }
 
+    // Wiki's Eternal label is represented by rarity=Rare and isDual=true in 1.0.33.
+    [JsonProperty("isDual")]
+    public bool? IsDual { get; set; }
+
     [JsonProperty("category")]
     public string? Category { get; set; }
 
@@ -47,7 +51,8 @@ public sealed class GameEntityDescriptor
         string? rarity = null,
         string? category = null,
         int? tier = null,
-        string? parentGameKey = null)
+        string? parentGameKey = null,
+        bool? isDual = null)
     {
         GameKey = gameKey;
         Kind = kind;
@@ -56,6 +61,7 @@ public sealed class GameEntityDescriptor
         Category = category;
         Tier = tier;
         ParentGameKey = parentGameKey;
+        IsDual = isDual;
     }
 
     public string GameKey { get; }
@@ -65,6 +71,7 @@ public sealed class GameEntityDescriptor
     public string? Category { get; }
     public int? Tier { get; }
     public string? ParentGameKey { get; }
+    public bool? IsDual { get; }
 }
 
 public enum BindingStatus

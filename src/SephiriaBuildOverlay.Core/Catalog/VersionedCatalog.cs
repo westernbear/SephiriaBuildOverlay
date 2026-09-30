@@ -49,9 +49,10 @@ public sealed class VersionedCatalog
         if (entry is null)
             return new CatalogBinding(slug, BindingStatus.MissingCatalogEntry, null, "이 버전의 카탈로그에 slug가 없습니다.");
 
-        var candidates = gameEntities.Where(x => x.Kind == kind &&
-            (string.Equals(x.GameKey, entry.GameKey, StringComparison.Ordinal) ||
-             string.Equals(x.KoreanName, entry.KoreanName, StringComparison.Ordinal))).ToArray();
+        var entities = gameEntities.Where(x => x.Kind == kind).ToArray();
+        var candidates = entities.Where(x => string.Equals(x.GameKey, entry.GameKey, StringComparison.Ordinal)).ToArray();
+        if (candidates.Length == 0)
+            candidates = entities.Where(x => string.Equals(x.KoreanName, entry.KoreanName, StringComparison.Ordinal)).ToArray();
         if (candidates.Length == 0)
             return new CatalogBinding(slug, BindingStatus.MissingGameEntity, entry.GameKey, "일치하는 게임 엔티티가 없습니다.");
         if (candidates.Length > 1)
@@ -62,6 +63,7 @@ public sealed class VersionedCatalog
         if (!string.Equals(actual.GameKey, entry.GameKey, StringComparison.Ordinal)) mismatches.Add("키");
         if (!string.Equals(actual.KoreanName, entry.KoreanName, StringComparison.Ordinal)) mismatches.Add("한국어 이름");
         if (!EqualOptional(actual.Rarity, entry.Rarity)) mismatches.Add("희귀도");
+        if (entry.IsDual.HasValue && actual.IsDual != entry.IsDual) mismatches.Add("영원 아티팩트 구분");
         if (!EqualOptional(actual.Category, entry.Category)) mismatches.Add("카테고리");
         if (actual.Tier != entry.Tier) mismatches.Add("무기 티어");
         if (!EqualOptional(actual.ParentGameKey, entry.ParentGameKey)) mismatches.Add("부모 무기");

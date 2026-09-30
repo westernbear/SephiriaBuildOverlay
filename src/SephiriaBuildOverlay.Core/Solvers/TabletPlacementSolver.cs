@@ -22,6 +22,8 @@ public sealed class TabletPiece
     public TabletPiece(string id, IReadOnlyList<GridPoint> shape, IReadOnlyList<int> allowedRotations,
         IReadOnlyList<TabletEffect> effects, GridPoint? currentOrigin = null, int currentRotation = 0, bool fixedEngraving = false)
     {
+        if (fixedEngraving && !currentOrigin.HasValue)
+            throw new ArgumentException("A fixed engraving requires its current origin.", nameof(currentOrigin));
         Id = id;
         Shape = shape;
         AllowedRotations = fixedEngraving ? new[] { NormalizeRotation(currentRotation) } : allowedRotations.Select(NormalizeRotation).Distinct().ToArray();
@@ -140,7 +142,7 @@ public sealed class TabletPlacementSolver
 
             var tablet = tablets[index];
             // Skipping makes a full or impossible board return the best partial plan instead of failing.
-            Search(index + 1, occupied, current);
+            if (!tablet.FixedEngraving) Search(index + 1, occupied, current);
             foreach (var rotation in tablet.AllowedRotations.OrderBy(x => x))
             {
                 var shape = Rotate(tablet.Shape, rotation);
@@ -148,6 +150,7 @@ public sealed class TabletPlacementSolver
                 for (var x = 0; x < board.Width; x++)
                 {
                     var origin = new GridPoint(x, y);
+                    if (tablet.FixedEngraving && !origin.Equals(tablet.CurrentOrigin!.Value)) continue;
                     var cells = shape.Select(p => p.Add(origin)).ToArray();
                     if (cells.Any(p => !board.Contains(p) || occupied.Contains(p))) continue;
                     foreach (var cell in cells) occupied.Add(cell);

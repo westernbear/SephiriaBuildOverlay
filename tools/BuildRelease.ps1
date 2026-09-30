@@ -17,6 +17,10 @@ $Version = $Version.TrimStart('v')
 if ($Version -notmatch '^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$') {
     throw "Invalid release version: $Version"
 }
+$pluginSource = Get-Content -LiteralPath (Join-Path $repositoryRoot 'src\SephiriaBuildOverlay.Plugin\SephiriaBuildOverlayPlugin.cs') -Raw -Encoding UTF8
+if ($pluginSource -notmatch 'const string PluginVersion = "([^\"]+)"' -or $Matches[1] -ne $Version) {
+    throw 'Package/tag version must match the BepInEx PluginVersion. Bump source metadata before publishing.'
+}
 
 $packageName = "SephiriaBuildOverlay-$Version"
 $packageDirectory = Join-Path $distDirectory $packageName
@@ -49,6 +53,10 @@ $plugin = Join-Path $repositoryRoot "src\SephiriaBuildOverlay.Plugin\bin\$Config
 Copy-Item -LiteralPath $core -Destination $pluginDirectory -Force
 Copy-Item -LiteralPath $plugin -Destination $pluginDirectory -Force
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'README.md') -Destination $packageDirectory -Force
+$packageDocsDirectory = Join-Path $packageDirectory 'docs'
+[System.IO.Directory]::CreateDirectory($packageDocsDirectory) | Out-Null
+Copy-Item -LiteralPath (Join-Path $repositoryRoot 'docs\DEBUGGING.md') -Destination $packageDocsDirectory -Force
+Copy-Item -LiteralPath (Join-Path $repositoryRoot 'docs\FAST_TESTING.md') -Destination $packageDocsDirectory -Force
 
 Compress-Archive -Path (Join-Path $packageDirectory '*') -DestinationPath $archivePath -CompressionLevel Optimal
 $hash = (Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash.ToLowerInvariant()

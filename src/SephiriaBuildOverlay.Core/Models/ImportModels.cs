@@ -36,6 +36,12 @@ public sealed class BuildLocator
             return false;
         }
 
+        if (!string.IsNullOrEmpty(uri.UserInfo) || !uri.IsDefaultPort)
+        {
+            error = "빌드 URL에 사용자 정보나 별도 포트를 포함할 수 없습니다.";
+            return false;
+        }
+
         if (!string.IsNullOrEmpty(uri.Query) || !string.IsNullOrEmpty(uri.Fragment))
         {
             error = "빌드 URL에는 쿼리나 프래그먼트를 포함할 수 없습니다.";

@@ -5,3 +5,4 @@ dist/
 TestResults/
 *.user
 *.suo
+tools/.local/

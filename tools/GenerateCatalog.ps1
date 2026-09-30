@@ -21,10 +21,11 @@ function Decode([string]$value) {
 
 $entries = [System.Collections.Generic.List[object]]::new()
 $artifactHtml = Get-Page 'artifact'
-$artifactPattern = '\\"id\\":(?<id>\d+),\\"value\\":\\"(?<slug>[^\\"]+)\\",\\"label_kor\\":\\"(?<name>[^\\"]+)\\",\\"label_eng\\":\\"[^\\"]*\\",\\"tier\\":\\"(?<tier>[^\\"]+)\\",\\"effect\\":\{\\"sets\\":\[(?<sets>.*?)\]'
+$artifactPattern = '\\"id\\":(?<id>\d+),\\"value\\":\\"(?<slug>[^\\"]+)\\",\\"label_kor\\":\\"(?<name>[^\\"]+)\\",\\"label_eng\\":\\"[^\\"]*\\",\\"tier\\":\\"(?<tier>[^\\"]+)\\",\\"effect\\":\{(?<effect>.*?)\},\\"image\\"'
 $rarities = @{ common = 'Common'; advanced = 'Uncommon'; rare = 'Rare'; legend = 'Legend'; solid = 'Eternal' }
 foreach ($match in [regex]::Matches($artifactHtml, $artifactPattern)) {
-    $setNames = [regex]::Matches($match.Groups['sets'].Value, '\\"(?<set>[^\\"]+)\\"') |
+    $sets = [regex]::Match($match.Groups['effect'].Value, '\\"sets\\":\[(?<sets>.*?)\]').Groups['sets'].Value
+    $setNames = [regex]::Matches($sets, '\\"(?<set>[^\\"]+)\\"') |
         ForEach-Object { $_.Groups['set'].Value } | Sort-Object -Unique
     $entries.Add([ordered]@{
         slug = $match.Groups['slug'].Value

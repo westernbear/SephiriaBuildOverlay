@@ -13,6 +13,7 @@ public sealed class BackgroundPlanner<TResult> : IDisposable
     public long Submit<TSnapshot>(TSnapshot immutableSnapshot, Func<TSnapshot, CancellationToken, TResult> calculate)
     {
         CancellationTokenSource cancellation;
+        CancellationToken token;
         long generation;
         lock (_gate)
         {
@@ -20,20 +21,23 @@ public sealed class BackgroundPlanner<TResult> : IDisposable
             _currentCancellation?.Cancel();
             _currentCancellation?.Dispose();
             _currentCancellation = cancellation = new CancellationTokenSource();
+            token = cancellation.Token;
             generation = ++_generation;
         }
 
-        _ = Task.Run(() => calculate(immutableSnapshot, cancellation.Token), cancellation.Token).ContinueWith(task =>
+        _ = Task.Run(() => calculate(immutableSnapshot, token), token).ContinueWith(task =>
         {
             if (task.IsCanceled) return;
             lock (_gate)
             {
                 if (_disposed || generation != _generation) return; // stale result
+                // Publish before a newer Submit can be accepted. Otherwise a generation
+                // could become stale between the check and the callback.
+                if (task.IsFaulted)
+                    CalculationFailed?.Invoke(task.Exception!.GetBaseException());
+                else
+                    ResultReady?.Invoke(task.Result);
             }
-            if (task.IsFaulted)
-                CalculationFailed?.Invoke(task.Exception!.GetBaseException());
-            else
-                ResultReady?.Invoke(task.Result);
         }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
         return generation;
     }

@@ -7,6 +7,16 @@ namespace SephiriaBuildOverlay.Tests;
 public sealed class RecommendationTests
 {
     [Fact]
+    public void MissingBindingCannotAuthorizeAutomaticSelection()
+    {
+        var plan = Plan();
+        var snapshot = Snapshot(screen: ScreenKind.ArtifactReward,
+            candidates: new[] { new ScreenCandidate("target", CandidateKind.Artifact, "a") });
+        var result = new RecommendationEngine().Recommend(plan, ActiveBuildState.Activate(plan, snapshot), snapshot);
+        Assert.False(result.Action!.AutomaticBindingAllowed);
+    }
+
+    [Fact]
     public void ArtifactChoosesRemainingRequiredTargetAndNeverOutsideBuild()
     {
         var plan = Plan(desired: 2);

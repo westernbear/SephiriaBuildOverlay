@@ -68,7 +68,17 @@ public sealed class BuildReviewSession
             _bindings[slug] = _catalog.Verify(slug, CatalogKind.Artifact, snapshot);
 
         if (!string.IsNullOrWhiteSpace(Build.WeaponSlug))
+        {
             _bindings[Build.WeaponSlug!] = _catalog.Verify(Build.WeaponSlug!, CatalogKind.Weapon, snapshot);
+            if (_catalog.FindBySlug(Build.WeaponSlug!, CatalogKind.Weapon) is not null)
+            {
+                foreach (var gameKey in _catalog.BuildWeaponPath(Build.WeaponSlug!))
+                {
+                    var entry = _catalog.Entries.First(x => x.Kind == CatalogKind.Weapon && x.GameKey == gameKey);
+                    _bindings[entry.Slug] = _catalog.Verify(entry.Slug, CatalogKind.Weapon, snapshot);
+                }
+            }
+        }
         if (!string.IsNullOrWhiteSpace(Build.MiracleSlug))
             _bindings[Build.MiracleSlug!] = _catalog.Verify(Build.MiracleSlug!, CatalogKind.Miracle, snapshot);
     }
@@ -116,6 +126,7 @@ public sealed class BuildReviewSession
                 item.SourceOrder
             }))
             .Where(x => x.Role is TargetRole.Required or TargetRole.Recommended)
+            .Where(x => x.Role == TargetRole.Required || _catalog.FindBySlug(x.Key, CatalogKind.Artifact) is not null)
             .GroupBy(x => x.Key, StringComparer.Ordinal)
             .Select(group => new ArtifactTarget(
                 ResolveGameKey(group.Key),
@@ -131,6 +142,10 @@ public sealed class BuildReviewSession
             : _catalog.BuildWeaponPath(Build.WeaponSlug!);
         var miracle = string.IsNullOrWhiteSpace(Build.MiracleSlug) ? null : ResolveGameKey(Build.MiracleSlug!);
         var checklist = new List<string>();
+        foreach (var section in Sections)
+        foreach (var item in section.Items.Where(x => (x.RoleOverride ?? section.Role) == TargetRole.Recommended &&
+            _catalog.FindBySlug(x.ManualCatalogKey ?? x.Source.Slug, CatalogKind.Artifact) is null))
+            checklist.Add($"미해결 추천 목표 (수동 확인): {item.Source.Slug}");
         if (!string.IsNullOrWhiteSpace(Build.CostumeSlug)) checklist.Add($"의상: {Build.CostumeSlug}");
         checklist.AddRange(Build.Combos.Select(x => $"콤보: {x}"));
         checklist.Add("과일꼬치와 영구 특성 포인트는 수동으로 확인하세요.");
