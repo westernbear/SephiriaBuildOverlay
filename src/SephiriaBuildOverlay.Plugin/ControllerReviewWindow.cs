@@ -46,6 +46,19 @@ public sealed partial class SephiriaBuildOverlayPlugin
             return;
         }
         if (_controller.DeviceId is null) GUILayout.Label("로컬 패드 연결을 확인하세요. 모호한 장치 입력은 실행하지 않습니다.", _theme.WarningText);
+        if (!_advancedReview)
+        {
+            PadButton("quick-import", _importing ? "불러오는 중…" : "클립보드 링크 불러오기", () =>
+            {
+                _locatorText = GUIUtility.systemCopyBuffer.Trim();
+                _controllerMenu.Reset();
+                _ = ImportAsync();
+            });
+            DrawQuickBuildSummary();
+            PadButton("advanced", "고급 설정", ToggleAdvancedReview);
+            return;
+        }
+        PadButton("simple", "← 간단히 보기", ToggleAdvancedReview);
         GUILayout.BeginHorizontal();
         PadButton("review-tab", "빌드 검토", () => { _guideTab = 0; _controllerMenu.Reset(); });
         PadButton("progress-tab", "획득 횟수 보정", () => { _guideTab = 1; _controllerMenu.Reset(); }, _plan is not null);

@@ -17,7 +17,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
 {
     public const string PluginGuid = "io.github.sephiria.build-overlay";
     public const string PluginName = "Sephiria Build Overlay";
-    public const string PluginVersion = "0.1.7";
+    public const string PluginVersion = "0.1.8";
 
     private ConfigEntry<KeyCode> _importKey = null!;
     private ConfigEntry<KeyCode> _overlayKey = null!;
@@ -73,9 +73,9 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
     }
     private bool _showOverlay = true;
     private string _locatorText = string.Empty;
-    private string _status = "빌드 가져오기/검토 창에서 목표를 설정하세요.";
+    private string _status = "빌드 링크를 불러오면 모든 항목을 추천 목표로 안내합니다.";
     private Vector2 _reviewScroll;
-    private Rect _importRect = new(180, 35, 920, 650);
+    private Rect _importRect = new(180, 35, 650, 450);
     private Rect _overlayRect = new(18, 184, 440, 450);
     private readonly object _uiStateGate = new();
     private bool _importing;
@@ -279,6 +279,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
             if (_lifetime.Stopped) return;
             Logger.LogInfo($"Import response parsed: sections={result.Build.Sections.Count}, origin={result.Origin}");
             var review = new BuildReviewSession(result.Build, _catalog);
+            review.RecommendAll();
             // Unity objects must be inspected on the main thread. ContinueWith is avoided; Unity's context returns here.
             review.VerifyBindings(_gateway.DiscoverCatalogEntities());
             var bindingSummary = string.Join(", ", review.Bindings.Values.GroupBy(x => x.Status)
@@ -294,12 +295,21 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
                 _recommendationEngine = null;
                 _gateway.SetPlacementPlan(null);
                 _lastSnapshot = null;
-                _status = result.Warning ?? $"'{result.Build.Title}' 가져오기 완료 ({result.Origin}). 모든 구역을 분류하세요.";
+                _status = $"'{result.Build.Title}' 가져오기 완료 ({result.Origin}). 추천 가이드를 준비합니다.";
             }
             try { _reviewStore.Save(ReviewCheckpoint.Capture(review, false)); }
             catch (Exception ex) { Logger.LogWarning("Review checkpoint save failed: " + ex.Message); }
             var presetStatus = await _gateway.ApplyStartingPresetAsync(result.Build, startingContext, _lifetime.Token);
-            if (!_lifetime.Stopped) _status += "\n" + presetStatus;
+            if (!_lifetime.Stopped)
+            {
+                // Keep the compact result visible: cache age, skipped preset
+                // settings and unresolved mappings must not disappear on load.
+                if (TryActivateReviewedBuild(closeWindow: false)) _showOverlay = true;
+                if (!string.IsNullOrWhiteSpace(result.Warning)) _status += "\n" + result.Warning;
+                _status += "\n" + presetStatus;
+                if (_plan?.Checklist.Any(x => x.StartsWith("미해결", StringComparison.Ordinal)) == true)
+                    _status += "\n일부 목표를 해석하지 못했습니다. 고급 설정의 체크리스트에서 확인하세요.";
+            }
         }
         catch (OperationCanceledException) when (_lifetime.Stopped) { }
         catch (Exception) when (_lifetime.Stopped) { }
@@ -313,7 +323,12 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
 
     private void ActivateReviewedBuild()
     {
-        if (_review is null) return;
+        TryActivateReviewedBuild();
+    }
+
+    private bool TryActivateReviewedBuild(bool closeWindow = true)
+    {
+        if (_review is null) return false;
         try
         {
             _review.VerifyBindings(_gateway.DiscoverCatalogEntities());
@@ -331,10 +346,11 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
             try { store.Save(state); } catch (Exception ex) { Logger.LogWarning("Progress cache save failed: " + ex.Message); }
             try { _reviewStore.Save(ReviewCheckpoint.Capture(_review, true)); }
             catch (Exception ex) { Logger.LogWarning("Active review checkpoint save failed: " + ex.Message); }
-            _status = $"빌드 활성화 완료. 필수 목표 {_plan.Artifacts.Count(x => x.Role == TargetRole.Required)}종.";
-            _showImport = false;
+            _status = $"'{_review.Build.Title}' 활성화 완료 · 목표 {_plan.Artifacts.Count}종 / {_plan.Artifacts.Sum(x => x.DesiredAcquisitions)}회. {ConfirmPrompt}로 한 동작씩 확인하세요.";
+            if (closeWindow) _showImport = false;
+            return true;
         }
-        catch (Exception ex) { _status = "활성화 불가: " + ex.Message; }
+        catch (Exception ex) { _status = "활성화 불가: " + ex.Message; return false; }
     }
 
     private IReadOnlyDictionary<string, CatalogBinding> BindingsByGameKey()

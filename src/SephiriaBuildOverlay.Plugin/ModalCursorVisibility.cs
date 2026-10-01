@@ -4,9 +4,9 @@ internal sealed class ModalCursorVisibility
 {
     private bool _leased;
     private bool _previous;
-    public bool? Resolve(bool panel, bool gamepad, bool focused, bool nativeAvailable, bool currentVisibility)
+    public bool? Resolve(bool panel, bool gamepad, bool focused, bool currentVisibility)
     {
-        if (panel && !gamepad && focused && !nativeAvailable)
+        if (panel && !gamepad && focused)
         {
             if (!_leased) { _previous = currentVisibility; _leased = true; }
             return true;

@@ -60,6 +60,17 @@ public sealed class BuildReviewSession
     public IReadOnlyList<ReviewSection> Sections { get; }
     public IReadOnlyDictionary<string, CatalogBinding> Bindings => _bindings;
 
+    // Quick imports opt in explicitly; restoring advanced review checkpoints
+    // must not silently overwrite the user's classifications or quantities.
+    public void RecommendAll()
+    {
+        foreach (var section in Sections)
+        {
+            section.Role = TargetRole.Recommended;
+            foreach (var item in section.Items) item.RoleOverride = null;
+        }
+    }
+
     public void VerifyBindings(IEnumerable<GameEntityDescriptor> gameEntities)
     {
         var snapshot = gameEntities.ToArray();
@@ -137,11 +148,16 @@ public sealed class BuildReviewSession
             .ThenBy(x => x.Priority)
             .ToArray();
 
-        var weaponPath = string.IsNullOrWhiteSpace(Build.WeaponSlug)
+        var weaponPath = string.IsNullOrWhiteSpace(Build.WeaponSlug) || _catalog.FindBySlug(Build.WeaponSlug!, CatalogKind.Weapon) is null
             ? Array.Empty<string>()
             : _catalog.BuildWeaponPath(Build.WeaponSlug!);
-        var miracle = string.IsNullOrWhiteSpace(Build.MiracleSlug) ? null : ResolveGameKey(Build.MiracleSlug!);
+        var miracle = string.IsNullOrWhiteSpace(Build.MiracleSlug) || _catalog.FindBySlug(Build.MiracleSlug!, CatalogKind.Miracle) is null
+            ? null : ResolveGameKey(Build.MiracleSlug!);
         var checklist = new List<string>();
+        if (!string.IsNullOrWhiteSpace(Build.WeaponSlug) && weaponPath.Count == 0)
+            checklist.Add($"미해결 무기 목표 (수동 확인): {Build.WeaponSlug}");
+        if (!string.IsNullOrWhiteSpace(Build.MiracleSlug) && miracle is null)
+            checklist.Add($"미해결 나무 뿌리 목표 (수동 확인): {Build.MiracleSlug}");
         foreach (var section in Sections)
         foreach (var item in section.Items.Where(x => (x.RoleOverride ?? section.Role) == TargetRole.Recommended &&
             _catalog.FindBySlug(x.ManualCatalogKey ?? x.Source.Slug, CatalogKind.Artifact) is null))

@@ -2,11 +2,88 @@ using SephiriaBuildOverlay.Core.Catalog;
 using SephiriaBuildOverlay.Core.Models;
 using SephiriaBuildOverlay.Core.Review;
 using SephiriaBuildOverlay.Core.Runtime;
+using SephiriaBuildOverlay.Plugin;
 
 namespace SephiriaBuildOverlay.Tests;
 
 public sealed class ReviewAndProgressTests
 {
+    [Fact]
+    public void QuickImportRecommendsEveryOccurrenceWithoutLosingQuantitiesOrOrder()
+    {
+        var (review, entities) = CreateReview();
+        review.Sections[0].Role = TargetRole.Excluded;
+        review.Sections[0].Items[0].RoleOverride = TargetRole.Required;
+        review.Sections[0].Items[0].DesiredAcquisitions = 2;
+        review.Sections[0].Items[0].PriorityOverride = 3;
+        review.RecommendAll();
+        review.VerifyBindings(entities);
+        Assert.All(review.Sections, x => Assert.Equal(TargetRole.Recommended, x.Role));
+        Assert.All(review.Sections.SelectMany(x => x.Items), x => Assert.Null(x.RoleOverride));
+        Assert.Equal(new[] { 0, 1 }, review.Sections[0].Items.Select(x => x.SourceOrder));
+        Assert.Equal(3, review.Sections[0].Items[0].PriorityOverride);
+        var target = Assert.Single(review.CreatePlan("1.0.33").Artifacts);
+        Assert.Equal(TargetRole.Recommended, target.Role);
+        Assert.Equal(3, target.DesiredAcquisitions);
+    }
+
+    [Fact]
+    public void QuickImportClassifiesAllSectionsIncludingEmptyOnes()
+    {
+        var build = new ImportedBuild(Guid.NewGuid(), "quick", "1.0.33", null, null,
+            new[] { new ImportedSection("empty", "empty", "", Array.Empty<ImportedItem>()),
+                new ImportedSection("unknown", "unknown", "", new[] { new ImportedItem("one", "unknown-artifact") }) },
+            new Dictionary<string, int>());
+        var review = new BuildReviewSession(build, new VersionedCatalog("1.0.33", Array.Empty<CatalogEntry>()));
+        review.RecommendAll();
+        review.VerifyBindings(Array.Empty<GameEntityDescriptor>());
+        Assert.True(review.ValidateForActivation("1.0.33").CanActivate);
+        Assert.Contains(review.CreatePlan("1.0.33").Checklist, x => x.Contains("unknown-artifact"));
+    }
+
+    [Fact]
+    public void UnknownSupplementalTargetsRemainManualInsteadOfBreakingQuickImport()
+    {
+        var build = new ImportedBuild(Guid.NewGuid(), "unknown", "1.0.33", "unknown-weapon", "unknown-miracle",
+            Array.Empty<ImportedSection>(), new Dictionary<string, int>());
+        var review = new BuildReviewSession(build, new VersionedCatalog("1.0.33", Array.Empty<CatalogEntry>()));
+        review.RecommendAll();
+        review.VerifyBindings(Array.Empty<GameEntityDescriptor>());
+        var plan = review.CreatePlan("1.0.33");
+        Assert.Empty(plan.WeaponPath);
+        Assert.Null(plan.MiracleTarget);
+        Assert.Contains(plan.Checklist, x => x.Contains("unknown-weapon"));
+        Assert.Contains(plan.Checklist, x => x.Contains("unknown-miracle"));
+        Assert.All(review.Bindings.Values, x => Assert.False(x.AllowsAutomaticAction));
+    }
+
+    [Fact]
+    public void QuickImportDoesNotBypassVersionOrBindingSafety()
+    {
+        var (review, _) = CreateReview();
+        review.RecommendAll();
+        review.VerifyBindings(Array.Empty<GameEntityDescriptor>());
+        Assert.NotNull(review.CreatePlan("1.0.33"));
+        Assert.All(review.Bindings.Values, x => Assert.False(x.AllowsAutomaticAction));
+        Assert.Throws<InvalidOperationException>(() => review.CreatePlan("1.0.34"));
+    }
+
+    [Fact]
+    public void QuickRecommendedCheckpointRestoresWithoutMandatoryClassification()
+    {
+        var catalog = VersionedCatalog.LoadEmbedded("1.0.33");
+        var build = new ImportedBuild(Guid.NewGuid(), "quick", "1.0.33", null, null,
+            new[] { new ImportedSection("s", "s", "", new[] { new ImportedItem("1", "blue_claws"), new ImportedItem("2", "blue_claws") }) },
+            new Dictionary<string, int>());
+        var review = new BuildReviewSession(build, catalog);
+        review.RecommendAll();
+        var restored = ReviewCheckpoint.Capture(review, true).Restore(catalog);
+        restored.VerifyBindings(Array.Empty<GameEntityDescriptor>());
+        var target = Assert.Single(restored.CreatePlan("1.0.33").Artifacts);
+        Assert.Equal(TargetRole.Recommended, target.Role);
+        Assert.Equal(2, target.DesiredAcquisitions);
+    }
+
     [Fact]
     public void UnknownRecommendedItemRemainsVisibleChecklistButRequiredBlocks()
     {
