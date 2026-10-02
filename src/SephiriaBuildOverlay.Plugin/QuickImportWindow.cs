@@ -9,6 +9,7 @@ public sealed partial class SephiriaBuildOverlayPlugin
     private void DrawNativeBuildWindow()
     {
         if (!_showImport || _advancedReview) { _nativeBuildWindow?.Hide(); return; }
+        _nativeBuildWindow?.HandleMouseResizeEvent(Event.current);
         if (Event.current.type != EventType.Repaint) return;
         try
         {

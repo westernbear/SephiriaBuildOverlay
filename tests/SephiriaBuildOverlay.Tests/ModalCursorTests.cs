@@ -43,4 +43,14 @@ public sealed class ModalCursorTests
         Assert.False(state.Resolve(true, true, true, true));
         Assert.Null(state.Resolve(true, true, true, false));
     }
+
+    [Fact]
+    public void NativeOverlayAvoidsDoubleCursorAndCanFallBackWithoutLosingLease()
+    {
+        var state = new ModalCursorVisibility();
+        Assert.False(state.Resolve(true, false, true, false, nativeOverlay: true));
+        Assert.True(state.Resolve(true, false, true, false, nativeOverlay: false));
+        Assert.False(state.Resolve(true, false, true, true, nativeOverlay: true));
+        Assert.False(state.Resolve(false, false, true, false));
+    }
 }

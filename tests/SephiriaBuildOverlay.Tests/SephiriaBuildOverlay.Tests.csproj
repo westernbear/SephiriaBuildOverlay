@@ -21,6 +21,8 @@
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\NotificationQueue.cs" Link="NotificationQueue.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\OwnedUiInputScope.cs" Link="OwnedUiInputScope.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\OverlayUiTokens.cs" Link="OverlayUiTokens.cs" />
+    <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\ScreenSpaceUiMetrics.cs" Link="ScreenSpaceUiMetrics.cs" />
+    <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\UiFontFamily.cs" Link="UiFontFamily.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\PanelResizeState.cs" Link="PanelResizeState.cs" />
     <None Update="Fixtures\*.json" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\RuntimeMemberCache.cs" Link="RuntimeMemberCache.cs" />

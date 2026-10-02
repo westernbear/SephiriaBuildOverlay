@@ -79,12 +79,14 @@ internal sealed partial class UnityGameGateway
             _root.hideFlags = HideFlags.HideAndDontSave;
             var canvas = _root.GetComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay; canvas.sortingOrder = order; canvas.pixelPerfect = true;
+            canvas.referencePixelsPerUnit = ScreenSpaceUiMetrics.ReferencePixelsPerUnit;
             // No GraphicRaycaster: these passive labels cannot intercept native
             // inventory dragging, mouse clicks, or the game's UI navigation.
         }
         public void SetVisible(bool visible) { if (_root != null && _root.activeSelf != visible) _root.SetActive(visible); }
         public void SetOpacity(float opacity) { if (_group != null && _group.alpha != opacity) _group.alpha = opacity; }
         public void Begin(UnityEngine.Object font) { _font = font; _generation++; SetVisible(true); }
+        public void BeginGraphics() { _generation++; SetVisible(true); }
         public object Diagnostics() => new
         {
             visible = _root != null && _root.activeSelf,
@@ -171,6 +173,11 @@ internal sealed partial class UnityGameGateway
                 Set(element.Component, "sprite", sprite); element.Sprite = sprite;
                 SetEnum(element.Component, "type", sliced ? "Sliced" : "Simple");
                 Set(element.Component, "preserveAspect", sprite != null && !sliced);
+                if (sprite != null && sliced)
+                {
+                    var border = sprite.border;
+                    Set(element.Component, "pixelsPerUnitMultiplier", ScreenSpaceUiMetrics.SliceMultiplier(Math.Max(Math.Max(border.x, border.y), Math.Max(border.z, border.w)), sprite.pixelsPerUnit));
+                }
                 element.Sliced = sliced;
             }
         }

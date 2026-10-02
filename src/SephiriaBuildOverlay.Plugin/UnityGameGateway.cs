@@ -304,6 +304,7 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
         CancelGhostCalculation(); _slotVisuals.Clear(); _itemSprites.Clear();
         _nativeLayer?.Dispose(destroyUnityObjects); _nativeLayer = null; _nativeFont = null;
         _notificationLayer?.Dispose(destroyUnityObjects); _notificationLayer = null; _notificationFont = null;
+        _modalCursorLayer?.Dispose(destroyUnityObjects); _modalCursorLayer = null;
         _playerComponents = Array.Empty<Component>(); _componentOwner = null; _fallbackAvatar = null;
     }
 

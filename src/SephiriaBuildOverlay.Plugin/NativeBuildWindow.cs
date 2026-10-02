@@ -44,8 +44,6 @@ internal sealed partial class UnityGameGateway
         private readonly Type _imageType;
         private readonly Type _textType;
         private readonly object _font;
-        private readonly float _fontPixels;
-        private readonly Component _textTemplate;
         private Component? _previousSystem;
         private bool _previousSystemEnabled;
         private object? _ownedAsset;
@@ -60,9 +58,11 @@ internal sealed partial class UnityGameGateway
             _gateway = gateway; _loadAction = load; _settingsAction = settings; _closeAction = close;
             _resize = new PanelResizeState(panelScale); _resized = resized;
             _imageType = NeedType("UnityEngine.UI.Image"); _textType = NeedType("TMPro.TextMeshProUGUI");
-            _textTemplate = ReadNamedObject(template, "text") as Component ?? throw new InvalidOperationException("게임 메뉴 폰트가 없습니다.");
-            _font = ReadNamedObject(_textTemplate, "font") ?? throw new InvalidOperationException("게임 메뉴 폰트가 없습니다.");
-            _fontPixels = Math.Max(14, Convert.ToSingle(ReadNamedObject(_textTemplate, "fontSize")) * Math.Abs(_textTemplate.transform.lossyScale.y));
+            var textTemplate = ReadNamedObject(template, "text") as Component ?? throw new InvalidOperationException("게임 메뉴 폰트가 없습니다.");
+            _font = ReadNamedObject(textTemplate, "font") ?? throw new InvalidOperationException("게임 메뉴 폰트가 없습니다.");
+            // The game's menu has its own canvas/world scaling. This canvas
+            // uses screen pixels: keep the font asset, not the source scale or
+            // a source material carrying another menu's clipping/stencil state.
             _root = new GameObject("SephiriaBuildOverlay.BuildWindow", typeof(RectTransform), typeof(Canvas));
             _root.SetActive(false);
             UnityEngine.Object.DontDestroyOnLoad(_root); _root.hideFlags = HideFlags.HideAndDontSave;
@@ -70,6 +70,7 @@ internal sealed partial class UnityGameGateway
             {
                 var canvas = _root.GetComponent<Canvas>();
                 canvas.renderMode = RenderMode.ScreenSpaceOverlay; canvas.sortingOrder = OverlayUiTokens.OverlaySortingOrder; canvas.pixelPerfect = true;
+                canvas.referencePixelsPerUnit = ScreenSpaceUiMetrics.ReferencePixelsPerUnit;
                 _root.AddComponent(NeedType("UnityEngine.UI.GraphicRaycaster"));
                 var shield = Image("Input shield", (RectTransform)_root.transform, null, new Color(0, 0, 0, .4f), true);
                 var shieldRect = (RectTransform)shield.transform;
@@ -84,15 +85,12 @@ internal sealed partial class UnityGameGateway
                 _panel = (RectTransform)Image("Build panel", (RectTransform)_root.transform,
                     ReadNamedObject(panelImage, "sprite") as Sprite, ReadColor(panelImage), true).transform;
                 _panel.anchorMin = _panel.anchorMax = _panel.pivot = new Vector2(.5f, .5f);
-                _title = Text("Heading", _panel, "빌드", OverlayTheme.Accent);
-                _activeTitle = Text("Active build", _panel, "", OverlayTheme.Text);
-                var buttonTemplate = ReadNamedObject(template, "yesButton") as Component ?? throw new InvalidOperationException("게임 버튼이 없습니다.");
-                _load = Button("Load", buttonTemplate, "불러오기", () => { if (!_busy) _loadAction(_gamepad ? GUIUtility.systemCopyBuffer.Trim() : InputText); }, out _loadText);
-                _settings = Button("Settings", buttonTemplate, "설정", _settingsAction, out _);
-                _close = Button("Close", buttonTemplate, "닫기", _closeAction, out _);
-                var gripGraphic = ReadNamedObject(buttonTemplate, "targetGraphic") as Component;
-                _resizeGrip = Image("Resize panel", _panel, gripGraphic is null ? null : ReadNamedObject(gripGraphic, "sprite") as Sprite,
-                    gripGraphic is null ? OverlayTheme.Surface : ReadColor(gripGraphic), true);
+                _title = Text("Heading", _panel, "빌드", OverlayTheme.Accent, pixels: OverlayUiTokens.HeadingFontSize);
+                _activeTitle = Text("Active build", _panel, "", OverlayTheme.Muted, pixels: OverlayUiTokens.SmallFontSize);
+                _load = Button("Load", "불러오기", () => { if (!_busy) _loadAction(_gamepad ? GUIUtility.systemCopyBuffer.Trim() : InputText); }, out _loadText);
+                _settings = Button("Settings", "설정", _settingsAction, out _);
+                _close = Button("Close", "닫기", _closeAction, out _);
+                _resizeGrip = Image("Resize panel", _panel, null, OverlayTheme.Surface, true);
                 // Pixel marks use the native Image primitive, not a font glyph
                 // that may be absent from the game's localized font atlas.
                 for (var i = 0; i < 3; i++)
@@ -101,12 +99,11 @@ internal sealed partial class UnityGameGateway
                     Place(mark, new ControlBounds(8 + i * 5, 18 - i * 5, 3, 3));
                 }
                 var drag = _resizeGrip.gameObject.AddComponent(NeedType("UnityEngine.EventSystems.EventTrigger"));
+                AddDragEvent(drag, "PointerDown", nameof(BeginResize));
                 AddDragEvent(drag, "BeginDrag", nameof(BeginResize));
                 AddDragEvent(drag, "Drag", nameof(DragResize)); AddDragEvent(drag, "EndDrag", nameof(EndResize));
-                var inputTemplate = ReadNamedObject(template, "input") as Component ?? throw new InvalidOperationException("게임 입력창이 없습니다.");
-                var inputImage = ReadNamedObject(inputTemplate, "targetGraphic") as Component;
-                var inputRoot = Image("Build link", _panel, inputImage is null ? null : ReadNamedObject(inputImage, "sprite") as Sprite,
-                    inputImage is null ? OverlayTheme.Surface : ReadColor(inputImage), true);
+                AddDragEvent(drag, "PointerUp", nameof(EndResize));
+                var inputRoot = ControlSurface("Build link", _panel, OverlayTheme.Inset);
                 var viewport = Node("Text viewport", (RectTransform)inputRoot.transform);
                 viewport.gameObject.AddComponent(NeedType("UnityEngine.UI.RectMask2D"));
                 viewport.anchorMin = Vector2.zero; viewport.anchorMax = Vector2.one; viewport.offsetMin = new Vector2(10, 4); viewport.offsetMax = new Vector2(-10, -4);
@@ -115,6 +112,7 @@ internal sealed partial class UnityGameGateway
                 _input = inputRoot.gameObject.AddComponent(NeedType("TMPro.TMP_InputField"));
                 Set(_input, "textViewport", viewport); Set(_input, "textComponent", value); Set(_input, "placeholder", placeholder);
                 Set(_input, "targetGraphic", inputRoot); Set(_input, "characterLimit", 256); Set(_input, "caretWidth", 2);
+                StyleControl(_input);
                 Set(_input, "customCaretColor", true); Set(_input, "caretColor", OverlayTheme.Text);
                 SetEnum(_input, "lineType", "SingleLine");
                 Listen(_input, "onValueChanged", new UnityAction<string>(changed));
@@ -237,18 +235,56 @@ internal sealed partial class UnityGameGateway
         private void BeginResize(object data)
         {
             if (ResizePointer(data, out var pointer, out var point))
-                _resize.Begin(pointer, point.x, point.y, _panel.localScale.x, _drawUiScale, _drawFit);
+            {
+                // BeginDrag is dispatched at the FIRST moved position, not at
+                // mouse-down. A fast one-frame drag can already be at its final
+                // position: start from pressPosition so that movement is kept.
+                var pressed = ReadNamedObject(data, "pressPosition") is Vector2 origin ? origin : point;
+                if (_resize.Begin(pointer, pressed.x, pressed.y, _panel.localScale.x, _drawUiScale, _drawFit))
+                    _gateway._log.LogInfo($"Panel resize started: pointer={pointer}, origin={pressed}, position={point}");
+            }
         }
         private void DragResize(object data)
         { if (ResizePointer(data, out var pointer, out var point)) _resize.Drag(pointer, point.x, point.y); }
         private void EndResize(object data)
         {
             if (ResizePointer(data, out var pointer, out var point))
-            { _resize.Drag(pointer, point.x, point.y); if (_resize.End(pointer)) _resized?.Invoke(_resize.Scale); }
+            { _resize.Drag(pointer, point.x, point.y); FinishResize(pointer); }
+        }
+        public void HandleMouseResizeEvent(Event input)
+        {
+            if (!Visible || !Application.isFocused || _gamepad) { _resize.Cancel(); return; }
+            const int mousePointer = -1;
+            var point = new Vector2(input.mousePosition.x, Screen.height - input.mousePosition.y);
+            if (input.type == EventType.MouseDown && input.button == 0 &&
+                _gateway.ScreenRect((RectTransform)_resizeGrip.transform).Contains(input.mousePosition))
+            {
+                // uGUI can coalesce fast drag moves or send a different pointer
+                // ID through its module. Own the legacy mouse stream ONLY after
+                // a left press inside our visible grip. No polling/other input
+                // can start a drag, and no game action is sent.
+                _resize.Cancel();
+                _resize.Begin(mousePointer, point.x, point.y, _panel.localScale.x, _drawUiScale, _drawFit);
+                input.Use();
+            }
+            else if (_resize.ActivePointer == mousePointer && input.button == 0 &&
+                input.type is EventType.MouseDrag or EventType.MouseUp)
+            {
+                _resize.Drag(mousePointer, point.x, point.y);
+                if (input.type == EventType.MouseUp) FinishResize(mousePointer);
+                input.Use();
+            }
+        }
+        private void FinishResize(int pointer)
+        {
+            if (!_resize.End(pointer)) return;
+            _gateway._log.LogInfo($"Panel resize finished: scale={_resize.Scale}");
+            _resized?.Invoke(_resize.Scale);
         }
         internal object Diagnostics() => new
         {
             visible = Visible, font = (_font as UnityEngine.Object)?.name,
+            headingPixels = ReadNamedObject(_title, "fontSize"), bodyPixels = ReadNamedObject(_loadText, "fontSize"),
             panelSprite = ReadNamedObject(_panel.GetComponent(_imageType), "sprite") is Sprite sprite ? sprite.name : null,
             button = _load.GetType().FullName, input = _input.GetType().FullName,
             privateInputActions = _actions.Count, navigationEvents = ReadNamedObject(_system, "sendNavigationEvents"),
@@ -259,32 +295,65 @@ internal sealed partial class UnityGameGateway
         {
             var rect = Node(name, parent); var image = rect.gameObject.AddComponent(_imageType);
             Set(image, "sprite", sprite); Set(image, "color", color); Set(image, "raycastTarget", raycast);
-            if (sprite != null) SetEnum(image, "type", "Sliced");
+            if (sprite != null)
+            {
+                SetEnum(image, "type", "Sliced");
+                var border = sprite.border;
+                Set(image, "pixelsPerUnitMultiplier", ScreenSpaceUiMetrics.SliceMultiplier(Math.Max(Math.Max(border.x, border.y), Math.Max(border.z, border.w)), sprite.pixelsPerUnit));
+            }
             return image;
         }
-        private Component Text(string name, RectTransform parent, string value, Color color, string alignment = "Left")
+        private Component Text(string name, RectTransform parent, string value, Color color, string alignment = "Left", float pixels = OverlayUiTokens.BodyFontSize)
         {
             var text = Node(name, parent).gameObject.AddComponent(_textType);
-            Set(text, "font", _font); Set(text, "fontSharedMaterial", ReadNamedObject(_textTemplate, "fontSharedMaterial"));
-            Set(text, "fontSize", _fontPixels); Set(text, "text", value); Set(text, "color", color);
+            Set(text, "font", _font); Set(text, "fontSize", pixels);
+            Set(text, "enableAutoSizing", false); SetEnum(text, "fontStyle", "Normal");
+            Set(text, "text", value); Set(text, "color", color);
             Set(text, "raycastTarget", false); Set(text, "richText", false); Set(text, "enableWordWrapping", false);
             SetEnum(text, "alignment", alignment); SetEnum(text, "overflowMode", "Ellipsis");
             return text;
         }
-        private Component Button(string name, Component template, string label, Action click, out Component text)
+        private Component Button(string name, string label, Action click, out Component text)
         {
-            var graphic = ReadNamedObject(template, "targetGraphic") as Component;
-            var image = Image(name, _panel, graphic is null ? null : ReadNamedObject(graphic, "sprite") as Sprite,
-                graphic is null ? OverlayTheme.Surface : ReadColor(graphic), true);
+            // Native targetGraphic is a selection-only ornament, not a button
+            // background. Reuse UI_HorayButton, but own its visible surface and
+            // color states so the button remains legible when not selected.
+            var image = ControlSurface(name, _panel, OverlayTheme.Button);
             text = Text(name + " label", (RectTransform)image.transform, label, OverlayTheme.Text, "Center"); Stretch((RectTransform)text.transform);
             var button = image.gameObject.AddComponent(NeedType("UI_HorayButton"));
             Set(button, "targetGraphic", image); Set(button, "text", text);
-            foreach (var property in new[] { "colors", "spriteState", "transition", "disabledColor" }) Set(button, property, ReadNamedObject(template, property));
+            StyleControl(button); Set(button, "disabledColor", OverlayTheme.Muted);
             // All navigation stays in this modal; no native menu focus targets are copied.
             var navigation = ReadNamedObject(button, "navigation");
             if (navigation is not null) { SetEnum(navigation, "mode", "None"); Set(button, "navigation", navigation); }
             Listen(button, "onClick", new UnityAction(click));
             return button;
+        }
+        private Component ControlSurface(string name, RectTransform parent, Color color)
+        {
+            var image = Image(name, parent, null, color, true);
+            var rect = (RectTransform)image.transform;
+            foreach (var edge in new[] { "Top", "Bottom", "Left", "Right" })
+            {
+                var trim = (RectTransform)Image(name + " " + edge, rect, null, OverlayTheme.Border, false).transform;
+                trim.anchorMin = edge == "Top" ? new Vector2(0, 1) : Vector2.zero;
+                trim.anchorMax = edge == "Bottom" ? new Vector2(1, 0) : edge == "Left" ? new Vector2(0, 1) : Vector2.one;
+                if (edge == "Right") trim.anchorMin = new Vector2(1, 0);
+                trim.pivot = new Vector2(.5f, .5f);
+                trim.offsetMin = Vector2.zero; trim.offsetMax = Vector2.zero;
+                if (edge is "Top" or "Bottom") { trim.sizeDelta = new Vector2(0, 1); trim.anchoredPosition = new Vector2(0, edge == "Top" ? -.5f : .5f); }
+                else { trim.sizeDelta = new Vector2(1, 0); trim.anchoredPosition = new Vector2(edge == "Right" ? -.5f : .5f, 0); }
+            }
+            return image;
+        }
+        private static void StyleControl(object selectable)
+        {
+            SetEnum(selectable, "transition", "ColorTint");
+            var colors = ReadNamedObject(selectable, "colors")!;
+            Set(colors, "normalColor", Color.white); Set(colors, "highlightedColor", new Color(1.2f, 1.2f, 1.2f));
+            Set(colors, "selectedColor", new Color(1.2f, 1.2f, 1.2f)); Set(colors, "pressedColor", new Color(.8f, .8f, .8f));
+            Set(colors, "disabledColor", new Color(.65f, .65f, .65f));
+            Set(colors, "colorMultiplier", 1f); Set(colors, "fadeDuration", .1f); Set(selectable, "colors", colors);
         }
         private static RectTransform Node(string name, RectTransform parent)
         {

@@ -25,6 +25,7 @@ internal static class OverlayUiTokens
     public const int WindowDepth = -20;
     public const int OverlaySortingOrder = 32000;
     public const int NotificationSortingOrder = 32001;
+    public const int CursorSortingOrder = 32760;
     public const int BodyFontSize = 16;
     public const int SmallFontSize = 13;
     public const int HeadingFontSize = 18;

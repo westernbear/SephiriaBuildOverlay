@@ -28,4 +28,13 @@ public sealed class CompactBuildLayoutTests
     [Fact]
     public void BasicPanelKeepsItsCompactSize()
     { Assert.Equal(420, OverlayUiTokens.CompactWidth); Assert.Equal(144, OverlayUiTokens.CompactHeight); Assert.Equal(28, CompactBuildLayout.ActiveTitle.Height); }
+
+    [Fact]
+    public void ScreenPixelTypographyFitsSmallControls()
+    {
+        Assert.InRange(OverlayUiTokens.BodyFontSize, 14, 18);
+        Assert.True(OverlayUiTokens.HeadingFontSize < CompactBuildLayout.Heading.Height);
+        Assert.True(OverlayUiTokens.BodyFontSize * 1.5f <= CompactBuildLayout.Settings.Height - 4);
+        Assert.True(OverlayUiTokens.SmallFontSize * 1.5f <= CompactBuildLayout.ActiveTitle.Height - 4);
+    }
 }

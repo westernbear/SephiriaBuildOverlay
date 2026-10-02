@@ -13,6 +13,17 @@ public sealed class PanelResizeStateTests
         Assert.True(state.End(-1)); Assert.False(state.Drag(-1, 200, 50));
     }
     [Fact]
+    public void SingleMoveFromPressOriginKeepsEntireFastDrag()
+    {
+        var state = new PanelResizeState(1);
+        Assert.True(state.Begin(-1, 1152, 486, 1, 1, 2));
+        Assert.Equal(-1, state.ActivePointer);
+        Assert.True(state.Drag(-1, 1257, 450));
+        Assert.True(state.End(-1));
+        Assert.Null(state.ActivePointer);
+        Assert.Equal(1.5f, state.Scale, 3);
+    }
+    [Fact]
     public void OnlyOwningPointerCanResizeOrFinish()
     {
         var state = new PanelResizeState(1); state.Begin(-1, 0, 0, 1, 1, 2);

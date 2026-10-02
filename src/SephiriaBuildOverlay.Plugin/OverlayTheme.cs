@@ -7,6 +7,8 @@ internal sealed class OverlayTheme : IDisposable
 {
     private static Color Rgb(int rgb) => new(((rgb >> 16) & 255) / 255f, ((rgb >> 8) & 255) / 255f, (rgb & 255) / 255f);
     public static readonly Color Surface = Rgb(OverlayUiTokens.Surface);
+    public static readonly Color Inset = Rgb(OverlayUiTokens.Inset);
+    public static readonly Color Button = Rgb(OverlayUiTokens.Button);
     public static readonly Color Outline = Rgb(OverlayUiTokens.Outline);
     public static readonly Color Border = Rgb(OverlayUiTokens.Border);
     public static readonly Color Text = Rgb(OverlayUiTokens.Text);
@@ -29,13 +31,14 @@ internal sealed class OverlayTheme : IDisposable
     public OverlayTheme(GUISkin original)
     {
         Skin = UnityEngine.Object.Instantiate(original);
-        var font = Resources.FindObjectsOfTypeAll<Font>().FirstOrDefault(x =>
-            x != null && x.name.IndexOf("Galmuri", StringComparison.OrdinalIgnoreCase) >= 0);
-        if (font == null)
-        {
-            _ownedFont = Font.CreateDynamicFontFromOSFont(new[] { "Galmuri11", "Galmuri9", "Malgun Gothic" }, 16);
-            font = _ownedFont;
-        }
+        // TMP's source Font asset is not a usable legacy IMGUI atlas in this
+        // game: assigning it makes every settings label disappear. Native
+        // controls keep the actual Galmuri TMP asset; the legacy settings use
+        // an installed dynamic font, with a Korean-capable Windows fallback.
+        var family = UiFontFamily.Select(Font.GetOSInstalledFontNames());
+        if (family is not null) _ownedFont = Font.CreateDynamicFontFromOSFont(family, 16);
+        var font = _ownedFont != null ? _ownedFont : original.font;
+        Debug.Log("Sephiria Build Overlay settings font: " + (family ?? "default"));
         Skin.font = font;
         var panel = Texture(Surface);
         var card = Texture(Rgb(OverlayUiTokens.Inset));

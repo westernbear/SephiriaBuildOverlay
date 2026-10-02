@@ -9,6 +9,7 @@ internal sealed class PanelResizeState
     private float _startX, _startY, _startScale, _uiScale, _fit;
     public PanelResizeState(float scale) => Scale = Finite(scale) ? Math.Max(MinimumScale, Math.Min(MaximumScale, scale)) : 1;
     public float Scale { get; private set; }
+    public int? ActivePointer => _pointer;
     public bool Begin(int pointer, float x, float y, float displayedScale, float uiScale, float fit)
     {
         if (_pointer.HasValue || !Finite(x) || !Finite(y) || !Finite(displayedScale) || !Finite(uiScale) || uiScale <= 0 || !Finite(fit) || fit <= 0) return false;
