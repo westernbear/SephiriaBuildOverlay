@@ -76,7 +76,7 @@ internal sealed partial class UnityGameGateway
                 {
                     var halo = new Rect(outer.x - thickness - 2, outer.y - thickness - 2, outer.width + (thickness + 2) * 2, outer.height + (thickness + 2) * 2);
                     _nativeLayer?.Border("candidate-next:" + candidate.Token, halo, new Color(color.r, color.g, color.b, .75f), Math.Max(2, thickness / 2));
-                    var key = action!.AutomaticBindingAllowed ? confirmKey : "수동";
+                    var key = CandidateFramePolicy.ConfirmationLabel(_lastSnapshot.Screen, action!.Kind, confirmKey, action.AutomaticBindingAllowed);
                     var badgeWidth = Math.Max(28 * scale, _itemLabel.CalcSize(new GUIContent(key)).x + 8);
                     var badge = new Rect(rect.xMax - badgeWidth, rect.yMax - 22 * scale, badgeWidth, 22 * scale);
                     _nativeLayer?.Box("key-bg:" + candidate.Token, badge, new Color(.025f, .035f, .055f, .9f));

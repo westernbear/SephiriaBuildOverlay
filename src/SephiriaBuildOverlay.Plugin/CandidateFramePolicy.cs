@@ -1,4 +1,5 @@
 using SephiriaBuildOverlay.Core.Models;
+using SephiriaBuildOverlay.Core.Runtime;
 
 namespace SephiriaBuildOverlay.Plugin;
 
@@ -8,6 +9,9 @@ internal enum CandidateFrameKind { None, Required, Recommended, NextAction }
 // recommendation priority; excluded / unrelated items keep their native UI.
 internal static class CandidateFramePolicy
 {
+    public static string ConfirmationLabel(ScreenKind screen, ActionKind kind, string key, bool automaticAllowed) =>
+        !automaticAllowed ? "수동" : screen != ScreenKind.WeaponUpgrade ? key : (kind == ActionKind.Reroll ? "리롤 · " : "선택 · ") + key;
+
     public static float Thickness(CandidateFrameKind frame, float scale) => Math.Max(frame == CandidateFrameKind.NextAction ? 4 : 3,
         (float)Math.Round((frame == CandidateFrameKind.NextAction ? 4 : 3) * scale));
     public static CandidateFrameKind Resolve(bool active, TargetRole? role, bool otherBuildTarget, bool nextAction)

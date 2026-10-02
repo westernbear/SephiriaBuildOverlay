@@ -59,9 +59,9 @@ public sealed partial class SephiriaBuildOverlayPlugin
             var result = await _gateway.ApplyStartingPresetAsync(build, context, _lifetime.Token);
             if (_lifetime.Stopped) return;
             _status += "\n" + result.Detail;
-            Notify(result.Applied ? "시작 세팅을 적용했습니다." : "시작 세팅을 적용하지 못했습니다.",
-                result.Applied ? NotificationKind.Success : NotificationKind.Warning);
             if (result.Warning is not null) Notify(result.Warning, NotificationKind.Warning);
+            else Notify(result.Applied ? "시작 세팅을 적용했습니다." : "시작 세팅을 적용하지 못했습니다.",
+                result.Applied ? NotificationKind.Success : NotificationKind.Warning);
             _nextSnapshotAt = 0;
         }
         catch (OperationCanceledException) when (_lifetime.Stopped) { }

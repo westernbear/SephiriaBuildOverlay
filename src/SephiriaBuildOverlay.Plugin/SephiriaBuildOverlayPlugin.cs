@@ -17,7 +17,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
 {
     public const string PluginGuid = "io.github.sephiria.build-overlay";
     public const string PluginName = "Sephiria Build Overlay";
-    public const string PluginVersion = "0.1.12";
+    public const string PluginVersion = "0.1.13";
 
     private ConfigEntry<KeyCode> _importKey = null!;
     private ConfigEntry<KeyCode> _overlayKey = null!;
@@ -463,7 +463,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
     }
 
     private bool ControllerModalOwnsInput => _modalInput.Capturing;
-    private static bool AllowNativeModalInput() => _instance is not { } plugin || (!plugin._quitting && !plugin.ControllerModalOwnsInput);
+    private static bool AllowNativeModalInput() => _instance is not { } plugin || NativeMenuInputPolicy.Allows(plugin._quitting, plugin.ControllerModalOwnsInput);
 
     private void InstallControllerModalPatches()
     {
@@ -488,7 +488,13 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
             foreach (var methodName in new[] { "WasPressedThisFrame", "WasReleasedThisFrame", "IsPressed" })
                 _harmony!.Patch(AccessTools.Method(actionType, methodName) ?? throw new MissingMethodException(methodName),
                     prefix: new HarmonyMethod(typeof(SephiriaBuildOverlayPlugin), nameof(AllowNativeActionPoll)));
+            var callbackType = actionType.GetNestedType("CallbackContext") ?? throw new TypeLoadException("InputAction.CallbackContext");
+            var playerInputType = AccessTools.TypeByName("PlayerInputController") ?? throw new TypeLoadException("PlayerInputController");
+            foreach (var methodName in NativeMenuInputPolicy.Handlers)
+                _harmony!.Patch(AccessTools.Method(playerInputType, methodName, new[] { callbackType }) ?? throw new MissingMethodException(methodName),
+                    prefix: new HarmonyMethod(typeof(SephiriaBuildOverlayPlugin), nameof(AllowNativeModalInput)));
             _controllerModalGateReady = true;
+            Logger.LogInfo("Exclusive modal input gates installed: 11 menu callbacks; owned UI actions preserved.");
         }
         catch (Exception ex) { Logger.LogWarning("Controller review input disabled: " + ex.Message); }
     }

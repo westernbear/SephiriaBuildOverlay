@@ -72,10 +72,39 @@ internal sealed partial class UnityGameGateway
                 ? NativePreset.Decode(build.NativePresetCode!)
                 : StartingPresetFallback.Create(build, backup, _catalog, DiscoverCatalogEntities(), VerifiedPassiveId, fallbackWarnings);
             var requested = preset.Compact();
+            var locked = new StartingPresetWarnings();
+            foreach (var data in weapons.Cast<object>())
+            {
+                var weapon = ReadNamedObject(data, "weaponEntity");
+                if (weapon is null || ReadNamedNullableInt(weapon, "id") != preset.Weapon) continue;
+                var unlockKey = ReadNamedString(data, "unlockKey");
+                locked.Record("무기", preset.Weapon.ToString(), ReadNamedString(weapon, "aName"), true,
+                    string.IsNullOrEmpty(unlockKey) || Convert.ToBoolean(StaticCall("SwitchManager", "GetDestinySwitch", unlockKey, false)));
+            }
+            var randomWeapon = ReadNamedObject(panel, "randomWeaponEntity");
+            if (randomWeapon is not null && ReadNamedNullableInt(randomWeapon, "id") == preset.Weapon)
+            {
+                var allWeaponsUnlocked = weapons.Cast<object>().All(data =>
+                {
+                    var unlockKey = ReadNamedString(data, "unlockKey");
+                    return string.IsNullOrEmpty(unlockKey) || Convert.ToBoolean(StaticCall("SwitchManager", "GetDestinySwitch", unlockKey, false));
+                });
+                locked.Record("무기", preset.Weapon.ToString(), ReadNamedString(randomWeapon, "aName"), true, allWeaponsUnlocked);
+            }
             var costumeArgs = new object?[] { preset.Costume, preset.Skin };
             NativeCall(panel, "ValidateAndCorrectCostume", costumeArgs);
             var costume = (string)costumeArgs[0]!;
             var skinId = (string)costumeArgs[1]!;
+            var requestedCostume = StaticCall("CostumeDatabase", "FindCostumeByID", preset.Costume);
+            locked.Record("의상", preset.Costume, requestedCostume is null ? null : ReadNamedString(requestedCostume, "aName"),
+                requestedCostume is not null, costume == preset.Costume);
+            if (preset.Skin.Length > 0)
+            {
+                var requestedSkin = StaticCall("CostumeDatabase", "GetCostumeSkinByID", preset.Skin);
+                var unlockType = requestedSkin is null ? null : ReadNamedString(requestedSkin, "unlockType");
+                locked.Record("스킨", preset.Skin, requestedSkin is null ? null : ReadNamedString(requestedSkin, "aName"), requestedSkin is not null,
+                    unlockType != "Locked" && (unlockType != "Purchase" || skinId == preset.Skin));
+            }
             if (skinId.Length > 0)
             {
                 var skin = StaticCall("CostumeDatabase", "GetCostumeSkinByID", skinId);
@@ -89,7 +118,18 @@ internal sealed partial class UnityGameGateway
                 if (entity is null) continue;
                 var passiveId = Convert.ToUInt64(ReadNamedObject(entity, "id"));
                 var unlocked = ReadBool(entity, "isDefault") || Convert.ToBoolean(StaticCall("SwitchManager", "GetDestinySwitch", $"Passive_{passiveId}_Unlocked", false));
+                if (preset.Passives.Any(x => x.Id == passiveId && x.Points > 0))
+                    locked.Record("특성", passiveId.ToString(), ReadNamedString(entity, "aName"), true, unlocked);
                 if (unlocked) passiveLimits.Add(passiveId, ReadNamedNullableInt(entity, "maxLevel") ?? 0);
+            }
+            // Read-only native discovery check; unknown/disabled entities are
+            // mapping/eligibility problems, not evidence of a locked option.
+            foreach (var artifactId in preset.Favorites.Concat(preset.Pocket.Select(x => x.Entity)).Distinct())
+            {
+                var entity = StaticCall("ItemDatabase", "FindItemById", artifactId);
+                if (entity is null || ReadNamedString(entity, "type") != "Charm" || ReadNamedString(entity, "activeType") is "Disabled" or "Hidden" or "TestOnly") continue;
+                locked.Record("아티팩트", artifactId.ToString(), ReadNamedString(entity, "Name"), true,
+                    Convert.ToBoolean(NativeCall(panel, "IsCharmDiscovered", artifactId)));
             }
             preset.LimitPassives(passiveLimits, ReadNamedNullableInt(avatar, "maxPassivePoint") ?? 0);
             // Resolve every required method before the first mutation.
@@ -150,9 +190,10 @@ internal sealed partial class UnityGameGateway
             save.Invoke(null, new object[] { true, false });
             _log.LogInfo("Starting preset applied through native import/update; source=" + (string.IsNullOrWhiteSpace(build.NativePresetCode) ? "wiki-fields" : "preset-code") + "; permanent purchases excluded.");
             foreach (var warning in fallbackWarnings) _log.LogWarning("Starting preset: " + warning);
+            foreach (var item in locked.Items) _log.LogWarning("Starting preset locked option excluded: " + item);
             var limited = requested != preset.Compact() ? " 해금/포인트/용량 제한으로 일부 목표를 제외했습니다." : "";
             return new StartingPresetResult("시작 프리셋 적용 완료 (현재 설정만 변경, 저장 슬롯 유지)." + limited + "\n" + message,
-                applied: true, warning: limited.Length > 0 || message.Length > 0 || fallbackWarnings.Count > 0 ? "일부 시작 세팅은 해금·매핑·포인트·용량에 맞춰 조정했습니다." + (message.Length > 0 ? "\n" + message : "") : null);
+                applied: true, warning: locked.Bubble ?? (limited.Length > 0 || message.Length > 0 || fallbackWarnings.Count > 0 ? "일부 시작 세팅은 해금·매핑·포인트·용량에 맞춰 조정했습니다." + (message.Length > 0 ? "\n" + message : "") : null));
         }
         catch (Exception ex)
         {
@@ -222,6 +263,6 @@ internal sealed partial class UnityGameGateway
         // actual Preset_0... slot or change Preset_SelectedSlot / SlotExists.
         var args = new object?[] { -1, compact, "" };
         if (NativeCall(panel, "TryApplyCompactPresetData", args) is not true) throw new InvalidOperationException(args[2]?.ToString());
-        return args[2]?.ToString() ?? "";
+        return NotificationText.Plain(args[2]?.ToString());
     }
 }

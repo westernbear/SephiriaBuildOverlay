@@ -21,6 +21,9 @@
     <ProjectReference Include="..\..\src\SephiriaBuildOverlay.Core\SephiriaBuildOverlay.Core.csproj" />
     <ProjectReference Include="..\..\src\SephiriaBuildOverlay.Updater\SephiriaBuildOverlay.Updater.csproj" ReferenceOutputAssembly="false" OutputItemType="Content" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\NotificationQueue.cs" Link="NotificationQueue.cs" />
+    <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\NotificationText.cs" Link="NotificationText.cs" />
+    <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\StartingPresetWarnings.cs" Link="StartingPresetWarnings.cs" />
+    <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\NativeMenuInputPolicy.cs" Link="NativeMenuInputPolicy.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\OwnedUiInputScope.cs" Link="OwnedUiInputScope.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\OverlayUiTokens.cs" Link="OverlayUiTokens.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\ScreenSpaceUiMetrics.cs" Link="ScreenSpaceUiMetrics.cs" />

@@ -527,7 +527,7 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
         foreach (var controller in _playerComponents
                      .Where(x => x != null && x.GetType().Name is "NewWeaponController" or "WeaponController" or "WeaponControllerSimple"))
         {
-            var current = ReadNamedObject(controller, "CurrentWeapon") ?? ReadNamedObject(controller, "CurrentWeaponInHand");
+            var current = ReadNamedObject(controller, "currentWeapon") ?? ReadNamedObject(controller, "CurrentWeapon") ?? ReadNamedObject(controller, "CurrentWeaponInHand");
             var directId = current is null ? null : ReadNamedNullableInt(current, "entityId");
             if (directId.HasValue) return directId.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
             var entity = current is null ? null : ReadNamedObject(current, "Entity");

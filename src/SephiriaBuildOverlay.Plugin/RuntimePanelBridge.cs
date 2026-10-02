@@ -43,10 +43,13 @@ internal sealed partial class UnityGameGateway
             }
             else if (screen == ScreenKind.WeaponUpgrade && IsType(element.GetType(), "UI_WeaponEnhancementButton"))
             {
-                var weapon = ReadNamedObject(element, "weapon");
+                // Native SetWeaponMethod populates enhancementMetadata, NOT
+                // the serialized weapon field (which remains null/stale).
+                var metadata = ReadNamedObject(element, "enhancementMetadata");
+                var weapon = metadata is null ? null : ReadNamedObject(metadata, "enhanced");
                 var key = weapon is null ? null : EntityKey(weapon, CatalogKind.Weapon);
                 var method = element.GetType().GetMethod("Click", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                var button = element.GetComponents<Component>().FirstOrDefault(x => x != null && IsType(x.GetType(), "UnityEngine.UI.Button"));
+                var button = ReadNamedObject(element, "button") as Component;
                 if (key is not null && method is not null && button is not null)
                     AddCandidate(element, CandidateKind.Weapon, key, candidates, () => method.Invoke(element, null), selectable: IsSelectable(button));
             }

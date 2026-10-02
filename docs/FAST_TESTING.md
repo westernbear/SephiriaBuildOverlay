@@ -32,6 +32,7 @@ ScriptEngine은 [r11.1 공식 릴리스](https://github.com/BepInEx/BepInEx.Debu
 
 ```powershell
 .\tools\dev\TestStartingPresetContract.ps1
+./tools/dev/TestInteractionContracts.ps1
 ```
 
 개발 중에만 `BepInEx/config/io.github.sephiria.build-overlay.cfg`에서 아래를 켭니다.
@@ -68,8 +69,8 @@ MeasurePerformance = true
 게임을 정상적으로 닫은 상태에서 실행합니다.
 
 ```powershell
-./tools/dev/TestExitSmoke.ps1 -ExpectedVersion 0.1.12
-./tools/dev/TestExitSmoke.ps1 -ExpectedVersion 0.1.12 -NativeUiContract -StartingCatalogContract
+./tools/dev/TestExitSmoke.ps1 -ExpectedVersion 0.1.13
+./tools/dev/TestExitSmoke.ps1 -ExpectedVersion 0.1.13 -NativeUiContract -StartingCatalogContract
 ```
 
 Steam에 `--sbo-exit-smoke` 옵션을 전달하고 게임 내부 메인 스레드에서 15초 이후 열린 타이틀의 정상 `QuitGame` 함수만 호출합니다. 로컬 아바타가 있거나 요청 대기 중이면 호출하지 않습니다. 기존 런을 자동 진입/종료하거나 강제 종료하지 않으며, 시간 초과 시 게임을 그대로 둡니다. 일반 실행에는 옵션이 없어 아무 동작도 하지 않습니다. 프로세스 종료 코드, 새 덤프, Unity Crash 로그, 조기 UIA/모드 정리 로그를 검사합니다. `RuntimeDiagnostics`를 켤 필요는 없습니다. 활성 런/외부 UIA 클라이언트 연결 상태의 종료 검증과는 구분합니다.

@@ -25,7 +25,8 @@ internal sealed class NotificationQueue
     public void Enqueue(string text, NotificationKind kind)
     {
         if (string.IsNullOrWhiteSpace(text)) return;
-        text = text.Trim();
+        text = NotificationText.Plain(text);
+        if (text.Length == 0) return;
         if (Current?.Text == text && Current.Kind == kind || _pending.Any(x => x.Text == text && x.Kind == kind)) return;
         if (_pending.Count == MaximumPending)
         {
