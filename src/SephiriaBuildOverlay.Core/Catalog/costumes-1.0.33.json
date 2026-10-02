@@ -1,0 +1,32 @@
+{
+  "gameVersion": "1.0.33",
+  "entries": [
+    {"slug":"pink_rabbit","gameKey":"PinkRabbit","kind":"Costume","koreanName":"분홍 토끼"},
+    {"slug":"rabbit","gameKey":"ArmoredRabbit","kind":"Costume","koreanName":"갑옷을 입은 토끼"},
+    {"slug":"brown_rabbit","gameKey":"BrownRabbit","kind":"Costume","koreanName":"갈색 토끼"},
+    {"slug":"braid","gameKey":"DarkBrownRabbit","kind":"Costume","koreanName":"땋은 머리 토끼"},
+    {"slug":"orange_rabbit","gameKey":"MandarinRabbit","kind":"Costume","koreanName":"주황색 토끼"},
+    {"slug":"red_rabbit","gameKey":"RedHolyRabbit","kind":"Costume","koreanName":"빨간망토 토끼"},
+    {"slug":"white_rabbit","gameKey":"WhiteRabbit","kind":"Costume","koreanName":"흰색 토끼"},
+    {"slug":"wing_ear_rabbit","gameKey":"HolyRabbit","kind":"Costume","koreanName":"날개 귀 토끼"},
+    {"slug":"red_cat","gameKey":"FireCat","kind":"Costume","koreanName":"붉은 옷 고양이"},
+    {"slug":"red_fox","gameKey":"Fox","kind":"Costume","koreanName":"붉은 여우"},
+    {"slug":"frog","gameKey":"Frog","kind":"Costume","koreanName":"개구리"},
+    {"slug":"mole","gameKey":"Mole","kind":"Costume","koreanName":"두더지"},
+    {"slug":"white_wolf","gameKey":"WhiteWolf","kind":"Costume","koreanName":"하얀 늑대"},
+    {"slug":"wizard_rabbit","gameKey":"WizardRabbit","kind":"Costume","koreanName":"마법사 토끼"},
+    {"slug":"skeleton","gameKey":"Skeleton","kind":"Costume","koreanName":"스켈레톤"},
+    {"slug":"wings_lost_bat","gameKey":"Bat","kind":"Costume","koreanName":"날개 잃은 박쥐"},
+    {"slug":"adventurer","gameKey":"AdventurerRabbit","kind":"Costume","koreanName":"모험가 토끼"},
+    {"slug":"scholar_lizard","gameKey":"Seren","kind":"Costume","koreanName":"학자 도마뱀"},
+    {"slug":"ghost","gameKey":"Ghost","kind":"Costume","koreanName":"유령"},
+    {"slug":"otter","gameKey":"Otter","kind":"Costume","koreanName":"수달"},
+    {"slug":"eagle","gameKey":"Bird","kind":"Costume","koreanName":"독수리"},
+    {"slug":"crocodile","gameKey":"Crocodile","kind":"Costume","koreanName":"악어"},
+    {"slug":"deer","gameKey":"Deer","kind":"Costume","koreanName":"사슴"},
+    {"slug":"lucky_fairy","gameKey":"Luck","kind":"Costume","koreanName":"행운의 요정"},
+    {"slug":"squirrel","gameKey":"Squirrel","kind":"Costume","koreanName":"농부 다람쥐"},
+    {"slug":"turtle","gameKey":"Turtle","kind":"Costume","koreanName":"거북이"},
+    {"slug":"forest_cat","gameKey":"ForestCat","kind":"Costume","koreanName":"숲 고양이"}
+  ]
+}

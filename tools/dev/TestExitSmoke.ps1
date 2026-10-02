@@ -1,8 +1,9 @@
 param(
     [string]$GameDir = 'C:\Program Files (x86)\Steam\steamapps\common\Sephiria',
     [string]$SteamExe = 'C:\Program Files (x86)\Steam\steam.exe',
-    [string]$ExpectedVersion = '0.1.11',
+    [string]$ExpectedVersion = '0.1.12',
     [switch]$NativeUiContract,
+    [switch]$StartingCatalogContract,
     [ValidateRange(30, 180)][int]$TimeoutSeconds = 120
 )
 $ErrorActionPreference = 'Stop'
@@ -13,6 +14,7 @@ $dumpDirectory = Join-Path $env:LOCALAPPDATA 'CrashDumps'
 $before = @(Get-ChildItem -LiteralPath $dumpDirectory -Filter 'Sephiria*.dmp' -File -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name)
 $launchArgs = @('-applaunch', '2436940', '--sbo-exit-smoke')
 if ($NativeUiContract) { $launchArgs += '--sbo-native-ui-smoke' }
+if ($StartingCatalogContract) { $launchArgs += '--sbo-starting-catalog-smoke' }
 Start-Process -FilePath $SteamExe -ArgumentList $launchArgs -WindowStyle Hidden
 $deadline = $started.AddSeconds($TimeoutSeconds)
 $gameProcess = $null
@@ -37,6 +39,7 @@ $playerLog = Get-Content -LiteralPath $playerLogPath -Raw -Encoding UTF8
 if ($log -notmatch "PID=$($gameProcess.Id)\b" -or (Get-Item -LiteralPath $playerLogPath).LastWriteTimeUtc -lt $started) { throw 'Logs do not belong to this process/launch.' }
 $combinedLog = $log + "`n" + $playerLog
 if ($NativeUiContract -and ($combinedLog -notmatch 'Native UI construction PASS:' -or $combinedLog -match 'Native UI construction FAILED:')) { throw 'Inactive native UI construction did not pass. Logs were preserved.' }
+if ($StartingCatalogContract -and ($combinedLog -notmatch 'Starting catalog PASS:' -or $combinedLog -match 'Starting catalog unavailable at title:')) { throw 'Native starting catalog validation did not pass. Logs were preserved.' }
 if ($combinedLog -notmatch 'Exit smoke: native title QuitGame') { throw 'Normal native title exit path was not observed.' }
 if ($combinedLog -notmatch 'Overlay shutdown complete; pending work cancelled. Quit=True') { throw 'Managed shutdown did not finish.' }
 if ($gameProcess.ExitCode -ne 0 -or $newDumps.Count -gt 0 -or $playerLog -match 'Crash!!!') {

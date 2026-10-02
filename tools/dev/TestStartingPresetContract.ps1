@@ -24,6 +24,12 @@ try {
     foreach ($field in @('playerAvatar','playerSpawner','playerLocalDataStorage','isEditingCurrentPreset','baseWeaponDatas')) {
         if (!($panel.Fields | Where-Object Name -EQ $field)) { throw "Native preset field missing: $field" }
     }
+    foreach ($requirement in @(@('DungeonManager','isRunStarted','System.Boolean'), @('PassiveEntity','id','System.UInt64'),
+        @('PassiveEntity','aName','LocalizedString'), @('CostumeEntity','aName','LocalizedString'))) {
+        $type = $game.MainModule.Types | Where-Object Name -EQ $requirement[0]
+        $field = $type.Fields | Where-Object Name -EQ $requirement[1]
+        if (!$field -or $field.FieldType.FullName -ne $requirement[2]) { throw "Native starting metadata mismatch: $($requirement -join ':')" }
+    }
     $nativeImport = $panel.Methods | Where-Object Name -EQ 'TryApplyCompactPresetData'
     $costumeValidator = $panel.Methods | Where-Object Name -EQ 'ValidateAndCorrectCostume'
     $calls = @(@($nativeImport.Body.Instructions) + @($costumeValidator.Body.Instructions) | Where-Object { $_.OpCode.Name -match '^call' } | ForEach-Object { $_.Operand.FullName })

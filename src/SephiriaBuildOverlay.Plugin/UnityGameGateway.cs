@@ -177,11 +177,12 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
             {
                 "ItemEntity" => CatalogKind.Artifact,
                 "WeaponEntity" => CatalogKind.Weapon,
+                "CostumeEntity" => CatalogKind.Costume,
                 _ => IsMiracleEntity(obj.GetType()) ? CatalogKind.Miracle : null
             };
             if (kind is null) continue;
             var key = ReadNamedString(obj, "id");
-            var name = ReadNamedString(obj, "Name");
+            var name = ReadNamedString(obj, kind == CatalogKind.Costume ? "aName" : "Name");
             if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(name)) continue;
             string? parent = null;
             if (kind == CatalogKind.Weapon) weaponParents.TryGetValue(key!, out parent);
@@ -595,7 +596,7 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
     }
 
     private static bool RelevantType(Type type) => ContainsAny(type.Name,
-        "artifact", "item", "inventory", "weapon", "miracle", "metadata", "database", "selector", "shop");
+        "artifact", "item", "inventory", "weapon", "miracle", "metadata", "database", "selector", "shop", "costume");
 
     private static bool ContainsAny(string value, params string[] needles) =>
         needles.Any(x => value.IndexOf(x, StringComparison.OrdinalIgnoreCase) >= 0);

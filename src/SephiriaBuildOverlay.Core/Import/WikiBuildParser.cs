@@ -61,6 +61,23 @@ public static class WikiBuildParser
             ? comboArray.Values<string>().Where(x => !string.IsNullOrWhiteSpace(x)).Cast<string>().ToArray()
             : Array.Empty<string>();
 
+        List<ImportedFruit>? fruits = null;
+        if (data["fruit_skewer"] is JArray fruitArray)
+        {
+            if (fruitArray.Count > 64) throw new JsonException("과일꼬치 항목 수 제한을 초과했습니다.");
+            fruits = new List<ImportedFruit>();
+            foreach (var token in fruitArray)
+            {
+                if (token is not JObject fruit || fruit["value"]?.Type != JTokenType.Integer)
+                    throw new JsonException("과일꼬치 항목 형식이 잘못되었습니다.");
+                var value = fruit["value"]!.Value<int>();
+                if (value < -16 || value > 16) throw new JsonException("과일꼬치 수량 제한을 초과했습니다.");
+                fruits.Add(new ImportedFruit(RequiredString(fruit, "key"), value));
+            }
+        }
+        else if (data["fruit_skewer"] is { Type: not JTokenType.Null })
+            throw new JsonException("fruit_skewer가 배열이 아닙니다.");
+
         return new ImportedBuild(
             id,
             OptionalString(data, "title") ?? id.ToString("D"),
@@ -71,7 +88,9 @@ public static class WikiBuildParser
             talents,
             combos,
             OptionalString(data, "costume"),
-            OptionalString(data, "preset_code"));
+            OptionalString(data, "preset_code"),
+            fruits,
+            data["ability"] is JObject);
     }
 
     private static string RequiredString(JObject obj, string property)

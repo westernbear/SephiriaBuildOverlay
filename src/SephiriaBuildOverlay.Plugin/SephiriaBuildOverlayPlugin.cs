@@ -17,7 +17,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
 {
     public const string PluginGuid = "io.github.sephiria.build-overlay";
     public const string PluginName = "Sephiria Build Overlay";
-    public const string PluginVersion = "0.1.11";
+    public const string PluginVersion = "0.1.12";
 
     private ConfigEntry<KeyCode> _importKey = null!;
     private ConfigEntry<KeyCode> _overlayKey = null!;
@@ -215,19 +215,25 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
             _lastSnapshot = pendingSnapshot ?? _gateway.CaptureOnMainThread();
             _nextSnapshotAt = Time.unscaledTime + (_lastSnapshot.Screen == ScreenKind.None ? .5f : .1f);
         }
-        if (_pendingRestore is not null && _lastSnapshot?.IsLocalPlayerOwned == true)
+        if (!_importing && _pendingRestore is not null && _lastSnapshot?.IsLocalPlayerOwned == true)
         {
             var saved = _pendingRestore; _pendingRestore = null;
             try
             {
                 _review = saved.Restore(_catalog);
-                if (saved.WasActivated) ActivateReviewedBuild();
+                if (saved.WasActivated)
+                {
+                    ActivateReviewedBuild();
+                    var context = _gateway.StartingPresetContext();
+                    if (_plan is not null && context is not null) QueueStartingPreset(saved.Build, context, false);
+                }
                 else _status = "이전 검토를 복원했습니다. 분류와 매핑 확인 후 활성화하세요.";
                 Logger.LogInfo($"Saved review restored: {saved.Build.Id}, active={_plan is not null}");
             }
             catch (Exception ex) { _status = "이전 빌드 복원 실패: " + ex.Message; Logger.LogWarning(ex); Notify("저장된 빌드를 복원하지 못했습니다. 링크를 다시 불러오세요.", NotificationKind.Warning); }
         }
 
+        TickStartingPreset();
         if (!_importing && _plan is not null && _state is not null && Time.unscaledTime >= _nextSnapshotAt)
         {
             var snapshot = pendingSnapshot ?? _gateway.CaptureOnMainThread();
@@ -289,6 +295,8 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
         }
         _importing = true;
         var startingContext = _gateway.StartingPresetContext();
+        var fromTitle = _gateway.CanDeferStartingPresetFromTitle();
+        _pendingStartingBuild = null; _pendingStartingGate = null;
         _recommendation = null;
         _gateway.SetHighlight(null);
         _status = "Wiki에서 빌드를 가져오는 중...";
@@ -321,7 +329,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
             }
             try { _reviewStore.Save(ReviewCheckpoint.Capture(review, false)); }
             catch (Exception ex) { Logger.LogWarning("Review checkpoint save failed: " + ex.Message); }
-            var presetStatus = await _gateway.ApplyStartingPresetAsync(result.Build, startingContext, _lifetime.Token);
+            var presetStatus = QueueStartingPreset(result.Build, startingContext, fromTitle);
             if (!_lifetime.Stopped)
             {
                 if (TryActivateReviewedBuild(closeWindow: false))
@@ -580,6 +588,8 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
             }
         }
         UpdateModalCursor();
+        if (_showImport && _advancedReview && !_controller.GamepadMode && Application.isFocused)
+            _gateway.DrawImmediateModalCursor();
     }
 
 

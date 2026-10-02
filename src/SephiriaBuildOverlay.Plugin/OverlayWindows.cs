@@ -261,7 +261,7 @@ public sealed partial class SephiriaBuildOverlayPlugin
 
     private static string TalentLabel(string key) => key switch
     {
-        "base" => "기초", "will" => "의지", "anger" => "분노", "rapid" => "신속",
+        "base" => "기지", "will" => "의지", "anger" => "분노", "rapid" => "신속",
         "wisdom" => "지혜", "patience" => "인내", "survival" => "생존", _ => key
     };
 }

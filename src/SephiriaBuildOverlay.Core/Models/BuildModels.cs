@@ -33,7 +33,9 @@ public sealed class ImportedBuild
         IReadOnlyDictionary<string, int> talents,
         IReadOnlyList<string>? combos = null,
         string? costumeSlug = null,
-        string? nativePresetCode = null)
+        string? nativePresetCode = null,
+        IReadOnlyList<ImportedFruit>? fruitSkewer = null,
+        bool hasTalentAllocation = true)
     {
         Id = id;
         Title = title ?? string.Empty;
@@ -45,6 +47,8 @@ public sealed class ImportedBuild
         Combos = combos ?? Array.Empty<string>();
         CostumeSlug = costumeSlug;
         NativePresetCode = nativePresetCode;
+        FruitSkewer = fruitSkewer;
+        HasTalentAllocation = hasTalentAllocation;
     }
 
     public Guid Id { get; }
@@ -57,6 +61,16 @@ public sealed class ImportedBuild
     public IReadOnlyList<string> Combos { get; }
     public string? CostumeSlug { get; }
     public string? NativePresetCode { get; }
+    // Null means absent (retain current setup); an empty list means clear it.
+    public IReadOnlyList<ImportedFruit>? FruitSkewer { get; }
+    public bool HasTalentAllocation { get; }
+}
+
+public sealed class ImportedFruit
+{
+    public ImportedFruit(string key, int value) { Key = key; Value = value; }
+    public string Key { get; }
+    public int Value { get; }
 }
 
 public sealed class ImportedSection

@@ -105,6 +105,9 @@ public sealed class NativePreset
         Skin = Name(Uri.EscapeDataString(skin), true);
     }
 
+    public void SetWeapon(int weapon) => Weapon = weapon >= 0 ? weapon : throw new ArgumentOutOfRangeException(nameof(weapon));
+    public void SetAdaptive(bool adaptive) => Adaptive = adaptive ? 1 : 0;
+
     public void LimitLoadout(Func<int, int?> pocketCost, int pocketCapacity, ISet<string> categories, int fruitCapacity, int plusLimit, int minusLimit, Func<int, bool>? allowDuplicate = null)
     {
         var space = Math.Max(0, pocketCapacity);

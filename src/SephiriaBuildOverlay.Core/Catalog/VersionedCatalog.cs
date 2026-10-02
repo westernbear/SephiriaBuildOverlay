@@ -34,6 +34,15 @@ public sealed class VersionedCatalog
         using var reader = new StreamReader(stream);
         var document = JsonConvert.DeserializeObject<CatalogDocument>(reader.ReadToEnd())
             ?? throw new JsonException("카탈로그 JSON이 비어 있습니다.");
+        var costumes = assembly.GetManifestResourceNames().SingleOrDefault(x => x.EndsWith($"costumes-{version}.json", StringComparison.OrdinalIgnoreCase));
+        if (costumes is not null)
+        {
+            using var costumeStream = assembly.GetManifestResourceStream(costumes)!;
+            using var costumeReader = new StreamReader(costumeStream);
+            var additional = JsonConvert.DeserializeObject<CatalogDocument>(costumeReader.ReadToEnd()) ?? throw new JsonException("의상 카탈로그가 비어 있습니다.");
+            if (additional.GameVersion != document.GameVersion) throw new JsonException("의상 카탈로그 버전이 다릅니다.");
+            document.Entries.AddRange(additional.Entries);
+        }
         return new VersionedCatalog(document.GameVersion, document.Entries);
     }
 

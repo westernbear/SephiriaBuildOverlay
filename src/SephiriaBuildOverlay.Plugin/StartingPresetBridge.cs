@@ -26,16 +26,20 @@ internal sealed partial class UnityGameGateway
         if (!owned || player == null || dungeon == null || string.IsNullOrWhiteSpace(profile?.ToString())) return null;
         var environment = ReadNamedObject(dungeon, "dungeonEnvironment") as IEnumerable;
         if (environment is null) return null;
+        int? inDungeon = null;
         foreach (var pair in environment)
             if (pair is not null && ReadNamedString(pair, "Key") == "IsInDungeon")
-                return ReadNamedNullableInt(pair, "Value") == 0 ? id + ":" + dungeon.GetInstanceID() + ":" + profile + ":" + FindRunId(id) : null;
-        return null; // No affirmative lobby state: never infer permission.
+            {
+                inDungeon = ReadNamedNullableInt(pair, "Value");
+                if (!inDungeon.HasValue) return null;
+            }
+        return StartingPresetPolicy.IsLobby(inDungeon, ReadNamedObject(dungeon, "isRunStarted") as bool?)
+            ? id + ":" + dungeon.GetInstanceID() + ":" + profile + ":" + FindRunId(id) : null;
     }
 
     internal async Task<StartingPresetResult> ApplyStartingPresetAsync(ImportedBuild build, string? importContext, CancellationToken cancellationToken)
     {
         if (importContext is null) return new StartingPresetResult("시작 프리셋: 던전 밖에서 새로 가져올 때만 적용합니다.");
-        if (string.IsNullOrWhiteSpace(build.NativePresetCode)) return new StartingPresetResult("Wiki 전체 프리셋 코드 없음", warning: "시작 세팅 코드가 없어 가이드만 적용합니다.");
         object? panel = null;
         string? backup = null;
         var changed = false;
@@ -62,7 +66,11 @@ internal sealed partial class UnityGameGateway
             var spawner = ReadNamedObject(panel, "playerSpawner") ?? throw new InvalidOperationException("플레이어 스포너가 없습니다.");
             if (ReadNamedObject(panel, "baseWeaponDatas") is not IEnumerable weapons || !weapons.Cast<object>().Any())
                 throw new InvalidOperationException("시작 무기 카탈로그가 준비되지 않았습니다.");
-            var preset = NativePreset.Decode(build.NativePresetCode!);
+            backup = (string)NativeCall(panel, "BuildCompactPresetData", "")!;
+            var fallbackWarnings = new List<string>();
+            var preset = !string.IsNullOrWhiteSpace(build.NativePresetCode)
+                ? NativePreset.Decode(build.NativePresetCode!)
+                : StartingPresetFallback.Create(build, backup, _catalog, DiscoverCatalogEntities(), VerifiedPassiveId, fallbackWarnings);
             var requested = preset.Compact();
             var costumeArgs = new object?[] { preset.Costume, preset.Skin };
             NativeCall(panel, "ValidateAndCorrectCostume", costumeArgs);
@@ -89,7 +97,6 @@ internal sealed partial class UnityGameGateway
                 if (AccessTools.Method(type, name) is null) throw new MissingMethodException(type.Name, name);
             var save = AccessTools.Method(GameType("SaveManager"), "Save", new[] { typeof(bool), typeof(bool) })
                 ?? throw new MissingMethodException("SaveManager.Save");
-            backup = (string)NativeCall(panel, "BuildCompactPresetData", "")!;
             if (StartingPresetContext() != importContext || FindLocalPlayerId(out owned, out _) != id || !owned)
                 throw new InvalidOperationException("적용 직전 로컬 런 상태가 변경되었습니다.");
             cancellationToken.ThrowIfCancellationRequested();
@@ -141,10 +148,11 @@ internal sealed partial class UnityGameGateway
             NativeCall(panel, "UpdateCurrentPlayer", null, false);
             await WaitForStartingStats(avatar!, preset, passiveEntities, importContext, cancellationToken);
             save.Invoke(null, new object[] { true, false });
-            _log.LogInfo("Starting preset applied through native import/update; permanent purchases excluded.");
+            _log.LogInfo("Starting preset applied through native import/update; source=" + (string.IsNullOrWhiteSpace(build.NativePresetCode) ? "wiki-fields" : "preset-code") + "; permanent purchases excluded.");
+            foreach (var warning in fallbackWarnings) _log.LogWarning("Starting preset: " + warning);
             var limited = requested != preset.Compact() ? " 해금/포인트/용량 제한으로 일부 목표를 제외했습니다." : "";
             return new StartingPresetResult("시작 프리셋 적용 완료 (현재 설정만 변경, 저장 슬롯 유지)." + limited + "\n" + message,
-                applied: true, warning: limited.Length > 0 || message.Length > 0 ? "일부 시작 세팅은 해금·포인트·용량에 맞춰 조정했습니다." + (message.Length > 0 ? "\n" + message : "") : null);
+                applied: true, warning: limited.Length > 0 || message.Length > 0 || fallbackWarnings.Count > 0 ? "일부 시작 세팅은 해금·매핑·포인트·용량에 맞춰 조정했습니다." + (message.Length > 0 ? "\n" + message : "") : null);
         }
         catch (Exception ex)
         {
@@ -168,6 +176,17 @@ internal sealed partial class UnityGameGateway
             return new StartingPresetResult("시작 프리셋 미적용/복원: " + ex.GetBaseException().Message, warning: "시작 세팅을 적용하지 못했습니다. 기존 설정을 유지합니다.");
         }
         finally { if (ownsPending && !_disposed) _requestPending = false; }
+    }
+
+    private ulong? VerifiedPassiveId(string slug)
+    {
+        var expected = StartingPassiveMapping.Expected(slug);
+        var entities = StaticCall("PassiveDatabase", "GetAll") as IEnumerable;
+        var matches = entities?.Cast<object>().Where(x => Convert.ToUInt64(ReadNamedObject(x, "id")) == expected.Item1).ToArray();
+        if (expected.Item1 == 0 || matches?.Length != 1) return null;
+        var localized = ReadNamedObject(matches[0], "aName");
+        return localized is not null && StartingPassiveMapping.Matches(slug, expected.Id, ReadNamedString(localized, "key"), ReadNamedString(matches[0], "aName"))
+            ? expected.Item1 : null;
     }
 
     private async Task WaitForStartingStats(object avatar, NativePreset preset, IEnumerable entities, string context, CancellationToken token)

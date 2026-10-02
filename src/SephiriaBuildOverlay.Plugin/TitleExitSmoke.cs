@@ -36,6 +36,15 @@ internal sealed partial class UnityGameGateway
                 title.gameObject.activeInHierarchy && ReadBool(title, "IsOpened"), player != null, _requestPending)) continue;
             var quit = title.GetType().GetMethod("QuitGame", Type.EmptyTypes);
             if (quit is null) continue;
+            if (Environment.GetCommandLineArgs().Contains("--sbo-starting-catalog-smoke", StringComparer.Ordinal))
+            {
+                try
+                {
+                    VerifyStartingPresetCatalog();
+                    _log.LogInfo("Starting catalog (read-only): " + Newtonsoft.Json.JsonConvert.SerializeObject(ReadStartingPresetCatalog()));
+                }
+                catch (Exception ex) { _log.LogWarning("Starting catalog unavailable at title: " + ex.GetBaseException().Message); }
+            }
             if (Environment.GetCommandLineArgs().Contains("--sbo-native-ui-smoke", StringComparer.Ordinal))
             {
                 try
@@ -46,6 +55,10 @@ internal sealed partial class UnityGameGateway
                         ?? throw new InvalidOperationException("Native UI template unavailable.");
                     window.Render(false, true, "", 1, new ControllerMenu());
                     _log.LogInfo("Native UI construction PASS: " + Newtonsoft.Json.JsonConvert.SerializeObject(window.Diagnostics()));
+                    var immediateCursor = DrawModalCursor(immediate: true);
+                    _log.LogInfo("Modal cursor contract: detailSurface=Immediate, depth=" + OverlayUiTokens.CursorDepth +
+                        ", nativeSpriteAvailable=" + immediateCursor + ", systemFallback=" + !immediateCursor);
+                    RestoreNativeModalCursor(false);
                 }
                 catch (Exception ex) { _log.LogWarning("Native UI construction FAILED: " + ex); }
             }

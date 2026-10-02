@@ -31,7 +31,10 @@
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\ControllerInputState.cs" Link="ControllerInputState.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\ModalInputCapture.cs" Link="ModalInputCapture.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\StartingPresetPolicy.cs" Link="StartingPresetPolicy.cs" />
+    <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\DeferredStartingPreset.cs" Link="DeferredStartingPreset.cs" />
+    <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\StartingPassiveMapping.cs" Link="StartingPassiveMapping.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\ModalCursorVisibility.cs" Link="ModalCursorVisibility.cs" />
+    <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\ModalCursorSurface.cs" Link="ModalCursorSurface.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\PluginLifetime.cs" Link="PluginLifetime.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\TitleExitSmokePolicy.cs" Link="TitleExitSmokePolicy.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\EnchantPriority.cs" Link="EnchantPriority.cs" />
