@@ -17,7 +17,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
 {
     public const string PluginGuid = "io.github.sephiria.build-overlay";
     public const string PluginName = "Sephiria Build Overlay";
-    public const string PluginVersion = "0.1.8";
+    public const string PluginVersion = "0.1.9";
 
     private ConfigEntry<KeyCode> _importKey = null!;
     private ConfigEntry<KeyCode> _overlayKey = null!;
@@ -37,6 +37,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
     private ConfigEntry<bool> _acceptVersionMismatch = null!;
     private ConfigEntry<bool> _exportRuntimeCatalog = null!;
     private ConfigEntry<float> _uiScale = null!;
+    private ConfigEntry<float> _panelScale = null!;
     private ConfigEntry<float> _ghostOpacity = null!;
     private ConfigEntry<bool> _measurePerformance = null!;
     private ConfigEntry<bool> _runtimeDiagnostics = null!;
@@ -63,9 +64,11 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
             if (value && !_controllerModalGateReady)
             {
                 Logger.LogWarning("Review window blocked: exclusive native input gate unavailable.");
+                Notify("게임 입력을 분리하지 못해 창을 열 수 없습니다.", NotificationKind.Error);
                 return;
             }
             _modalInput.SetVisible(value);
+            if (!value) _nativeBuildWindow?.Hide();
             if (!value) ReleaseSystemCursor();
             _confirmRequested = false;
             ResetNativeUiInput(rememberSelection: value);
@@ -76,7 +79,6 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
     private string _status = "빌드 링크를 불러오면 모든 항목을 추천 목표로 안내합니다.";
     private Vector2 _reviewScroll;
     private Rect _importRect = new(180, 35, 650, 450);
-    private Rect _overlayRect = new(18, 184, 440, 450);
     private readonly object _uiStateGate = new();
     private bool _importing;
     private bool _executing;
@@ -111,6 +113,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
         _diagnostics = new RuntimeDiagnostics(Path.Combine(Paths.BepInExRootPath, "cache", "SephiriaBuildOverlay", "diagnostics"));
         _source = new WikiBuildSource();
         _uiScale = Config.Bind("UI", "Scale", 1f, new ConfigDescription("가이드 글꼴/창 크기 배율", new AcceptableValueRange<float>(0.75f, 1.75f)));
+        _panelScale = Config.Bind("UI", "PanelScale", 1f, new ConfigDescription("기본 패널 전용 배율. 마우스로 오른쪽 아래 모서리를 드래그하면 저장됨", new AcceptableValueRange<float>(PanelResizeState.MinimumScale, PanelResizeState.MaximumScale)));
         _ghostOpacity = Config.Bind("UI", "GhostOpacity", .4f, new ConfigDescription("인벤토리 목표 배치 고스트 불투명도", new AcceptableValueRange<float>(.15f, .7f)));
         _catalog = VersionedCatalog.LoadEmbedded("1.0.33");
         _gateway = new UnityGameGateway(_catalog, Logger, _exportRuntimeCatalog.Value);
@@ -135,10 +138,14 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
     }
 
     private void OnDestroy() => Shutdown();
+    private void OnApplicationFocus(bool focused) { if (!focused) _nativeBuildWindow?.CancelResize(); }
 
     private void Shutdown()
     {
         if (_lifetime.Stopped) return;
+        _nativeBuildWindow?.Dispose(destroyUnityObjects: !_quitting);
+        _nativeBuildWindow = null;
+        _notifications.Clear();
         ReleaseSystemCursor();
         if (!_quitting && _modalInput.Capturing) ResetNativeUiInput(restoreSelection: true);
         _instance = null; // Patches become inert BEFORE cancellation continuations.
@@ -159,6 +166,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
     {
         if (_quitting || _lifetime.Stopped) return;
         if (!_updateObserved) { _updateObserved = true; Logger.LogInfo("Update callback active."); }
+        _notifications.Advance(Time.unscaledDeltaTime, Application.isFocused);
         TickTitleExitSmoke();
         HandleControllerInput();
         _gateway.Performance.Enabled = _measurePerformance.Value;
@@ -206,7 +214,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
                 else _status = "이전 검토를 복원했습니다. 분류와 매핑 확인 후 활성화하세요.";
                 Logger.LogInfo($"Saved review restored: {saved.Build.Id}, active={_plan is not null}");
             }
-            catch (Exception ex) { _status = "이전 빌드 복원 실패: " + ex.Message; Logger.LogWarning(ex); }
+            catch (Exception ex) { _status = "이전 빌드 복원 실패: " + ex.Message; Logger.LogWarning(ex); Notify("저장된 빌드를 복원하지 못했습니다. 링크를 다시 불러오세요.", NotificationKind.Warning); }
         }
 
         if (!_importing && _plan is not null && _state is not null && Time.unscaledTime >= _nextSnapshotAt)
@@ -243,6 +251,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
             if (_lifetime.Stopped) return;
             Logger.LogInfo($"Confirmed action result: kind={action.Kind}, result={result.Status}, message={result.Message}");
             lock (_uiStateGate) _status = result.Message;
+            if (!result.Succeeded) Notify(result.Message, NotificationKind.Warning);
         }
         catch (OperationCanceledException) when (_lifetime.Stopped) { }
         catch (Exception) when (_lifetime.Stopped) { }
@@ -250,6 +259,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
         {
             Logger.LogError(ex);
             lock (_uiStateGate) _status = "행동 실행 오류: " + ex.Message;
+            Notify("행동을 실행하지 못했습니다. 게임 상태를 확인하세요.", NotificationKind.Error);
         }
         finally
         {
@@ -263,6 +273,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
         if (!BuildLocator.TryParse(_locatorText, out var locator, out var error))
         {
             _status = error!;
+            Notify(error!, NotificationKind.Error);
             return;
         }
         _importing = true;
@@ -302,13 +313,19 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
             var presetStatus = await _gateway.ApplyStartingPresetAsync(result.Build, startingContext, _lifetime.Token);
             if (!_lifetime.Stopped)
             {
-                // Keep the compact result visible: cache age, skipped preset
-                // settings and unresolved mappings must not disappear on load.
-                if (TryActivateReviewedBuild(closeWindow: false)) _showOverlay = true;
-                if (!string.IsNullOrWhiteSpace(result.Warning)) _status += "\n" + result.Warning;
-                _status += "\n" + presetStatus;
+                if (TryActivateReviewedBuild(closeWindow: false))
+                {
+                    _showOverlay = true;
+                    Notify(presetStatus.Applied ? "빌드와 시작 세팅을 적용했습니다." : "빌드를 적용했습니다.", NotificationKind.Success);
+                }
+                if (!string.IsNullOrWhiteSpace(result.Warning))
+                { _status += "\n" + result.Warning; Notify(result.Warning!, NotificationKind.Warning); }
+                _status += "\n" + presetStatus.Detail;
+                if (!string.IsNullOrWhiteSpace(presetStatus.Warning)) Notify(presetStatus.Warning!, NotificationKind.Warning);
                 if (_plan?.Checklist.Any(x => x.StartsWith("미해결", StringComparison.Ordinal)) == true)
-                    _status += "\n일부 목표를 해석하지 못했습니다. 고급 설정의 체크리스트에서 확인하세요.";
+                    Notify("일부 목표는 수동 확인이 필요합니다. 설정의 체크리스트를 확인하세요.", NotificationKind.Warning);
+                if (review.Bindings.Values.Any(x => !x.AllowsAutomaticAction))
+                    Notify("검증되지 않은 항목은 자동 선택하지 않습니다. 설정에서 매핑을 확인하세요.", NotificationKind.Warning);
             }
         }
         catch (OperationCanceledException) when (_lifetime.Stopped) { }
@@ -317,13 +334,15 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
         {
             Logger.LogWarning(ex);
             lock (_uiStateGate) _status = "가져오기 실패: " + ex.Message;
+            Notify("빌드를 불러오지 못했습니다. 링크와 네트워크를 확인하세요.", NotificationKind.Error);
         }
         finally { _importing = false; }
     }
 
     private void ActivateReviewedBuild()
     {
-        TryActivateReviewedBuild();
+        var announce = _showImport;
+        if (TryActivateReviewedBuild() && announce) Notify("빌드 설정을 적용했습니다.", NotificationKind.Success);
     }
 
     private bool TryActivateReviewedBuild(bool closeWindow = true)
@@ -350,7 +369,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
             if (closeWindow) _showImport = false;
             return true;
         }
-        catch (Exception ex) { _status = "활성화 불가: " + ex.Message; return false; }
+        catch (Exception ex) { _status = "활성화 불가: " + ex.Message; Logger.LogWarning(_status); Notify("빌드를 적용하지 못했습니다. 설정에서 목표와 버전을 확인하세요.", NotificationKind.Error); return false; }
     }
 
     private IReadOnlyDictionary<string, CatalogBinding> BindingsByGameKey()
@@ -437,7 +456,8 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
             {
                 var type = AccessTools.TypeByName(typeName) ?? throw new TypeLoadException(typeName);
                 var method = AccessTools.Method(type, methodName) ?? throw new MissingMethodException(typeName, methodName);
-                _harmony!.Patch(method, prefix: new HarmonyMethod(typeof(SephiriaBuildOverlayPlugin), nameof(AllowNativeModalInput)));
+                _harmony!.Patch(method, prefix: new HarmonyMethod(typeof(SephiriaBuildOverlayPlugin),
+                    typeName == "UnityEngine.InputSystem.UI.InputSystemUIInputModule" ? nameof(AllowOwnedUiModule) : nameof(AllowNativeModalInput)));
             }
             // Raw InputAction polling (discard, rotate, close, shop etc.) is
             // separate from EventSystem.Process. IMGUI and our paired-pad
@@ -454,9 +474,12 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
         catch (Exception ex) { Logger.LogWarning("Controller review input disabled: " + ex.Message); }
     }
 
-    private static bool AllowNativeActionPoll(ref bool __result)
+    private static bool AllowOwnedUiModule(object __instance) => AllowNativeModalInput() ||
+        (_instance is { _quitting: false } plugin && plugin._nativeBuildWindow?.OwnsModule(__instance) == true);
+
+    private static bool AllowNativeActionPoll(object __instance, ref bool __result)
     {
-        if (AllowNativeModalInput()) return true;
+        if (AllowNativeModalInput() || (_instance is { _quitting: false } plugin && plugin._nativeBuildWindow?.OwnsAction(__instance) == true)) return true;
         __result = false;
         return false;
     }
@@ -486,6 +509,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
     {
         if (_controllerReviewPreviewActive && !ControllerReviewPreview)
         {
+            _advancedReview = _controllerReviewPreviewWasAdvanced;
             _controllerReviewPreviewActive = false; _showImport = _controllerReviewPreviewWasOpen; _controllerMenu.Reset();
         }
         var previousMode = _controller.GamepadMode;
@@ -518,6 +542,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
         if (keyEvent.type == EventType.KeyUp) _shortcutLatch.Release((int)keyEvent.keyCode);
         if (keyEvent.type == EventType.KeyDown && Application.isFocused && keyEvent.keyCode != KeyCode.None)
         {
+            if (keyEvent.keyCode == KeyCode.Escape && _showImport) { _showImport = false; keyEvent.Use(); return; }
             if (keyEvent.keyCode == _importKey.Value && _shortcutLatch.Press((int)keyEvent.keyCode)) _importToggleRequested = true;
             else if (keyEvent.keyCode == _overlayKey.Value && _shortcutLatch.Press((int)keyEvent.keyCode)) _overlayToggleRequested = true;
             else if (keyEvent.keyCode == _confirmKey.Value && _shortcutLatch.Press((int)keyEvent.keyCode) && !_modalInput.Capturing) _confirmRequested = true;
@@ -534,6 +559,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
         _gateway.SetItemFont(_theme?.Skin.font);
         if (Event.current.type == EventType.Repaint)
         {
+            _gateway.DrawNotification(_notifications.Current, _notifications.Opacity, _uiScale.Value);
             _gateway.BeginNativeOverlay(_showOverlay && !_showImport);
             if (_showOverlay && !_showImport)
             {

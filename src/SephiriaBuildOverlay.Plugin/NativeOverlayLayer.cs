@@ -43,6 +43,8 @@ internal sealed partial class UnityGameGateway
         private readonly Type _textType;
         private readonly Type _imageType;
         private readonly MethodInfo? _preferredValues;
+        private readonly MethodInfo? _preferredWrappedValues;
+        private readonly CanvasGroup _group;
         private readonly Dictionary<string, Element> _elements = new(StringComparer.Ordinal);
         private UnityEngine.Object _font = null!;
         private int _generation;
@@ -57,24 +59,31 @@ internal sealed partial class UnityGameGateway
             public float FontSize;
             public Color Color;
             public Sprite? Sprite;
+            public bool Sliced;
+            public bool WrappedLeft;
             public string? MeasuredText;
             public UnityEngine.Object? MeasuredFont;
             public float MeasuredPixels;
             public Vector2 MeasuredSize;
+            public float MeasuredWidth = float.PositiveInfinity;
         }
-        public NativeOverlayLayer(Type textType, Type imageType)
+        public NativeOverlayLayer(Type textType, Type imageType, string name = "SephiriaBuildOverlay.Native", int order = OverlayUiTokens.OverlaySortingOrder)
         {
             _textType = textType; _imageType = imageType;
             _preferredValues = textType.GetMethod("GetPreferredValues", new[] { typeof(string) });
-            _root = new GameObject("SephiriaBuildOverlay.Native", typeof(RectTransform), typeof(Canvas));
+            _preferredWrappedValues = textType.GetMethod("GetPreferredValues", new[] { typeof(string), typeof(float), typeof(float) });
+            _root = new GameObject(name, typeof(RectTransform), typeof(Canvas), typeof(CanvasGroup));
+            _group = _root.GetComponent<CanvasGroup>();
+            _group.interactable = false; _group.blocksRaycasts = false;
             UnityEngine.Object.DontDestroyOnLoad(_root);
             _root.hideFlags = HideFlags.HideAndDontSave;
             var canvas = _root.GetComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay; canvas.sortingOrder = 32000; canvas.pixelPerfect = true;
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay; canvas.sortingOrder = order; canvas.pixelPerfect = true;
             // No GraphicRaycaster: these passive labels cannot intercept native
             // inventory dragging, mouse clicks, or the game's UI navigation.
         }
         public void SetVisible(bool visible) { if (_root != null && _root.activeSelf != visible) _root.SetActive(visible); }
+        public void SetOpacity(float opacity) { if (_group != null && _group.alpha != opacity) _group.alpha = opacity; }
         public void Begin(UnityEngine.Object font) { _font = font; _generation++; SetVisible(true); }
         public object Diagnostics() => new
         {
@@ -110,15 +119,20 @@ internal sealed partial class UnityGameGateway
             if (element.Rect.sizeDelta != size) element.Rect.sizeDelta = size;
             return element;
         }
-        public void Label(string key, Rect rectangle, string text, Color color, float pixels)
+        public void Label(string key, Rect rectangle, string text, Color color, float pixels, bool wrappedLeft = false)
         {
             var element = Get(key, rectangle, _textType);
             if (element.Font != _font) { Set(element.Component, "font", _font); element.Font = _font; }
             if (element.Text != text) { Set(element.Component, "text", text); element.Text = text; }
             if (element.FontSize != pixels) { Set(element.Component, "fontSize", pixels); element.FontSize = pixels; }
             if (element.Color != color) { Set(element.Component, "color", color); element.Color = color; }
+            if (wrappedLeft && !element.WrappedLeft)
+            {
+                Set(element.Component, "enableWordWrapping", true);
+                SetEnum(element.Component, "alignment", "Left"); element.WrappedLeft = true;
+            }
         }
-        public Vector2 MeasureLabel(string key, string text, float pixels)
+        public Vector2 MeasureLabel(string key, string text, float pixels, float width = float.PositiveInfinity)
         {
             var measurementKey = "measure:" + key;
             if (!_elements.TryGetValue(measurementKey, out var element))
@@ -128,31 +142,36 @@ internal sealed partial class UnityGameGateway
                 element.Object.SetActive(false);
             }
             else element.Generation = _generation;
-            if (element.MeasuredText == text && element.MeasuredFont == _font && element.MeasuredPixels == pixels)
+            if (element.MeasuredText == text && element.MeasuredFont == _font && element.MeasuredPixels == pixels && element.MeasuredWidth == width)
                 return element.MeasuredSize;
             if (element.Font != _font) { Set(element.Component, "font", _font); element.Font = _font; }
             if (element.FontSize != pixels) { Set(element.Component, "fontSize", pixels); element.FontSize = pixels; }
             // Measure with the actual game TMP asset, not the IMGUI fallback
             // font. Cache per label so this does not recalculate every frame.
-            var size = new Vector2(text.Length * pixels, pixels * 1.5f);
+            var size = float.IsPositiveInfinity(width) ? new Vector2(text.Length * pixels, pixels * 1.5f)
+                : new Vector2(width, Math.Max(1, (float)Math.Ceiling(text.Length * pixels / Math.Max(1, width))) * pixels * 1.5f);
             try
             {
-                if (_preferredValues?.Invoke(element.Component, new object[] { text }) is Vector2 preferred &&
+                var measured = float.IsPositiveInfinity(width) ? _preferredValues?.Invoke(element.Component, new object[] { text })
+                    : _preferredWrappedValues?.Invoke(element.Component, new object[] { text, width, float.PositiveInfinity });
+                if (measured is Vector2 preferred &&
                     preferred.x > 0 && preferred.y > 0 && !float.IsInfinity(preferred.x) && !float.IsInfinity(preferred.y))
                     size = preferred;
             }
             catch { /* Conservative visible fallback on TMP schema changes. */ }
-            element.MeasuredText = text; element.MeasuredFont = _font; element.MeasuredPixels = pixels; element.MeasuredSize = size;
+            element.MeasuredText = text; element.MeasuredFont = _font; element.MeasuredPixels = pixels; element.MeasuredSize = size; element.MeasuredWidth = width;
             return size;
         }
-        public void Box(string key, Rect rectangle, Color color, Sprite? sprite = null)
+        public void Box(string key, Rect rectangle, Color color, Sprite? sprite = null, bool sliced = false)
         {
             var element = Get(key, rectangle, _imageType);
             if (element.Color != color) { Set(element.Component, "color", color); element.Color = color; }
-            if (element.Sprite != sprite)
+            if (element.Sprite != sprite || element.Sliced != sliced)
             {
                 Set(element.Component, "sprite", sprite); element.Sprite = sprite;
-                Set(element.Component, "preserveAspect", sprite != null);
+                SetEnum(element.Component, "type", sliced ? "Sliced" : "Simple");
+                Set(element.Component, "preserveAspect", sprite != null && !sliced);
+                element.Sliced = sliced;
             }
         }
         public void Border(string key, Rect rect, Color color, float width = 2)

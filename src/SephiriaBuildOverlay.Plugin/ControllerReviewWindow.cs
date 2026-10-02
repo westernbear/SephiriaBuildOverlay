@@ -11,13 +11,16 @@ public sealed partial class SephiriaBuildOverlayPlugin
     private int _padChecklist;
     private float _controllerReviewPreviewUntil;
     private bool _controllerReviewPreviewWasOpen;
+    private bool _controllerReviewPreviewWasAdvanced;
     private bool _controllerReviewPreviewActive;
     private bool ControllerReviewPreview => _controllerReviewPreviewActive && Time.unscaledTime < _controllerReviewPreviewUntil;
     private object PreviewControllerReview()
     {
         if (_importing || _executing) return new { previewShown = false, gameActionsAllowed = false, durationSeconds = 0 };
-        if (!_controllerReviewPreviewActive) _controllerReviewPreviewWasOpen = _showImport;
+        if (!_controllerReviewPreviewActive)
+        { _controllerReviewPreviewWasOpen = _showImport; _controllerReviewPreviewWasAdvanced = _advancedReview; }
         _controllerReviewPreviewActive = true; _controllerReviewPreviewUntil = Time.unscaledTime + 10f;
+        if (!_advancedReview) ToggleAdvancedReview();
         _showImport = true; _controllerMenu.Reset();
         return new { previewShown = true, gameActionsAllowed = false, durationSeconds = 10 };
     }
@@ -38,24 +41,11 @@ public sealed partial class SephiriaBuildOverlayPlugin
 
     private void DrawControllerReview()
     {
-        GUILayout.Label($"패드  방향키 이동 · {_controller.SubmitLabel} 확인 · {_controller.CancelLabel} 닫기", _theme!.Small);
-        if (ControllerReviewPreview) GUILayout.Label("읽기 전용 패드 UI 미리보기 · 입력/게임 행동 비활성", _theme.WarningText);
+        var theme = _theme!;
+        if (ControllerReviewPreview) GUILayout.Label("읽기 전용 패드 UI 미리보기 · 입력/게임 행동 비활성", theme.WarningText);
         if (!_controllerModalGateReady)
         {
-            GUILayout.Label($"네이티브 UI 입력 분리에 실패했습니다. 패드 검토 조작은 비활성화됩니다. {_importKey.Value}로 닫으세요.", _theme.WarningText);
-            return;
-        }
-        if (_controller.DeviceId is null) GUILayout.Label("로컬 패드 연결을 확인하세요. 모호한 장치 입력은 실행하지 않습니다.", _theme.WarningText);
-        if (!_advancedReview)
-        {
-            PadButton("quick-import", _importing ? "불러오는 중…" : "클립보드 링크 불러오기", () =>
-            {
-                _locatorText = GUIUtility.systemCopyBuffer.Trim();
-                _controllerMenu.Reset();
-                _ = ImportAsync();
-            });
-            DrawQuickBuildSummary();
-            PadButton("advanced", "고급 설정", ToggleAdvancedReview);
+            GUILayout.Label($"네이티브 UI 입력 분리에 실패했습니다. 패드 검토 조작은 비활성화됩니다. {_importKey.Value}로 닫으세요.", theme.WarningText);
             return;
         }
         PadButton("simple", "← 간단히 보기", ToggleAdvancedReview);
@@ -64,8 +54,6 @@ public sealed partial class SephiriaBuildOverlayPlugin
         PadButton("progress-tab", "획득 횟수 보정", () => { _guideTab = 1; _controllerMenu.Reset(); }, _plan is not null);
         PadButton("checklist-tab", "체크리스트", () => { _guideTab = 2; _controllerMenu.Reset(); }, _plan is not null);
         GUILayout.EndHorizontal();
-        GUILayout.Label("로비 가져오기: 시작 프리셋 포함 · 구매/영구 소비/저장 슬롯 덮어쓰기 없음", _theme.Small);
-        GUILayout.Label(_status, _theme.WarningText, GUILayout.Height(70));
         if (_guideTab == 1 && _plan is not null && _state is not null) { DrawPadProgress(); return; }
         if (_guideTab == 2 && _plan is not null) { DrawPadChecklist(); return; }
 
@@ -73,18 +61,16 @@ public sealed partial class SephiriaBuildOverlayPlugin
         PadButton("paste-build", "클립보드의 빌드 링크 붙여넣기", () => _locatorText = GUIUtility.systemCopyBuffer.Trim());
         PadButton("import-build", _importing ? "가져오는 중…" : "빌드 가져오기", () => { _controllerMenu.Reset(); _ = ImportAsync(); });
         GUILayout.EndHorizontal();
-        GUILayout.Label(string.IsNullOrWhiteSpace(_locatorText) ? "URL/UUID를 복사한 뒤 붙여넣기를 선택하세요. 직접 입력은 키보드 모드에서 가능합니다." : _locatorText, _theme.Small);
+        GUILayout.Label(_locatorText, theme.Small);
         if (_review is null) { GUILayout.FlexibleSpace(); return; }
         var review = _review;
-        var classified = review.Sections.Count(x => x.Role != TargetRole.Unclassified);
-        GUILayout.Label(review.Build.Title, _theme.Heading);
-        GUILayout.Label($"구역 {classified}/{review.Sections.Count} 분류 · 게임 {Application.version} / 빌드 {review.Build.GameVersion}", _theme.Small);
+        GUILayout.Label(review.Build.Title, theme.Heading);
         if (review.Sections.Count == 0) { GUILayout.FlexibleSpace(); return; }
         _selectedSection = Math.Max(0, Math.Min(_selectedSection, review.Sections.Count - 1));
         var section = review.Sections[_selectedSection];
         GUILayout.BeginHorizontal();
         PadButton("previous-section", "이전 구역", () => ChangePadSection(-1));
-        GUILayout.Label($"{_selectedSection + 1}/{review.Sections.Count}  {section.Source.Label}", _theme.Heading);
+        GUILayout.Label($"{_selectedSection + 1}/{review.Sections.Count}  {section.Source.Label}", theme.Heading);
         PadButton("next-section", "다음 구역", () => ChangePadSection(1));
         GUILayout.EndHorizontal();
         GUILayout.BeginHorizontal();
@@ -102,13 +88,14 @@ public sealed partial class SephiriaBuildOverlayPlugin
             var item = section.Items[_padItem];
             var slug = item.ManualCatalogKey ?? item.Source.Slug;
             review.Bindings.TryGetValue(slug, out var binding);
-            GUILayout.BeginVertical(_theme.Card);
+            GUILayout.BeginVertical(theme.Card);
             GUILayout.BeginHorizontal();
             PadButton("previous-item", "이전 항목", () => { _padItem = (_padItem + section.Items.Count - 1) % section.Items.Count; _controllerMenu.Invalidate(); });
             GUILayout.Label($"{_padItem + 1}/{section.Items.Count}  {_catalog.FindBySlug(slug)?.KoreanName ?? slug}");
             PadButton("next-item", "다음 항목", () => { _padItem = (_padItem + 1) % section.Items.Count; _controllerMenu.Invalidate(); });
             GUILayout.EndHorizontal();
-            GUILayout.Label(BindingLabel(binding?.Status) + " · " + (binding?.Explanation ?? "매핑 재검증 필요"), _theme.Small, GUILayout.Height(42));
+            if (binding?.AllowsAutomaticAction != true)
+                GUILayout.Label(BindingLabel(binding?.Status) + " · " + (binding?.Explanation ?? "매핑 재검증 필요"), theme.Small, GUILayout.Height(42));
             GUILayout.BeginHorizontal();
             PadButton("item-role", "항목 " + RoleLabel(item.RoleOverride ?? section.Role), () => item.RoleOverride = NextRole(item.RoleOverride ?? section.Role));
             PadButton("item-inherit", "구역 분류 상속", () => item.RoleOverride = null);
@@ -122,7 +109,7 @@ public sealed partial class SephiriaBuildOverlayPlugin
             {
                 var key = GUIUtility.systemCopyBuffer.Trim();
                 if (key.Length is > 0 and <= 128 && _catalog.FindBySlug(key) is not null) item.ManualCatalogKey = key;
-                else _status = "클립보드에서 유효한 카탈로그 slug를 찾지 못했습니다.";
+                else Notify("클립보드에서 유효한 카탈로그 slug를 찾지 못했습니다.", NotificationKind.Error);
             });
             GUILayout.EndHorizontal();
             GUILayout.EndVertical();

@@ -13,7 +13,6 @@ public sealed partial class SephiriaBuildOverlayPlugin
     private int _guideTab;
     private Vector2 _sectionScroll;
     private Vector2 _guideScroll;
-    private Vector2 _importStatusScroll;
     private bool _showDetails;
     private bool _onlyUnresolved;
     private bool _advancedReview;
@@ -21,51 +20,17 @@ public sealed partial class SephiriaBuildOverlayPlugin
     private void ToggleAdvancedReview()
     {
         _advancedReview = !_advancedReview;
+        _nativeBuildWindow?.Hide();
         _guideTab = 0;
         _controllerMenu.Reset();
-        _importRect.width = _advancedReview ? 920 : 650;
-        _importRect.height = _advancedReview ? 650 : 450;
-    }
-
-    private void DrawQuickBuildSummary()
-    {
-        GUILayout.Label("링크 하나로 모든 항목을 추천 목표로 적용합니다.", _theme!.Small);
-        GUILayout.Label("로비에서는 해금된 시작 세팅도 적용 · 구매/영구 소비 없음", _theme.Small);
-        _importStatusScroll = GUILayout.BeginScrollView(_importStatusScroll, GUILayout.Height(70));
-        GUILayout.Label(_status, _theme.WarningText);
-        GUILayout.EndScrollView();
-        if (_review is not null)
-        {
-            GUILayout.Label(_review.Build.Title, _theme.Heading);
-            var unresolved = _review.Bindings.Values.Count(x => !x.AllowsAutomaticAction);
-            GUILayout.Label(_plan is null ? "가이드 비활성 · 위 오류를 확인하세요." : $"목표 {_plan.Artifacts.Count}종 · {_plan.Artifacts.Sum(x => x.DesiredAcquisitions)}회", _theme.Small);
-            if (unresolved > 0) GUILayout.Label($"미검증 매핑 {unresolved}개 · 해당 자동 행동은 실행하지 않습니다.", _theme.WarningText);
-        }
-        GUILayout.FlexibleSpace();
-        GUILayout.Label($"{ImportPrompt} 창 닫기  ·  {OverlayPrompt} 안내 표시  ·  {ConfirmPrompt} 한 동작 확인", _theme.Small);
-    }
-
-    private void DrawQuickImport()
-    {
-        GUILayout.BeginHorizontal();
-        // TextField may consume Return itself. Capture it before drawing the
-        // single-line field, then submit only if that field owns keyboard focus.
-        var submit = Event.current.type == EventType.KeyDown && Event.current.keyCode is KeyCode.Return or KeyCode.KeypadEnter
-            && GUI.GetNameOfFocusedControl() == "quick-build-link";
-        GUI.SetNextControlName("quick-build-link");
-        _locatorText = GUILayout.TextField(_locatorText, GUILayout.ExpandWidth(true));
-        if (submit && Event.current.type != EventType.Used) Event.current.Use();
-        GUI.enabled = !_importing && !_executing;
-        var load = GUILayout.Button(_importing ? "불러오는 중…" : "불러오기", _theme!.Primary, GUILayout.Width(130));
-        if ((load || submit) && GUI.enabled) _ = ImportAsync();
-        GUI.enabled = true;
-        GUILayout.EndHorizontal();
-        DrawQuickBuildSummary();
-        if (GUILayout.Button("고급 설정", _theme.CompactButton, GUILayout.Width(120))) ToggleAdvancedReview();
+        _importRect.width = OverlayUiTokens.AdvancedWidth;
+        _importRect.height = OverlayUiTokens.AdvancedHeight;
     }
 
     private void DrawStyledWindows()
     {
+        DrawNativeBuildWindow();
+        if (!_showImport || !_advancedReview) return;
         _theme ??= new OverlayTheme(GUI.skin);
         var oldSkin = GUI.skin;
         var oldMatrix = GUI.matrix;
@@ -73,10 +38,10 @@ public sealed partial class SephiriaBuildOverlayPlugin
         try
         {
             GUI.skin = _theme.Skin;
-            GUI.depth = -20;
+            GUI.depth = OverlayUiTokens.WindowDepth;
             var scale = Mathf.Clamp(_uiScale.Value, 0.75f, 1.75f);
             // Fit the review window even on a small game window without changing game settings.
-            scale = Math.Min(scale, Math.Min(Screen.width / 760f, Screen.height / 540f));
+            scale = Math.Min(scale, Math.Min((Screen.width - 16) / OverlayUiTokens.AdvancedWidth, (Screen.height - 140) / OverlayUiTokens.AdvancedHeight));
             GUI.matrix = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, new Vector3(scale, scale, 1));
             var width = Screen.width / scale;
             var height = Screen.height / scale;
@@ -90,10 +55,10 @@ public sealed partial class SephiriaBuildOverlayPlugin
                 GUI.DrawTexture(new Rect(0, 0, width, height), Texture2D.whiteTexture);
                 GUI.color = priorColor;
                 if (Event.current.type == EventType.Repaint) _controllerMenu.BeginFrame();
-                _importRect = FitWindow(_importRect, width, height);
-                _importRect = GUI.Window(761331, _importRect, DrawImportWindow, string.Empty);
-                GUI.BringWindowToFront(761331);
-                GUI.FocusWindow(761331);
+                _importRect = FitWindow(_importRect, width, height - 120 / scale);
+                _importRect = GUI.Window(OverlayUiTokens.WindowId, _importRect, DrawImportWindow, string.Empty);
+                GUI.BringWindowToFront(OverlayUiTokens.WindowId);
+                GUI.FocusWindow(OverlayUiTokens.WindowId);
                 if (Event.current.type == EventType.Repaint) _controllerMenu.EndFrame();
             }
             // Consume outside clicks/scroll/keys too, after our controls have
@@ -116,7 +81,6 @@ public sealed partial class SephiriaBuildOverlayPlugin
     private void WindowHeader(string title, string key, Rect rect, Action close)
     {
         GUI.Label(new Rect(18, 12, rect.width - 170, 30), title, _theme!.Heading);
-        GUI.Label(new Rect(rect.width - 146, 18, 95, 24), key + " 닫기", _theme.Small);
         if (GUI.Button(new Rect(rect.width - 46, 10, 30, 30), "×", _theme.CompactButton)) close();
         GUI.DragWindow(new Rect(0, 0, rect.width - 155, 44));
     }
@@ -124,14 +88,13 @@ public sealed partial class SephiriaBuildOverlayPlugin
     private void DrawImportWindow(int windowId)
     {
         HandleShortcutEvent();
-        WindowHeader("SEPHIRIA  /  빌드 불러오기", _controller.GamepadMode ? _controller.CancelLabel : ImportPrompt, _importRect, () => _showImport = false);
+        WindowHeader("빌드 설정", _controller.GamepadMode ? _controller.CancelLabel : ImportPrompt, _importRect, () => _showImport = false);
         if (_controller.GamepadMode || ControllerReviewPreview) { DrawControllerReview(); return; }
-        if (!_advancedReview) { DrawQuickImport(); return; }
         if (GUILayout.Button("← 간단히 보기", _theme!.CompactButton, GUILayout.Width(140))) ToggleAdvancedReview();
         if (_plan is not null && _state is not null)
         {
             GUILayout.BeginHorizontal();
-            var tabs = new[] { "빌드 검토", "획득 횟수 보정", "수동 체크리스트" };
+            var tabs = new[] { "목표", "획득", "체크리스트" };
             for (var i = 0; i < tabs.Length; i++)
                 if (GUILayout.Button(tabs[i], _guideTab == i ? _theme!.Selected : GUI.skin.button)) _guideTab = i;
             GUILayout.EndHorizontal();
@@ -155,34 +118,23 @@ public sealed partial class SephiriaBuildOverlayPlugin
         if (GUILayout.Button(_importing ? "가져오는 중…" : "빌드 가져오기", _theme!.Primary, GUILayout.Width(140))) _ = ImportAsync();
         GUI.enabled = true;
         GUILayout.EndHorizontal();
-        GUILayout.Label("sephiria.wiki/builds/UUID 또는 UUID  ·  새 빌드는 모두 추천으로 즉시 적용", _theme!.Small);
-        GUILayout.Label("로비에서는 시작 프리셋도 적용합니다. 해금/현재 포인트만 사용 · 구매/영구 소비/저장 슬롯 덮어쓰기 없음", _theme.Small);
-        _importStatusScroll = GUILayout.BeginScrollView(_importStatusScroll, GUILayout.Height(70));
-        GUILayout.Label(new GUIContent(_status, _status), _theme.WarningText);
-        GUILayout.EndScrollView();
         if (_review is null)
         {
-            GUILayout.BeginVertical(_theme.Card);
-            GUILayout.Label("빌드를 불러오면 목표를 검토할 수 있습니다.", _theme.Heading);
-            GUILayout.Label("기본은 모두 추천입니다. 필요할 때만 분류·횟수·매핑을 조정하세요.");
-            GUILayout.Label($"{OverlayPrompt} 가이드 표시  /  {ConfirmPrompt} 한 동작 확인", _theme.Small);
-            GUILayout.EndVertical();
             GUILayout.FlexibleSpace();
             return;
         }
 
-        var classified = _review.Sections.Count(x => x.Role != TargetRole.Unclassified);
-        var verified = _review.Bindings.Values.Count(x => x.AllowsAutomaticAction);
         GUILayout.Label(_review.Build.Title, _theme.Heading);
-        GUILayout.Label($"구역 {classified}/{_review.Sections.Count} 분류  ·  매핑 {verified}/{_review.Bindings.Count} 검증  ·  빌드 {_review.Build.GameVersion} / 게임 {Application.version}", _theme.Small);
+        if (_review.Build.GameVersion != Application.version)
+            GUILayout.Label($"버전 불일치: 빌드 {_review.Build.GameVersion} / 게임 {Application.version}", _theme.WarningText);
         GUILayout.BeginHorizontal();
-        GUILayout.BeginVertical(GUILayout.Width(210));
+        GUILayout.BeginVertical(GUILayout.Width(180));
         _sectionScroll = GUILayout.BeginScrollView(_sectionScroll, GUILayout.ExpandHeight(true));
         for (var i = 0; i < _review.Sections.Count; i++)
         {
             var section = _review.Sections[i];
             var style = i == _selectedSection ? _theme.Selected : GUI.skin.button;
-            var label = $"{i + 1}. {section.Source.Label}\n{RoleLabel(section.Role)}  ·  {section.Items.Count}개";
+            var label = $"{section.Source.Label}\n{RoleLabel(section.Role)}";
             if (GUILayout.Button(label, style, GUILayout.MinHeight(62))) { _selectedSection = i; _reviewScroll = Vector2.zero; }
         }
         GUILayout.EndScrollView();
@@ -232,7 +184,8 @@ public sealed partial class SephiriaBuildOverlayPlugin
         GUILayout.BeginVertical(_theme!.Card);
         GUILayout.BeginHorizontal();
         GUILayout.Label(_catalog.FindBySlug(slug)?.KoreanName ?? item.Source.Slug, GUILayout.ExpandWidth(true));
-        Badge(BindingLabel(binding?.Status), binding?.AllowsAutomaticAction == true ? OverlayTheme.Good : OverlayTheme.Warning);
+        if (_showDetails || binding?.AllowsAutomaticAction != true)
+            Badge(BindingLabel(binding?.Status), binding?.AllowsAutomaticAction == true ? OverlayTheme.Good : OverlayTheme.Warning);
         GUILayout.EndHorizontal();
         GUILayout.BeginHorizontal();
         if (GUILayout.Button(RoleLabel(item.RoleOverride ?? section.Role), GUILayout.Width(68)))
@@ -256,68 +209,6 @@ public sealed partial class SephiriaBuildOverlayPlugin
             item.ManualCatalogKey = string.IsNullOrWhiteSpace(edited) || edited == item.Source.Slug ? null : edited.Trim();
         }
         GUILayout.EndVertical();
-    }
-
-    private void DrawOverlayWindow(int windowId)
-    {
-        HandleShortcutEvent();
-        if (_plan is null || _state is null) return;
-        WindowHeader("빌드 가이드", OverlayPrompt, _overlayRect, () => _showOverlay = false);
-        GUILayout.Label(_review?.Build.Title ?? "활성 빌드", _theme!.Small);
-        GUILayout.BeginHorizontal();
-        var tabs = new[] { "다음 행동", "목표", "체크리스트", "상태" };
-        for (var i = 0; i < tabs.Length; i++)
-            if (GUILayout.Button(tabs[i], _guideTab == i ? _theme.Selected : GUI.skin.button)) { _guideTab = i; _guideScroll = Vector2.zero; }
-        GUILayout.EndHorizontal();
-        _guideScroll = GUILayout.BeginScrollView(_guideScroll, GUILayout.ExpandHeight(true));
-        switch (_guideTab)
-        {
-            case 0: DrawNextAction(); break;
-            case 1: DrawGoalList(); break;
-            case 2:
-                foreach (var talent in _plan.TalentAllocation) GUILayout.Label($"{TalentLabel(talent.Key)}  {talent.Value}");
-                foreach (var line in _plan.Checklist) GUILayout.Label("□ " + line);
-                GUILayout.Label("영구 특성 포인트는 자동으로 사용하지 않습니다.", _theme.Small);
-                break;
-            case 3:
-                GUILayout.Label($"화면  {_lastSnapshot?.Screen}");
-                GUILayout.Label($"로컬 소유  {_lastSnapshot?.IsLocalPlayerOwned}  ·  후보 {_lastSnapshot?.Candidates.Count ?? 0}개");
-                GUILayout.Label($"인벤토리 {_lastSnapshot?.Inventory.Count ?? 0}개  ·  돈 {_lastSnapshot?.Money ?? 0}  ·  주사위 {_lastSnapshot?.SharedDice ?? 0}");
-                GUILayout.Label($"무기  {EntityName(_lastSnapshot?.CurrentWeapon, CatalogKind.Weapon)}");
-                GUILayout.Label("나무 뿌리  " + string.Join(" / ", (_lastSnapshot?.MiracleKeys ?? Array.Empty<string>()).Select(x => EntityName(x, CatalogKind.Miracle))));
-                GUILayout.Label(_status, _theme.Small);
-                break;
-        }
-        GUILayout.EndScrollView();
-        if (GUILayout.Button("빌드 검토 열기  " + ImportPrompt)) _showImport = true;
-    }
-
-    private void DrawNextAction()
-    {
-        GUILayout.BeginVertical(_theme!.Card);
-        GUILayout.Label(_executing ? "응답 대기 중" : "다음 행동", _theme.Heading);
-        GUILayout.Label(_recommendation?.Message ?? "현재 화면의 후보를 확인하고 있습니다.");
-        if (_recommendation?.Action is { } action)
-        {
-            var candidate = _lastSnapshot?.Candidates.FirstOrDefault(x => x.Token == action.TargetToken);
-            if (candidate?.CatalogKey is not null)
-                GUILayout.Label(EntityName(candidate.CatalogKey), _theme.Heading);
-            var money = _lastSnapshot?.Money ?? 0;
-            var dice = _lastSnapshot?.SharedDice ?? 0;
-            GUILayout.Label($"돈  {money} → {money - action.MoneyCost}   (−{action.MoneyCost})");
-            GUILayout.Label($"공유 주사위  {dice} → {dice - action.DiceCost}   (−{action.DiceCost})");
-            if (action.DiceRisk != DiceRisk.None)
-                Badge(action.DiceRisk == DiceRisk.LastSharedDieSpentBeforeMiracle
-                    ? "이 행동 후 나무 뿌리 리롤 불가" : "목표 나무 뿌리 획득 전 주사위 소비", OverlayTheme.Danger);
-            Badge(!action.AutomaticBindingAllowed ? "매핑 미검증 · 자동 행동 차단" : _executing ? "이전 요청 처리 중" : $"{ConfirmPrompt}  ·  이 동작 하나 확인",
-                !action.AutomaticBindingAllowed ? OverlayTheme.Warning : OverlayTheme.Accent);
-        }
-        GUILayout.EndVertical();
-        GUILayout.Label("무기 경로", _theme.Heading);
-        GUILayout.Label(string.Join(" → ", _plan!.WeaponPath.Select(x => EntityName(x, CatalogKind.Weapon))));
-        GUILayout.Label("나무 뿌리  " + EntityName(_plan.MiracleTarget, CatalogKind.Miracle));
-        if (_state!.MiracleAcquired) Badge("목표 나무 뿌리 획득 완료", OverlayTheme.Good);
-        GUILayout.Label(_status, _theme.Small);
     }
 
     private void DrawGoalList()

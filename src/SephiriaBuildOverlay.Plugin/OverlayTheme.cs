@@ -5,12 +5,16 @@ namespace SephiriaBuildOverlay.Plugin;
 // Independent IMGUI design tokens. No third-party mod code or assets are used.
 internal sealed class OverlayTheme : IDisposable
 {
-    public static readonly Color Text = new(0.94f, 0.96f, 1f);
-    public static readonly Color Muted = new(0.65f, 0.72f, 0.83f);
-    public static readonly Color Accent = new(0.43f, 0.83f, 1f);
-    public static readonly Color Good = new(0.49f, 0.91f, 0.66f);
-    public static readonly Color Warning = new(1f, 0.79f, 0.39f);
-    public static readonly Color Danger = new(1f, 0.44f, 0.48f);
+    private static Color Rgb(int rgb) => new(((rgb >> 16) & 255) / 255f, ((rgb >> 8) & 255) / 255f, (rgb & 255) / 255f);
+    public static readonly Color Surface = Rgb(OverlayUiTokens.Surface);
+    public static readonly Color Outline = Rgb(OverlayUiTokens.Outline);
+    public static readonly Color Border = Rgb(OverlayUiTokens.Border);
+    public static readonly Color Text = Rgb(OverlayUiTokens.Text);
+    public static readonly Color Muted = Rgb(OverlayUiTokens.Muted);
+    public static readonly Color Accent = Rgb(OverlayUiTokens.Accent);
+    public static readonly Color Good = Rgb(OverlayUiTokens.Good);
+    public static readonly Color Warning = Rgb(OverlayUiTokens.Warning);
+    public static readonly Color Danger = Rgb(OverlayUiTokens.Danger);
     private readonly List<Texture2D> _textures = new();
     private readonly Font? _ownedFont;
     public GUISkin Skin { get; }
@@ -29,15 +33,15 @@ internal sealed class OverlayTheme : IDisposable
             x != null && x.name.IndexOf("Galmuri", StringComparison.OrdinalIgnoreCase) >= 0);
         if (font == null)
         {
-            _ownedFont = Font.CreateDynamicFontFromOSFont(new[] { "Malgun Gothic", "Arial" }, 16);
+            _ownedFont = Font.CreateDynamicFontFromOSFont(new[] { "Galmuri11", "Galmuri9", "Malgun Gothic" }, 16);
             font = _ownedFont;
         }
         Skin.font = font;
-        var panel = Texture(new Color(0.065f, 0.08f, 0.14f, 0.98f));
-        var card = Texture(new Color(0.105f, 0.13f, 0.21f, 1f));
-        var button = Texture(new Color(0.16f, 0.20f, 0.30f, 1f));
-        var hover = Texture(new Color(0.22f, 0.30f, 0.43f, 1f));
-        var selected = Texture(new Color(0.13f, 0.34f, 0.47f, 1f));
+        var panel = Texture(Surface);
+        var card = Texture(Rgb(OverlayUiTokens.Inset));
+        var button = Texture(Rgb(OverlayUiTokens.Button));
+        var hover = Texture(Rgb(OverlayUiTokens.Hover));
+        var selected = Texture(Rgb(OverlayUiTokens.Selected));
         foreach (var style in new[] { Skin.label, Skin.button, Skin.textField, Skin.box, Skin.window, Skin.toggle })
         {
             style.font = font;

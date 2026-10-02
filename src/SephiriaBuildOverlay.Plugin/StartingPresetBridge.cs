@@ -32,10 +32,10 @@ internal sealed partial class UnityGameGateway
         return null; // No affirmative lobby state: never infer permission.
     }
 
-    internal async Task<string> ApplyStartingPresetAsync(ImportedBuild build, string? importContext, CancellationToken cancellationToken)
+    internal async Task<StartingPresetResult> ApplyStartingPresetAsync(ImportedBuild build, string? importContext, CancellationToken cancellationToken)
     {
-        if (importContext is null) return "시작 프리셋: 던전 밖에서 새로 가져올 때만 적용합니다.";
-        if (string.IsNullOrWhiteSpace(build.NativePresetCode)) return "시작 프리셋: Wiki에 전체 프리셋 코드가 없어 설정을 변경하지 않았습니다.";
+        if (importContext is null) return new StartingPresetResult("시작 프리셋: 던전 밖에서 새로 가져올 때만 적용합니다.");
+        if (string.IsNullOrWhiteSpace(build.NativePresetCode)) return new StartingPresetResult("Wiki 전체 프리셋 코드 없음", warning: "시작 세팅 코드가 없어 가이드만 적용합니다.");
         object? panel = null;
         string? backup = null;
         var changed = false;
@@ -57,7 +57,7 @@ internal sealed partial class UnityGameGateway
             panel = matches[0];
             if (!StartingPresetPolicy.CanApply(importContext, StartingPresetContext(), build.GameVersion, Application.version,
                     owned, server, remotePlayers, _requestPending, ReadBool(panel, "isEditingCurrentPreset") || ReadBool(panel, "IsOpened")))
-                return "시작 프리셋 미적용: 런/플레이어 변경, 버전 불일치, 멀티플레이 또는 네이티브 편집 중입니다.";
+                return new StartingPresetResult("시작 프리셋 미적용: 런/플레이어 변경, 버전 불일치, 멀티플레이 또는 네이티브 편집 중입니다.", warning: "현재 상태에서는 시작 세팅을 적용할 수 없습니다.");
             var storage = ReadNamedObject(panel, "playerLocalDataStorage") ?? throw new InvalidOperationException("플레이어 저장소가 없습니다.");
             var spawner = ReadNamedObject(panel, "playerSpawner") ?? throw new InvalidOperationException("플레이어 스포너가 없습니다.");
             if (ReadNamedObject(panel, "baseWeaponDatas") is not IEnumerable weapons || !weapons.Cast<object>().Any())
@@ -143,13 +143,14 @@ internal sealed partial class UnityGameGateway
             save.Invoke(null, new object[] { true, false });
             _log.LogInfo("Starting preset applied through native import/update; permanent purchases excluded.");
             var limited = requested != preset.Compact() ? " 해금/포인트/용량 제한으로 일부 목표를 제외했습니다." : "";
-            return "시작 프리셋 적용 완료 (현재 설정만 변경, 저장 슬롯 유지)." + limited + "\n" + message;
+            return new StartingPresetResult("시작 프리셋 적용 완료 (현재 설정만 변경, 저장 슬롯 유지)." + limited + "\n" + message,
+                applied: true, warning: limited.Length > 0 || message.Length > 0 ? "일부 시작 세팅은 해금·포인트·용량에 맞춰 조정했습니다." + (message.Length > 0 ? "\n" + message : "") : null);
         }
         catch (Exception ex)
         {
             _log.LogWarning("Starting preset failed: " + ex);
             if (_disposed || cancellationToken.IsCancellationRequested)
-                return "시작 프리셋 적용이 종료/취소되었습니다. 현재 설정을 확인하세요.";
+                return new StartingPresetResult("시작 프리셋 적용이 종료/취소되었습니다.", warning: "시작 세팅 적용이 중단됐습니다. 현재 설정을 확인하세요.");
             if (changed && panel is not null && backup is not null && StartingPresetContext() == importContext)
             {
                 try
@@ -161,10 +162,10 @@ internal sealed partial class UnityGameGateway
                     var avatar = ReadNamedObject(panel, "playerAvatar") ?? throw new InvalidOperationException("플레이어가 없습니다.");
                     await WaitForStartingStats(avatar, previous, entities, importContext!, cancellationToken);
                 }
-                catch (Exception restoreError) { _log.LogError("Starting preset rollback failed: " + restoreError); return "시작 프리셋 실패 및 복원 실패: 네이티브 프리셋에서 현재 설정을 확인하세요."; }
+                catch (Exception restoreError) { _log.LogError("Starting preset rollback failed: " + restoreError); return new StartingPresetResult("시작 프리셋 실패 및 복원 실패", warning: "시작 세팅 복원 실패. 네이티브 프리셋에서 현재 설정을 확인하세요."); }
             }
-            else if (changed) return "시작 프리셋 일부 적용 후 런/플레이어가 변경되어 중단했습니다. 현재 시작 설정을 확인하세요.";
-            return "시작 프리셋 미적용/복원: " + ex.GetBaseException().Message;
+            else if (changed) return new StartingPresetResult("시작 프리셋 일부 적용 후 런/플레이어 변경", warning: "시작 세팅 일부 적용 후 중단됐습니다. 현재 설정을 확인하세요.");
+            return new StartingPresetResult("시작 프리셋 미적용/복원: " + ex.GetBaseException().Message, warning: "시작 세팅을 적용하지 못했습니다. 기존 설정을 유지합니다.");
         }
         finally { if (ownsPending && !_disposed) _requestPending = false; }
     }

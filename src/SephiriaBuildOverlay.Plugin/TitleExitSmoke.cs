@@ -36,6 +36,19 @@ internal sealed partial class UnityGameGateway
                 title.gameObject.activeInHierarchy && ReadBool(title, "IsOpened"), player != null, _requestPending)) continue;
             var quit = title.GetType().GetMethod("QuitGame", Type.EmptyTypes);
             if (quit is null) continue;
+            if (Environment.GetCommandLineArgs().Contains("--sbo-native-ui-smoke", StringComparer.Ordinal))
+            {
+                try
+                {
+                    // Construct INACTIVE native primitives only. No modal,
+                    // EventSystem swap, game input, import or purchase occurs.
+                    using var window = CreateBuildWindow(_ => { }, _ => { }, () => { }, () => { })
+                        ?? throw new InvalidOperationException("Native UI template unavailable.");
+                    window.Render(false, true, "", 1, new ControllerMenu());
+                    _log.LogInfo("Native UI construction PASS: " + Newtonsoft.Json.JsonConvert.SerializeObject(window.Diagnostics()));
+                }
+                catch (Exception ex) { _log.LogWarning("Native UI construction FAILED: " + ex); }
+            }
             _log.LogInfo("Exit smoke: native title QuitGame; no run/avatar or pending action.");
             quit.Invoke(title, null);
             return true;
