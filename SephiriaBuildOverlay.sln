@@ -9,6 +9,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SephiriaBuildOverlay.Plugin
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SephiriaBuildOverlay.Tests", "tests\SephiriaBuildOverlay.Tests\SephiriaBuildOverlay.Tests.csproj", "{2D8561D5-1C27-41B9-B40D-229BA9056A9A}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{DA8CF53D-7708-4C00-98C2-8B8247F1FAED}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SephiriaBuildOverlay.Updater", "src\SephiriaBuildOverlay.Updater\SephiriaBuildOverlay.Updater.csproj", "{E19F9390-8078-4CD7-87A6-55EAF23BDE25}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,5 +31,12 @@ Global
 		{2D8561D5-1C27-41B9-B40D-229BA9056A9A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2D8561D5-1C27-41B9-B40D-229BA9056A9A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2D8561D5-1C27-41B9-B40D-229BA9056A9A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E19F9390-8078-4CD7-87A6-55EAF23BDE25}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E19F9390-8078-4CD7-87A6-55EAF23BDE25}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E19F9390-8078-4CD7-87A6-55EAF23BDE25}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E19F9390-8078-4CD7-87A6-55EAF23BDE25}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{E19F9390-8078-4CD7-87A6-55EAF23BDE25} = {DA8CF53D-7708-4C00-98C2-8B8247F1FAED}
 	EndGlobalSection
 EndGlobal

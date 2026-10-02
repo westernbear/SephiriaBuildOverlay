@@ -3,9 +3,9 @@
 [![CI](https://github.com/westernbear/SephiriaBuildOverlay/actions/workflows/ci.yml/badge.svg)](https://github.com/westernbear/SephiriaBuildOverlay/actions/workflows/ci.yml)
 [다운로드](https://github.com/westernbear/SephiriaBuildOverlay/releases/latest) · [검증 기록](docs/VERIFICATION.md) · [빠른 테스트](docs/FAST_TESTING.md)
 
-Sephiria Wiki 빌드를 게임 안으로 가져오는 Windows 모드입니다. 목표 아이템은 **실제 아이템 위의 프레임**, 배치는 **인벤토리 슬롯 위의 반투명 고스트**로 안내합니다. 던전에서는 확인 입력 한 번에 한 동작만 실행합니다.
+Sephiria Wiki 빌드를 게임 안으로 가져오는 Windows 모드입니다. 목표 아이템에는 프레임을 씌우고, 인벤토리 슬롯에는 반투명 고스트로 배치를 보여줍니다. 던전에서는 확인 입력 한 번에 한 동작만 실행합니다.
 
-대상: **Windows x64 · Sephiria 1.0.33 · 한국어 UI**. BepInEx 5.4.23.5가 릴리즈에 포함되어 별도 설치가 필요 없습니다. SephPlanner 코드나 프리셋 체계에는 의존하지 않습니다.
+Windows x64, Sephiria 1.0.33, 한국어 UI를 지원합니다. BepInEx 5.4.23.5가 릴리즈에 포함되어 별도 설치가 필요 없습니다. SephPlanner 코드나 프리셋 체계에는 의존하지 않습니다.
 
 ## 설치
 
@@ -21,6 +21,7 @@ Sephiria/
 ├─ .doorstop_version
 ├─ BepInEx/
 │  ├─ core/                             ← BepInEx / Harmony 등
+│  ├─ patchers/SephiriaBuildOverlay.Updater.dll
 │  └─ plugins/SephiriaBuildOverlay/
 │     ├─ SephiriaBuildOverlay.Core.dll
 │     └─ SephiriaBuildOverlay.Plugin.dll
@@ -29,9 +30,24 @@ Sephiria/
 ```
 
 > [!IMPORTANT]
-> BepInEx가 이미 설치되어 있다면 기존 `doorstop_config.ini`와 `BepInEx/config`를 먼저 백업하세요. 로더 설정을 유지하려면 `doorstop_config.ini`를 덮어쓰지 마세요. 호환되는 BepInEx 5가 있다면 `BepInEx/plugins/SephiriaBuildOverlay`만 교체할 수 있습니다. BepInEx 6/다른 아키텍처의 설치와 섞지 마세요.
+> BepInEx가 이미 설치되어 있다면 기존 `doorstop_config.ini`와 `BepInEx/config`를 먼저 백업하세요. 로더 설정을 유지하려면 `doorstop_config.ini`를 덮어쓰지 마세요. 호환되는 BepInEx 5가 있다면 자체 `plugins/SephiriaBuildOverlay` 폴더와 `patchers/SephiriaBuildOverlay.Updater.dll`만 설치할 수 있습니다. BepInEx 6/다른 아키텍처의 설치와 섞지 마세요.
 
-패키지는 사용자 설정, 세이브, 다른 모드, 게임 DLL·에셋을 포함하지 않습니다. 삭제하려면 게임 종료 후 `BepInEx/plugins/SephiriaBuildOverlay`만 제거하세요. 다른 모드가 사용하는 로더는 지우지 마세요.
+패키지는 사용자 설정, 세이브, 다른 모드, 게임 DLL·에셋을 포함하지 않습니다. 삭제하려면 게임 종료 후 자체 플러그인 폴더와 `BepInEx/patchers/SephiriaBuildOverlay.Updater.dll`을 제거하세요. 다른 모드가 사용하는 로더는 지우지 마세요.
+
+### 자동 업데이트
+
+자동 업데이트는 v0.1.11부터 기본으로 켜져 있습니다. 게임을 시작하면 GitHub의 최신 정식 릴리즈를 백그라운드에서 한 번 확인합니다. 새 버전을 다운로드하고 해시를 검사한 뒤, 다음 게임 실행 때 적용합니다. 다운로드 준비와 적용 완료는 하단 버블로 알립니다. 게임을 강제로 재시작하거나 실행 중인 DLL을 교체하지 않습니다.
+
+Core·Plugin DLL 두 개만 자동 교체합니다. 설정, 빌드 기록, 세이브, 다른 모드와 BepInEx는 그대로 둡니다. 교체에 실패하면 두 DLL을 함께 복구합니다. 인터넷 연결이나 다운로드에 문제가 있어도 현재 버전으로 플레이할 수 있습니다. 0.1.10 이하를 쓰고 있다면 이번 패키지를 한 번 수동 설치하세요.
+
+끄려면 `BepInEx/config/io.github.sephiria.build-overlay.cfg`에서 다음 값을 바꾸세요. 준비된 업데이트도 적용하지 않습니다. 다만 교체가 중단된 상태라면 복구는 수행합니다.
+
+```ini
+[Updates]
+Enabled = false
+```
+
+쓰기 권한이 없거나 업데이트 형식이 호환되지 않으면 수동 설치가 필요합니다. 업데이트 모듈 자체와 로더·의존성 변경은 자동 교체하지 않습니다. 검사 기준과 복구 방법은 [자동 업데이트 문서](docs/AUTO_UPDATE.md)에 있습니다.
 
 ## 빠른 시작
 
@@ -40,9 +56,11 @@ Sephiria/
 3. 아이템 선택창·상점·무기 강화·나무 뿌리·인벤토리에서 프레임과 다음 행동을 확인합니다.
 4. `F8`을 한 번 눌러 제안된 **한 동작**만 실행합니다. 빌드 불러오기가 던전 내 행동을 자동 실행하지는 않습니다.
 
-기본 창은 **420×144**이며 링크, 불러오기 버튼과 현재 빌드 이름만 남겼습니다. **오른쪽 아래 모서리를 드래그**하면 패널·글자·버튼 크기가 함께 바뀌고 `UI.PanelScale`에 저장됩니다(75~175%, 게임 창에 맞게 제한). 아이템 오버레이 크기는 바뀌지 않습니다. 게임의 실제 TMP 폰트, 패널 스프라이트와 `UI_HorayButton`·`TMP_InputField` 컴포넌트를 실행 중에 재사용합니다. 작은 창에 맞춰 글자 크기와 테두리 두께를 조절하고 입력칸·버튼 색은 따로 지정합니다. 게임 메뉴의 콜백은 복사하지 않습니다. 설정 창은 760×560이며 같은 색상 계열의 IMGUI로 유지합니다. 전체 배율은 `UI.Scale`에서 조절할 수 있습니다.
+기본 창은 420×144이며 링크 입력칸, 불러오기 버튼과 현재 빌드 이름이 있습니다. 오른쪽 아래 모서리를 드래그하면 패널·글자·버튼 크기가 함께 바뀌고 `UI.PanelScale`에 저장됩니다(75~175%, 게임 창에 맞게 제한). 아이템 오버레이 크기는 바뀌지 않습니다.
 
-결과와 오류는 **왼쪽 하단 버블**로 표시합니다. 일반 알림은 5초, 경고·오류는 8초 동안 하나씩 표시하며 게임이 포커스를 잃으면 시간이 멈춥니다. 버블은 클릭이나 패드 포커스를 받지 않습니다. 비용과 마지막 주사위 경고는 버블로 옮기지 않고, 확인할 아이템 옆에 계속 표시합니다.
+게임의 TMP 폰트, 패널 스프라이트와 `UI_HorayButton`·`TMP_InputField` 컴포넌트를 실행 중에 재사용합니다. 작은 창에 맞춰 글자 크기와 테두리 두께를 조절하고 입력칸·버튼 색은 따로 지정합니다. 게임 메뉴의 콜백은 복사하지 않습니다. 설정 창은 760×560이며 같은 색상 계열의 IMGUI입니다. 전체 배율은 `UI.Scale`에서 조절할 수 있습니다.
+
+결과와 오류는 왼쪽 하단 버블로 표시합니다. 일반 알림은 5초, 경고·오류는 8초 동안 하나씩 표시하며 게임이 포커스를 잃으면 시간이 멈춥니다. 버블은 클릭이나 패드 포커스를 받지 않습니다. 비용과 마지막 주사위 경고는 확인할 아이템 옆에 계속 표시합니다.
 
 패드에서는 링크를 복사한 뒤 **클립보드 불러오기**를 선택하세요. 역할·우선순위·횟수·매핑 편집, 획득 보정과 체크리스트는 **설정**에 있습니다. 수정한 값은 `검토 완료 · 활성화`로 적용합니다. 재시작하면 저장된 분류를 복원하고, 새 링크를 불러오면 모두 추천으로 시작합니다.
 
@@ -129,14 +147,16 @@ dotnet test SephiriaBuildOverlay.sln -c Release
 main push/PR에서 테스트·전체 패키지 검증을 실행합니다. 버전 메타데이터를 맞춘 SemVer 태그를 push하면 ZIP과 체크섬이 GitHub Release에 자동 첨부됩니다.
 
 ```powershell
-git tag v0.1.10
-git push origin v0.1.10
+git tag v0.1.11
+git push origin v0.1.11
 ```
 
-Core/Plugin은 netstandard2.1, 테스트는 net8.0입니다. 의존성 고정값은 `tools/packaging/bepinex.json`에 있습니다. [빠른 테스트 문서](docs/FAST_TESTING.md)는 ScriptEngine 재로딩과 코드 기반 읽기 전용 진단을 설명합니다.
+Core/Plugin/독립 업데이트 모듈은 netstandard2.1, 테스트는 net8.0입니다. 의존성 고정값은 `tools/packaging/bepinex.json`에 있습니다. [빠른 테스트 문서](docs/FAST_TESTING.md)는 ScriptEngine 재로딩과 코드 기반 읽기 전용 진단을 설명합니다.
 
 ## 검증 현황
 
-Release 빌드와 **219개 자동 테스트**가 통과했습니다. 전체 패키지의 로더·숨김 파일·업스트림 바이너리 동일성·고지/소스 해시와 손상 파일 거부도 검사합니다. v0.1.10은 Windows Computer Use로 기본/설정 글자, 입력, 오류 버블, 패널 위 커서, 빠른 드래그 확대·축소와 저장/재열기, 뒤쪽 타이틀 버튼 클릭 차단 및 닫은 뒤 정상 종료를 확인했습니다. 이전 버전에서는 실제 싱글플레이 F8 유료 리롤·아티팩트 선택·빈 슬롯 이동·석판 회전·통합 최적화를 확인했습니다.
+Release 빌드와 267개 자동 테스트가 통과했습니다. 업데이트 테스트에서는 다운로드 해시와 버전, 경로·응답 제한, 교체 실패와 중단 후 복구를 검사합니다. 자동 업데이트를 끈 상태와 수동 설치를 덮지 않는지도 확인했습니다. 실제 게임에서는 시작 전 0.1.10→0.1.11 교체, 새 플러그인 로드, 타이틀 UI 생성과 정상 종료를 확인했습니다.
 
-이번 UI 검증은 타이틀 화면에서 진행했고 던전 자원을 소비하지 않았습니다. 시작 프리셋 로비 상호작용, 실제 패드·Steam Input, 금전 구매, 지혜 10 병합의 실게임 관찰은 미검증이며 멀티플레이 실게임은 검증 범위에서 제외했습니다. 모드 자동 업데이트는 아직 제공하지 않습니다. 상세 결과와 제한은 [검증 기록](docs/VERIFICATION.md)에 있습니다.
+배포 패키지의 로더·숨김 파일, 원본 바이너리와의 동일성, 고지·소스 해시도 검사하고 손상 파일을 거부합니다. v0.1.10에서는 Windows Computer Use로 패널 글자·입력·버블·커서·드래그 크기 저장·뒤쪽 클릭 차단을 확인했습니다. 이전 버전의 싱글플레이 검증에는 F8 유료 리롤·아티팩트 선택·빈 슬롯 이동·석판 회전·통합 최적화가 포함됩니다.
+
+이번 검증은 타이틀 화면에서 진행했고 던전 자원을 소비하지 않았습니다. 시작 프리셋 로비 상호작용, 실제 패드·Steam Input, 금전 구매, 지혜 10 병합의 실게임 관찰은 미검증이며 멀티플레이 실게임은 검증 범위에서 제외했습니다. 업데이트 완료 버블의 실제 픽셀 표시는 이번에 재검사하지 않았습니다. 상세 결과와 제한은 [검증 기록](docs/VERIFICATION.md)에 있습니다.

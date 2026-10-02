@@ -23,3 +23,16 @@ try {
     if ($_.Exception.Message -ne 'Missing paste-ready entry: winhttp.dll') { throw }
 }
 Write-Output 'PASS: corrupt dependency and incomplete loader package were rejected. Original artifacts were preserved.'
+foreach ($entryName in @('BepInEx/patchers/SephiriaBuildOverlay.Updater.dll', 'update-protocol.txt')) {
+    $incomplete = Join-Path $testRoot ([Guid]::NewGuid().ToString('N') + '.zip')
+    Copy-Item -LiteralPath $ArchivePath -Destination $incomplete
+    $zip = [IO.Compression.ZipFile]::Open($incomplete, [IO.Compression.ZipArchiveMode]::Update)
+    try { $zip.GetEntry($entryName).Delete() } finally { $zip.Dispose() }
+    try {
+        & (Join-Path $PSScriptRoot 'TestReleasePackage.ps1') -ArchivePath $incomplete
+        throw 'Guard failed: package without updater bootstrap/protocol was accepted.'
+    } catch {
+        if ($_.Exception.Message -ne "Missing paste-ready entry: $entryName") { throw }
+    }
+}
+Write-Output 'PASS: missing auto-update preloader/protocol packages were rejected.'

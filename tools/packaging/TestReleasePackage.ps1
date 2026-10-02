@@ -8,6 +8,7 @@ try {
         'BepInEx/core/BepInEx.Preloader.dll', 'BepInEx/core/0Harmony.dll',
         'BepInEx/plugins/SephiriaBuildOverlay/SephiriaBuildOverlay.Core.dll',
         'BepInEx/plugins/SephiriaBuildOverlay/SephiriaBuildOverlay.Plugin.dll',
+        'BepInEx/patchers/SephiriaBuildOverlay.Updater.dll', 'update-protocol.txt',
         'licenses/UnityDoorstop-source-v4.5.0.zip', 'licenses/UnityDoorstop-LICENSE.txt', 'README.md')
     foreach ($name in $required) { if ($name -notin $entries) { throw "Missing paste-ready entry: $name" } }
     foreach ($name in $entries) {
@@ -19,10 +20,15 @@ try {
     if (!$UpstreamArchivePath) { $UpstreamArchivePath = Join-Path $PSScriptRoot ('..\.local\BepInEx\' + $manifest.archive.name) }
     if ((Get-FileHash -LiteralPath $UpstreamArchivePath -Algorithm SHA256).Hash.ToLowerInvariant() -ne $manifest.archive.sha256) { throw 'Original BepInEx archive hash differs.' }
     $upstream = [IO.Compression.ZipFile]::OpenRead((Resolve-Path -LiteralPath $UpstreamArchivePath).Path)
-    $allowed = @('README.md', 'docs/DEBUGGING.md', 'docs/FAST_TESTING.md', 'docs/VERIFICATION.md',
+    $allowed = @('README.md', 'docs/DEBUGGING.md', 'docs/FAST_TESTING.md', 'docs/VERIFICATION.md', 'docs/AUTO_UPDATE.md',
         'licenses/THIRD_PARTY_NOTICES.md', 'licenses/dependency-manifest.json',
         'BepInEx/plugins/SephiriaBuildOverlay/SephiriaBuildOverlay.Core.dll',
         'BepInEx/plugins/SephiriaBuildOverlay/SephiriaBuildOverlay.Plugin.dll')
+    $allowed += @('BepInEx/patchers/SephiriaBuildOverlay.Updater.dll', 'update-protocol.txt')
+    $protocolStream = $zip.GetEntry('update-protocol.txt').Open()
+    $protocolReader = New-Object IO.StreamReader($protocolStream)
+    try { $protocolText = $protocolReader.ReadToEnd() } finally { $protocolReader.Dispose() }
+    if ($protocolText -notmatch '^1\n\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?\n$') { throw 'Invalid auto-update protocol record.' }
     function EntryHash($entry) {
         $stream = $entry.Open(); $sha = [Security.Cryptography.SHA256]::Create()
         try { return [BitConverter]::ToString($sha.ComputeHash($stream)).Replace('-', '').ToLowerInvariant() }

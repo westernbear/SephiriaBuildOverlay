@@ -12,6 +12,8 @@ $names = @('SephiriaBuildOverlay.Core.dll', 'SephiriaBuildOverlay.Plugin.dll')
 foreach ($name in $names) {
     if (!(Test-Path -LiteralPath (Join-Path $packagePlugins $name) -PathType Leaf)) { throw "Package lacks $name" }
 }
+$packagePatcher = Join-Path $packagePath 'BepInEx\patchers\SephiriaBuildOverlay.Updater.dll'
+if (!(Test-Path -LiteralPath $packagePatcher -PathType Leaf)) { throw 'Package lacks updater patcher.' }
 $localRoot = Join-Path $PSScriptRoot '..\.local'
 $backupPath = Join-Path $localRoot ('production-restore-' + [Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $backupPath -Force | Out-Null
@@ -32,5 +34,10 @@ foreach ($name in $names) {
     if (Test-Path -LiteralPath $destination) { Copy-Item -LiteralPath $destination -Destination (Join-Path $backupPath ($name + '.previous')) }
     Copy-Item -LiteralPath (Join-Path $packagePlugins $name) -Destination $destination -Force
 }
+$patchersPath = Join-Path $gamePath 'BepInEx\patchers'
+New-Item -ItemType Directory -Path $patchersPath -Force | Out-Null
+$patcherTarget = Join-Path $patchersPath 'SephiriaBuildOverlay.Updater.dll'
+if (Test-Path -LiteralPath $patcherTarget) { Copy-Item -LiteralPath $patcherTarget -Destination (Join-Path $backupPath 'SephiriaBuildOverlay.Updater.dll.previous') }
+Copy-Item -LiteralPath $packagePatcher -Destination $patcherTarget -Force
 Write-Output "Production DLLs installed. Recoverable backup: $backupPath"
 Write-Output 'Set Debug.RuntimeDiagnostics / MeasurePerformance to false for normal play; existing config and other mods were preserved.'

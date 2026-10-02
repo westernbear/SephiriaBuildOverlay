@@ -59,7 +59,7 @@ MeasurePerformance = true
 
 ## 일반 배포 모드 복원
 
-게임을 종료한 뒤 `RestoreProductionMode.ps1 -PackageDirectory '<dist 패키지 폴더>'`를 실행하면 두 자체 DLL을 정상 plugins 경로에 복사하고 scripts의 자체 DLL/PDB를 로컬 백업으로 이동합니다. 다른 스크립트 DLL이 없을 때만 개발용 ScriptEngine을 백업으로 이동합니다. 실행 중인 게임에는 이 작업을 거절합니다. 다른 모드, 저장 파일, 빌드 캐시는 삭제하지 않습니다.
+게임을 종료한 뒤 `RestoreProductionMode.ps1 -PackageDirectory '<dist 패키지 폴더>'`를 실행하면 두 자체 DLL과 독립 업데이트 패처를 정상 경로에 복사하고 scripts의 자체 DLL/PDB를 로컬 백업으로 이동합니다. 다른 스크립트 DLL이 없을 때만 개발용 ScriptEngine을 백업으로 이동합니다. 실행 중인 게임에는 이 작업을 거절합니다. 다른 모드, 저장 파일, 빌드 캐시는 삭제하지 않습니다. 자동 업데이트는 ScriptEngine 경로에서는 비활성화됩니다. 준비·교체 테스트는 [자동 업데이트 문서](AUTO_UPDATE.md)를 참조하세요.
 
 성능 로그는 스냅샷 평균/p95/최대 시간과 **포커스 상태에서만** 측정한 FPS를 10초마다 기록합니다. 첫 초기화/재로딩 구간은 별도로 제외하고 같은 장면의 안정 구간끼리 비교합니다. 전체 MonoProfiler 활성화는 자체 비용이 커 기본으로 사용하지 않습니다.
 
@@ -68,8 +68,8 @@ MeasurePerformance = true
 게임을 정상적으로 닫은 상태에서 실행합니다.
 
 ```powershell
-./tools/dev/TestExitSmoke.ps1 -ExpectedVersion 0.1.9
-./tools/dev/TestExitSmoke.ps1 -ExpectedVersion 0.1.9 -NativeUiContract
+./tools/dev/TestExitSmoke.ps1 -ExpectedVersion 0.1.11
+./tools/dev/TestExitSmoke.ps1 -ExpectedVersion 0.1.11 -NativeUiContract
 ```
 
 Steam에 `--sbo-exit-smoke` 옵션을 전달하고 게임 내부 메인 스레드에서 15초 이후 열린 타이틀의 정상 `QuitGame` 함수만 호출합니다. 로컬 아바타가 있거나 요청 대기 중이면 호출하지 않습니다. 기존 런을 자동 진입/종료하거나 강제 종료하지 않으며, 시간 초과 시 게임을 그대로 둡니다. 일반 실행에는 옵션이 없어 아무 동작도 하지 않습니다. 프로세스 종료 코드, 새 덤프, Unity Crash 로그, 조기 UIA/모드 정리 로그를 검사합니다. `RuntimeDiagnostics`를 켤 필요는 없습니다. 활성 런/외부 UIA 클라이언트 연결 상태의 종료 검증과는 구분합니다.

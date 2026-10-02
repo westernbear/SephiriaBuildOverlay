@@ -17,7 +17,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
 {
     public const string PluginGuid = "io.github.sephiria.build-overlay";
     public const string PluginName = "Sephiria Build Overlay";
-    public const string PluginVersion = "0.1.10";
+    public const string PluginVersion = "0.1.11";
 
     private ConfigEntry<KeyCode> _importKey = null!;
     private ConfigEntry<KeyCode> _overlayKey = null!;
@@ -97,6 +97,14 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
 
     private void Awake()
     {
+        // An unrecoverable filesystem failure must not run a mixed DLL pair.
+        if (File.Exists(Path.Combine(Paths.BepInExRootPath, "cache", "SephiriaBuildOverlayUpdater", "transaction", "journal.txt")))
+        {
+            Logger.LogError("Overlay disabled: unfinished update transaction. Close the game and reinstall the complete latest package.");
+            _lifetime.Dispose();
+            enabled = false;
+            return;
+        }
         _importKey = Config.Bind("Keys", "ImportWindow", KeyCode.F9, "빌드 가져오기/검토 창 (SephPlanner F6 충돌 방지)");
         var migrated = Config.Bind("Keys", "ImportF9MigrationApplied", false, "기존 기본 F6을 F9로 한 번 이전. 이후 사용자 지정은 보존");
         _importKey.Value = (KeyCode)ImportShortcutMigration.Migrate((int)_importKey.Value, (int)KeyCode.F6, (int)KeyCode.F9, migrated.Value);
@@ -125,6 +133,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
         try { _pendingRestore = _reviewStore.Load(); }
         catch (Exception ex) { Logger.LogWarning("Saved review could not be loaded: " + ex.Message); }
         Logger.LogInfo($"{PluginName} {PluginVersion} loaded. Game={Application.version}, PID={System.Diagnostics.Process.GetCurrentProcess().Id}");
+        StartAutomaticUpdates();
     }
 
     private void OnApplicationQuit()
@@ -150,6 +159,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
         if (!_quitting && _modalInput.Capturing) ResetNativeUiInput(restoreSelection: true);
         _instance = null; // Patches become inert BEFORE cancellation continuations.
         _lifetime.Stop();
+        StopAutomaticUpdates();
         _confirmRequested = false;
         _source?.Dispose();
         _gateway?.Dispose(destroyUnityObjects: !_quitting);
@@ -167,6 +177,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
         if (_quitting || _lifetime.Stopped) return;
         if (!_updateObserved) { _updateObserved = true; Logger.LogInfo("Update callback active."); }
         _notifications.Advance(Time.unscaledDeltaTime, Application.isFocused);
+        TickAutomaticUpdates();
         TickTitleExitSmoke();
         HandleControllerInput();
         _gateway.Performance.Enabled = _measurePerformance.Value;

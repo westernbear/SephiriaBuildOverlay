@@ -52,12 +52,17 @@ $core = Join-Path $repositoryRoot "src\SephiriaBuildOverlay.Core\bin\$Configurat
 $plugin = Join-Path $repositoryRoot "src\SephiriaBuildOverlay.Plugin\bin\$Configuration\netstandard2.1\SephiriaBuildOverlay.Plugin.dll"
 Copy-Item -LiteralPath $core -Destination $pluginDirectory -Force
 Copy-Item -LiteralPath $plugin -Destination $pluginDirectory -Force
+$patcherDirectory = Join-Path $packageDirectory 'BepInEx\patchers'
+[System.IO.Directory]::CreateDirectory($patcherDirectory) | Out-Null
+Copy-Item -LiteralPath (Join-Path $repositoryRoot "src\SephiriaBuildOverlay.Updater\bin\$Configuration\netstandard2.1\SephiriaBuildOverlay.Updater.dll") -Destination $patcherDirectory -Force
+[IO.File]::WriteAllText((Join-Path $packageDirectory 'update-protocol.txt'), "1`n$Version`n", (New-Object Text.UTF8Encoding($false)))
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'README.md') -Destination $packageDirectory -Force
 $packageDocsDirectory = Join-Path $packageDirectory 'docs'
 [System.IO.Directory]::CreateDirectory($packageDocsDirectory) | Out-Null
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'docs\DEBUGGING.md') -Destination $packageDocsDirectory -Force
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'docs\FAST_TESTING.md') -Destination $packageDocsDirectory -Force
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'docs\VERIFICATION.md') -Destination $packageDocsDirectory -Force
+Copy-Item -LiteralPath (Join-Path $repositoryRoot 'docs\AUTO_UPDATE.md') -Destination $packageDocsDirectory -Force
 
 & (Join-Path $PSScriptRoot 'packaging\BundleBepInEx.ps1') -PackageDirectory $packageDirectory
 # Compress-Archive silently omits hidden entries such as .doorstop_version.

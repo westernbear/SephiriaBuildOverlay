@@ -1,7 +1,7 @@
 param(
     [string]$GameDir = 'C:\Program Files (x86)\Steam\steamapps\common\Sephiria',
     [string]$SteamExe = 'C:\Program Files (x86)\Steam\steam.exe',
-    [string]$ExpectedVersion = '0.1.10',
+    [string]$ExpectedVersion = '0.1.11',
     [switch]$NativeUiContract,
     [ValidateRange(30, 180)][int]$TimeoutSeconds = 120
 )
