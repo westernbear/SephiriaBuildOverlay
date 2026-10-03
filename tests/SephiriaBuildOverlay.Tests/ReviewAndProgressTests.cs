@@ -58,14 +58,16 @@ public sealed class ReviewAndProgressTests
     }
 
     [Fact]
-    public void QuickImportDoesNotBypassVersionOrBindingSafety()
+    public void QuickImportAllowsVersionMismatchWithoutBypassingBindingSafety()
     {
         var (review, _) = CreateReview();
         review.RecommendAll();
         review.VerifyBindings(Array.Empty<GameEntityDescriptor>());
         Assert.NotNull(review.CreatePlan("1.0.33"));
         Assert.All(review.Bindings.Values, x => Assert.False(x.AllowsAutomaticAction));
-        Assert.Throws<InvalidOperationException>(() => review.CreatePlan("1.0.34"));
+        Assert.NotNull(review.CreatePlan("1.0.34"));
+        Assert.True(review.ValidateForActivation("1.0.34").CanActivate);
+        Assert.Single(review.ValidateForActivation("1.0.34").Warnings);
     }
 
     [Fact]
@@ -182,14 +184,43 @@ public sealed class ReviewAndProgressTests
         Assert.False(review.Bindings["weapon-root"].AllowsAutomaticAction);
     }
 
-    [Fact]
-    public void VersionMismatchRequiresExplicitAcceptance()
+    [Theory]
+    [InlineData("1.0.24", "1.0.33")]
+    [InlineData("1.0.31", "1.0.33")]
+    [InlineData("1.0.34", "1.0.33")]
+    [InlineData("1.0.33", "1.0.34")]
+    public void VersionMismatchOnlyWarnsEvenWithLegacyAcceptanceFalse(string sourceVersion, string gameVersion)
     {
-        var (review, entities) = CreateReview();
+        var (review, entities) = CreateReview(sourceVersion);
         review.Sections[0].Role = TargetRole.Required;
         review.VerifyBindings(entities);
-        Assert.Throws<InvalidOperationException>(() => review.CreatePlan("1.0.34"));
-        Assert.NotNull(review.CreatePlan("1.0.34", acceptVersionMismatch: true));
+        var check = review.ValidateForActivation(gameVersion);
+        Assert.True(check.CanActivate);
+        Assert.Empty(check.Errors);
+        Assert.Single(check.Warnings);
+        var plan = review.CreatePlan(gameVersion, acceptVersionMismatch: false);
+        Assert.Equal(sourceVersion, plan.SourceGameVersion);
+        Assert.NotEmpty(plan.Artifacts);
+        Assert.All(review.Bindings.Values, x => Assert.True(x.AllowsAutomaticAction));
+    }
+
+    [Fact]
+    public void IgnoringVersionDoesNotBypassClassificationOrMissingRequiredMapping()
+    {
+        var (review, _) = CreateReview("1.0.24");
+        Assert.Throws<InvalidOperationException>(() => review.CreatePlan("1.0.33"));
+        review.Sections[0].Role = TargetRole.Required;
+        review.VerifyBindings(Array.Empty<GameEntityDescriptor>());
+        Assert.False(review.ValidateForActivation("1.0.33").CanActivate);
+        Assert.Throws<InvalidOperationException>(() => review.CreatePlan("1.0.33", acceptVersionMismatch: true));
+    }
+
+    [Fact]
+    public void MatchingVersionsDoNotProduceWarning()
+    {
+        var (review, entities) = CreateReview();
+        review.RecommendAll(); review.VerifyBindings(entities);
+        Assert.Empty(review.ValidateForActivation("1.0.33").Warnings);
     }
 
     [Fact]
@@ -253,10 +284,10 @@ public sealed class ReviewAndProgressTests
         new(run, "player", revision, screen, candidates ?? Array.Empty<ScreenCandidate>(), inventory ?? Array.Empty<InventoryArtifact>(),
             weapon, miracle, money, dice, owned, pending);
 
-    private static (BuildReviewSession Review, GameEntityDescriptor[] Entities) CreateReview()
+    private static (BuildReviewSession Review, GameEntityDescriptor[] Entities) CreateReview(string sourceVersion = "1.0.33")
     {
         var id = Guid.NewGuid();
-        var build = new ImportedBuild(id, "test", "1.0.33", "weapon-final", "miracle-target",
+        var build = new ImportedBuild(id, "test", sourceVersion, "weapon-final", "miracle-target",
             new[] { new ImportedSection("s", "section", "", new[] { new ImportedItem("1", "a"), new ImportedItem("2", "a") }) },
             TalentNames.All.ToDictionary(x => x, _ => 0));
         var entries = new[]

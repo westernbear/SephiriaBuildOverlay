@@ -116,8 +116,6 @@ public sealed class NativePresetTests
     [Theory]
     [InlineData(null, "a", "1.0.33", "1.0.33", true, true, false, false, false)]
     [InlineData("a", "b", "1.0.33", "1.0.33", true, true, false, false, false)]
-    [InlineData("a", "a", "1.0.32", "1.0.33", true, true, false, false, false)]
-    [InlineData("a", "a", "1.0.33", "1.0.34", true, true, false, false, false)]
     [InlineData("a", "a", "1.0.33", "1.0.33", false, true, false, false, false)]
     [InlineData("a", "a", "1.0.33", "1.0.33", true, false, false, false, false)]
     [InlineData("a", "a", "1.0.33", "1.0.33", true, true, true, false, false)]
@@ -131,6 +129,23 @@ public sealed class NativePresetTests
     {
         Assert.True(StartingPresetPolicy.CanApply("a", "a", "1.0.33", "1.0.33", true, true, false, false, false));
         Assert.False(StartingPresetPolicy.CanApply(null, "a", "1.0.33", "1.0.33", true, true, false, false, false));
+    }
+
+    [Theory]
+    [InlineData("1.0.24", "1.0.33")]
+    [InlineData("1.0.31", "1.0.33")]
+    [InlineData("1.0.33", "1.0.34")]
+    public void VersionMismatchDoesNotRejectOtherwiseSafePresetLobby(string source, string game) =>
+        Assert.True(StartingPresetPolicy.CanApply("a", "a", source, game, true, true, false, false, false));
+
+    [Fact]
+    public void PresetRefusalExplainsTheActualFailedGuard()
+    {
+        Assert.Null(StartingPresetPolicy.RejectionReason("a", "a", true, true, false, false, false));
+        Assert.Contains("런", StartingPresetPolicy.RejectionReason("a", "b", true, true, false, false, false)!);
+        Assert.Contains("편집", StartingPresetPolicy.RejectionReason("a", "a", true, true, false, false, true)!);
+        Assert.Contains("응답", StartingPresetPolicy.RejectionReason("a", "a", true, true, false, true, false)!);
+        Assert.Contains("싱글플레이", StartingPresetPolicy.RejectionReason("a", "a", true, true, true, false, false)!);
     }
 
     [Fact]

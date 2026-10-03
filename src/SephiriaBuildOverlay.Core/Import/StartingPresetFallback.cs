@@ -11,8 +11,8 @@ public static class StartingPresetFallback
     public static NativePreset Create(ImportedBuild build, string currentCompact, VersionedCatalog catalog,
         IReadOnlyList<GameEntityDescriptor> entities, Func<string, ulong?> passiveId, ICollection<string> warnings)
     {
-        if (build.GameVersion != "1.0.33" || catalog.GameVersion != build.GameVersion)
-            throw new InvalidOperationException("시작 세팅 카탈로그 버전이 다릅니다.");
+        // Source version is metadata, not an import gate. Each option below
+        // must still match the current game's observed entity descriptor.
         var preset = NativePreset.ParseCompact(currentCompact);
         string? Verified(string slug, CatalogKind kind)
         {

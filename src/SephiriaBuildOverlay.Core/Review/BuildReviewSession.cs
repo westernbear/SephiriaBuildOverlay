@@ -36,8 +36,10 @@ public sealed class ReviewSection
 
 public sealed class ActivationCheck
 {
-    public ActivationCheck(IReadOnlyList<string> errors) => Errors = errors;
+    public ActivationCheck(IReadOnlyList<string> errors, IReadOnlyList<string>? warnings = null)
+    { Errors = errors; Warnings = warnings ?? Array.Empty<string>(); }
     public IReadOnlyList<string> Errors { get; }
+    public IReadOnlyList<string> Warnings { get; }
     public bool CanActivate => Errors.Count == 0;
 }
 
@@ -97,6 +99,7 @@ public sealed class BuildReviewSession
     public ActivationCheck ValidateForActivation(string installedGameVersion)
     {
         var errors = new List<string>();
+        var warnings = new List<string>();
         foreach (var section in Sections.Where(x => x.Role == TargetRole.Unclassified))
             errors.Add($"구역 '{section.Source.Label}'을 필수/추천/제외 중 하나로 분류하세요.");
 
@@ -115,18 +118,18 @@ public sealed class BuildReviewSession
                 errors.Add($"필수 항목 '{item.Source.Slug}'을 게임 엔티티로 해석할 수 없습니다.");
         }
 
-        if (!string.Equals(Build.GameVersion, installedGameVersion, StringComparison.Ordinal))
-            errors.Add($"버전 경고: 빌드 {Build.GameVersion}, 게임 {installedGameVersion}. 확인 후 버전별 카탈로그를 사용하세요.");
-        return new ActivationCheck(errors);
+        if (!string.Equals(Build.GameVersion, installedGameVersion, StringComparison.Ordinal) ||
+            !string.Equals(_catalog.GameVersion, installedGameVersion, StringComparison.Ordinal))
+            warnings.Add($"버전이 달라도 빌드를 적용합니다. 빌드 {Build.GameVersion} / 게임 {installedGameVersion} / 카탈로그 {_catalog.GameVersion}");
+        return new ActivationCheck(errors, warnings);
     }
 
     public BuildPlan CreatePlan(string installedGameVersion, bool acceptVersionMismatch = false)
     {
+        // Keep the legacy argument for source compatibility. Even false no
+        // longer blocks on version metadata; entity/action validation remains.
         var check = ValidateForActivation(installedGameVersion);
-        var blocking = acceptVersionMismatch
-            ? check.Errors.Where(x => !x.StartsWith("버전 경고:", StringComparison.Ordinal)).ToArray()
-            : check.Errors.ToArray();
-        if (blocking.Length != 0) throw new InvalidOperationException(string.Join(Environment.NewLine, blocking));
+        if (!check.CanActivate) throw new InvalidOperationException(string.Join(Environment.NewLine, check.Errors));
 
         var targets = Sections.SelectMany(section => section.Items.Select(item => new
             {

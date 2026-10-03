@@ -17,7 +17,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
 {
     public const string PluginGuid = "io.github.sephiria.build-overlay";
     public const string PluginName = "Sephiria Build Overlay";
-    public const string PluginVersion = "0.1.14";
+    public const string PluginVersion = "0.1.15";
 
     private ConfigEntry<KeyCode> _importKey = null!;
     private ConfigEntry<KeyCode> _overlayKey = null!;
@@ -34,7 +34,6 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
     private string ImportPrompt => _controller.GamepadMode ? _controller.Prompt("↑") : _importKey.Value.ToString();
     private string OverlayPrompt => _controller.GamepadMode ? _controller.Prompt("←") : _overlayKey.Value.ToString();
     private string ConfirmPrompt => _controller.GamepadMode ? _controller.Prompt("→") : _confirmKey.Value.ToString();
-    private ConfigEntry<bool> _acceptVersionMismatch = null!;
     private ConfigEntry<bool> _exportRuntimeCatalog = null!;
     private ConfigEntry<float> _uiScale = null!;
     private ConfigEntry<float> _panelScale = null!;
@@ -114,7 +113,6 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
         _padModifier = Config.Bind("Gamepad", "Modifier", "selectButton", new ConfigDescription(
             "게임 패드 모드에서 이 버튼을 누른 채 방향키 ↑ 검토 / ← 표시 / → 한 동작 확인. 기본 View/Back/Share/−. 네이티브 입력은 검토 창 밖에서 차단하지 않음",
             new AcceptableValueList<string>("selectButton", "leftStickButton", "rightStickButton")));
-        _acceptVersionMismatch = Config.Bind("Safety", "AcceptVersionMismatch", false, "빌드/게임 버전 불일치 경고를 확인한 것으로 처리");
         _exportRuntimeCatalog = Config.Bind("Debug", "ExportRuntimeCatalog", false, "게임 엔티티 메타데이터를 로컬 JSON으로 내보내기 (카탈로그 디버깅용)");
         _measurePerformance = Config.Bind("Debug", "MeasurePerformance", false, "10초마다 읽기 전용 스냅샷 비용과 포커스 상태 FPS 기록 (게임 행동 없음)");
         _runtimeDiagnostics = Config.Bind("Debug", "RuntimeDiagnostics", false, "개발용 로컬 파일 명령의 읽기 전용 snapshot/catalog 검증 허용. 게임 행동은 실행하지 않음");
@@ -370,7 +368,8 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
         try
         {
             _review.VerifyBindings(_gateway.DiscoverCatalogEntities());
-            var plan = _review.CreatePlan(Application.version, _acceptVersionMismatch.Value);
+            var check = _review.ValidateForActivation(Application.version);
+            var plan = _review.CreatePlan(Application.version);
             var snapshot = _gateway.CaptureOnMainThread();
             var store = new ActiveStateStore();
             ActiveBuildState? existing = null;
@@ -385,10 +384,12 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
             try { _reviewStore.Save(ReviewCheckpoint.Capture(_review, true)); }
             catch (Exception ex) { Logger.LogWarning("Active review checkpoint save failed: " + ex.Message); }
             _status = $"'{_review.Build.Title}' 활성화 완료 · 목표 {_plan.Artifacts.Count}종 / {_plan.Artifacts.Sum(x => x.DesiredAcquisitions)}회. {ConfirmPrompt}로 한 동작씩 확인하세요.";
+            foreach (var warning in check.Warnings)
+            { Logger.LogWarning(warning); Notify(warning, NotificationKind.Warning); }
             if (closeWindow) _showImport = false;
             return true;
         }
-        catch (Exception ex) { _status = "활성화 불가: " + ex.Message; Logger.LogWarning(_status); Notify("빌드를 적용하지 못했습니다. 설정에서 목표와 버전을 확인하세요.", NotificationKind.Error); return false; }
+        catch (Exception ex) { _status = "활성화 불가: " + ex.Message; Logger.LogWarning(_status); Notify("빌드를 적용하지 못했습니다. " + ex.Message, NotificationKind.Error); return false; }
     }
 
     private IReadOnlyDictionary<string, CatalogBinding> BindingsByGameKey()

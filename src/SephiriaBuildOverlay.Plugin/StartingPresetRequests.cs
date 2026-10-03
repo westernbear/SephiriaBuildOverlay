@@ -58,6 +58,7 @@ public sealed partial class SephiriaBuildOverlayPlugin
         {
             var result = await _gateway.ApplyStartingPresetAsync(build, context, _lifetime.Token);
             if (_lifetime.Stopped) return;
+            Logger.LogInfo("Starting preset result: " + result.Detail);
             _status += "\n" + result.Detail;
             if (result.Warning is not null) Notify(result.Warning, NotificationKind.Warning);
             else Notify(result.Applied ? "시작 세팅을 적용했습니다." : "시작 세팅을 적용하지 못했습니다.",

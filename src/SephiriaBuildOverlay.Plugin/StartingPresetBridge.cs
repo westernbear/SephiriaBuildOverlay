@@ -46,7 +46,8 @@ internal sealed partial class UnityGameGateway
         var ownsPending = false;
         try
         {
-            // Version-specific native import is separate from AcceptVersionMismatch.
+            // Version metadata does not gate presets. Revalidate the actual
+            // native API, local lobby context and unlocked options instead.
             var id = FindLocalPlayerId(out var owned, out var player);
             var server = Convert.ToBoolean(ReadStatic("Mirror.NetworkServer", "active") ?? false);
             var connections = GameType("Mirror.NetworkServer")?.GetField("connections", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
@@ -59,9 +60,13 @@ internal sealed partial class UnityGameGateway
                 .Where(x => x != null && x.gameObject.scene.IsValid() && ReferenceEquals(ReadNamedObject(x, "playerAvatar"), avatar)).ToArray();
             if (matches.Length != 1) throw new InvalidOperationException("연결된 프리셋 패널이 없거나 모호합니다.");
             panel = matches[0];
-            if (!StartingPresetPolicy.CanApply(importContext, StartingPresetContext(), build.GameVersion, Application.version,
-                    owned, server, remotePlayers, _requestPending, ReadBool(panel, "isEditingCurrentPreset") || ReadBool(panel, "IsOpened")))
-                return new StartingPresetResult("시작 프리셋 미적용: 런/플레이어 변경, 버전 불일치, 멀티플레이 또는 네이티브 편집 중입니다.", warning: "현재 상태에서는 시작 세팅을 적용할 수 없습니다.");
+            var rejection = StartingPresetPolicy.RejectionReason(importContext, StartingPresetContext(),
+                owned, server, remotePlayers, _requestPending, ReadBool(panel, "isEditingCurrentPreset") || ReadBool(panel, "IsOpened"));
+            if (rejection is not null)
+            {
+                _log.LogWarning("Starting preset refused: " + rejection);
+                return new StartingPresetResult("시작 프리셋 미적용: " + rejection, warning: rejection);
+            }
             var storage = ReadNamedObject(panel, "playerLocalDataStorage") ?? throw new InvalidOperationException("플레이어 저장소가 없습니다.");
             var spawner = ReadNamedObject(panel, "playerSpawner") ?? throw new InvalidOperationException("플레이어 스포너가 없습니다.");
             if (ReadNamedObject(panel, "baseWeaponDatas") is not IEnumerable weapons || !weapons.Cast<object>().Any())

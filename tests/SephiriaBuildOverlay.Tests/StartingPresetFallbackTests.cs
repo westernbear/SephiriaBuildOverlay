@@ -13,10 +13,10 @@ public sealed class StartingPresetFallbackTests
     private IReadOnlyList<GameEntityDescriptor> Entities => _catalog.Entries.Select(x => new GameEntityDescriptor(
         x.GameKey, x.Kind, x.KoreanName, x.Rarity, x.Category, x.Tier, x.ParentGameKey, x.IsDual)).ToArray();
     private static ulong? Passive(string slug) => StartingPassiveMapping.Expected(slug).Id;
-    private ImportedBuild Parse(object fields)
+    private ImportedBuild Parse(object fields, string version = "1.0.33")
     {
         var json = Newtonsoft.Json.Linq.JObject.FromObject(fields);
-        var id = Guid.NewGuid(); json["postUuid"] = id.ToString(); json["version"] = "1.0.33";
+        var id = Guid.NewGuid(); json["postUuid"] = id.ToString(); json["version"] = version;
         json["content"] ??= new Newtonsoft.Json.Linq.JArray();
         return WikiBuildParser.Parse(json.ToString(), id);
     }
@@ -47,6 +47,26 @@ public sealed class StartingPresetFallbackTests
         Assert.Equal(Current, result.Compact()); Assert.False(build.HasTalentAllocation); Assert.Null(build.FruitSkewer);
         var restored = JsonConvert.DeserializeObject<ImportedBuild>(JsonConvert.SerializeObject(build))!;
         Assert.False(restored.HasTalentAllocation); Assert.Null(restored.FruitSkewer);
+    }
+
+    [Theory]
+    [InlineData("1.0.24")]
+    [InlineData("1.0.31")]
+    [InlineData("1.0.34")]
+    public void OlderOrNewerWikiVersionUsesVerifiedCurrentCatalogForCodeMissingPreset(string version)
+    {
+        var build = Parse(new { weapon = "super_conductor", costume = "frog", ability = new { @base = 10 } }, version);
+        var warnings = new List<string>();
+        var preset = StartingPresetFallback.Create(build, Current, _catalog, Entities, Passive, warnings);
+        Assert.Equal(int.Parse(_catalog.BuildWeaponPath("super_conductor")[0]), preset.Weapon);
+        Assert.Equal("Frog", preset.Costume);
+        Assert.Contains((11UL, 10), preset.Passives);
+        Assert.Empty(warnings);
+        var mismatched = StartingPresetFallback.Create(build, Current, _catalog, Array.Empty<GameEntityDescriptor>(), _ => null, warnings);
+        Assert.Equal(0, mismatched.Weapon);
+        Assert.Equal("PinkRabbit", mismatched.Costume);
+        Assert.Equal(new[] { (5UL, 8) }, mismatched.Passives);
+        Assert.NotEmpty(warnings);
     }
 
     [Fact]
