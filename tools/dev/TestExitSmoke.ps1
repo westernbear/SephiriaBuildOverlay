@@ -1,7 +1,7 @@
 param(
     [string]$GameDir = 'C:\Program Files (x86)\Steam\steamapps\common\Sephiria',
     [string]$SteamExe = 'C:\Program Files (x86)\Steam\steam.exe',
-    [string]$ExpectedVersion = '0.1.17',
+    [string]$ExpectedVersion = '0.1.18',
     [switch]$NativeUiContract,
     [switch]$StartingCatalogContract,
     [ValidateRange(30, 180)][int]$TimeoutSeconds = 120
@@ -42,6 +42,7 @@ if ($NativeUiContract -and ($combinedLog -notmatch 'Native UI construction PASS:
 if ($NativeUiContract -and [version]$ExpectedVersion -ge [version]'0.1.17' -and $combinedLog -notmatch 'Modal cursor contract PASS: settingsSurface=System') { throw 'Settings cursor did not use the system surface.' }
 if ([version]$ExpectedVersion -ge [version]'0.1.13' -and $combinedLog -notmatch 'Exclusive modal input gates installed: 11 menu callbacks') { throw 'Native menu callback patches were not installed.' }
 if ($StartingCatalogContract -and ($combinedLog -notmatch 'Starting catalog PASS:' -or $combinedLog -match 'Starting catalog unavailable at title:')) { throw 'Native starting catalog validation did not pass. Logs were preserved.' }
+if ($StartingCatalogContract -and [version]$ExpectedVersion -ge [version]'0.1.18' -and $combinedLog -notmatch 'Starting fruit catalog PASS: exact native IDs=') { throw 'Native fruit ID binding did not pass.' }
 if ($combinedLog -notmatch 'Exit smoke: native title QuitGame') { throw 'Normal native title exit path was not observed.' }
 if ($combinedLog -notmatch 'Overlay shutdown complete; pending work cancelled. Quit=True') { throw 'Managed shutdown did not finish.' }
 if ($gameProcess.ExitCode -ne 0 -or $newDumps.Count -gt 0 -or $playerLog -match 'Crash!!!') {

@@ -85,6 +85,32 @@ public sealed class NativePresetTests
     }
 
     [Fact]
+    public void WikiFruitIdsBindToExactNativeCaseBeforeCapacityFiltering()
+    {
+        var preset = NativePreset.ParseCompact("AAP1\nW:0\nC:PinkRabbit\nS:\nB:0\nR:academy,1;academy,1;sturdy,-1;elemental,1\n");
+        preset.LimitLoadout(_ => null, 0, new HashSet<string> { "ACADEMY", "STURDY", "ELEMENTAL" }, 6, 3, 2);
+        Assert.Equal(new[] { ("ACADEMY", 1), ("ACADEMY", 1), ("STURDY", -1), ("ELEMENTAL", 1) }, preset.Fruits);
+        Assert.Contains("R:ACADEMY,1;ACADEMY,1;STURDY,-1;ELEMENTAL,1", preset.Compact());
+    }
+
+    [Fact]
+    public void MixedCaseFruitDuplicatesShareTheNativeCategoryLimit()
+    {
+        var preset = NativePreset.ParseCompact("AAP1\nW:0\nC:PinkRabbit\nS:\nB:1\nR:academy,1;ACADEMY,1;Academy,1;academy,-1\n");
+        preset.LimitLoadout(_ => null, 0, new HashSet<string> { "ACADEMY" }, 4, 2, 1);
+        Assert.Equal(new[] { ("ACADEMY", 1), ("ACADEMY", 1), ("ACADEMY", -1) }, preset.Fruits);
+        Assert.Equal(1, preset.Adaptive);
+    }
+
+    [Fact]
+    public void AmbiguousFruitCaseBindingDoesNotGuessButExactIdsRemainValid()
+    {
+        var preset = NativePreset.ParseCompact("AAP1\nW:0\nC:PinkRabbit\nS:\nB:0\nR:Academy,1;academy,-1;ACADEMY,1;missing,1\n");
+        preset.LimitLoadout(_ => null, 0, new HashSet<string> { "academy", "ACADEMY" }, 6, 3, 2);
+        Assert.Equal(new[] { ("academy", -1), ("ACADEMY", 1) }, preset.Fruits);
+    }
+
+    [Fact]
     public void FirstNativeStageCannotLoadPocketOrFruitBeforeStatValidation()
     {
         var preset = NativePreset.ParseCompact(Compact);

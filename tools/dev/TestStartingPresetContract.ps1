@@ -13,7 +13,8 @@ try {
         @('PassiveDatabase','GetAll',0), @('SwitchManager','GetDestinySwitch',2),
         @('ItemDatabase','GetAllItemCategory',0), @('ItemDatabase','FindItemById',1),
         @('UI_DimensionPocketPanel','GetCapacity',1), @('KeywordDatabase','GetConstValue',2),
-        @('PlayerAvatar','GetPassiveStat',1), @('UnitAvatar','GetCustomStatUnsafe',1), @('UI_Cursor','get_Current',0)
+        @('PlayerAvatar','GetPassiveStat',1), @('UnitAvatar','GetCustomStatUnsafe',1), @('UI_Cursor','get_Current',0),
+        @('PlayerLocalDataStorage','UpdateFruitSkewerBonus',0), @('CostumeDatabase','FindCostumeByID',1), @('WeaponControllerSimple','EquipWeapon',3)
     )
     foreach ($requirement in $requirements) {
         $type = $game.MainModule.Types | Where-Object Name -EQ $requirement[0]
@@ -25,12 +26,26 @@ try {
         if (!($panel.Fields | Where-Object Name -EQ $field)) { throw "Native preset field missing: $field" }
     }
     foreach ($requirement in @(@('DungeonManager','isRunStarted','System.Boolean'), @('PassiveEntity','id','System.UInt64'),
-        @('PassiveEntity','aName','LocalizedString'), @('CostumeEntity','aName','LocalizedString'))) {
+        @('PassiveEntity','aName','LocalizedString'), @('CostumeEntity','aName','LocalizedString'),
+        @('CostumeEntity','defaultWeapon','WeaponEntity'), @('WeaponControllerSimple','currentWeapon','WeaponSimple'),
+        @('WeaponSimple','entityId','System.Int32'), @('PlayerLocalDataStorage','defaultWeapon','System.Int32'),
+        @('PlayerLocalDataStorage','adaptiveItemDropBonus','System.Int32'),
+        @('PlayerLocalDataStorage','fruitSkewerBonus','Mirror.SyncList`1<GridInventory/ItemDropBonusData>'))) {
         $type = $game.MainModule.Types | Where-Object Name -EQ $requirement[0]
         $field = $type.Fields | Where-Object Name -EQ $requirement[1]
         if (!$field -or $field.FieldType.FullName -ne $requirement[2]) { throw "Native starting metadata mismatch: $($requirement -join ':')" }
     }
     $nativeImport = $panel.Methods | Where-Object Name -EQ 'TryApplyCompactPresetData'
+    $update = $panel.Methods | Where-Object Name -EQ 'UpdateCurrentPlayer'
+    $updateCalls = @($update.Body.Instructions | Where-Object { $_.OpCode.Name -match '^call' } | ForEach-Object { $_.Operand.FullName })
+    foreach ($expected in @('PlayerLocalDataStorage::set_NetworkdefaultWeapon','WeaponControllerSimple::EquipWeapon','PlayerLocalDataStorage::UpdateFruitSkewerBonus')) {
+        if (!($updateCalls | Where-Object { $_.Contains($expected) })) { throw "Native loadout application changed: $expected" }
+    }
+    $fruitData = ($game.MainModule.Types | Where-Object Name -EQ 'GridInventory').NestedTypes | Where-Object Name -EQ 'ItemDropBonusData'
+    foreach ($entry in @(@('categoryName','System.String'), @('weight','System.Int32'))) {
+        $field = $fruitData.Fields | Where-Object Name -EQ $entry[0]
+        if (!$field -or $field.FieldType.FullName -ne $entry[1]) { throw 'Native fruit response fields changed.' }
+    }
     $costumeValidator = $panel.Methods | Where-Object Name -EQ 'ValidateAndCorrectCostume'
     $calls = @(@($nativeImport.Body.Instructions) + @($costumeValidator.Body.Instructions) | Where-Object { $_.OpCode.Name -match '^call' } | ForEach-Object { $_.Operand.FullName })
     if ($calls -match '::(Purchase|Buy|Spend|AddPassivePoint|CmdAddPassivePoint|SetSapphire)') { throw 'Import path includes a permanent purchase/spend method.' }
@@ -59,5 +74,5 @@ try {
     $local = $mirror.MainModule.Types | Where-Object FullName -EQ 'Mirror.LocalConnectionToServer'
     $send = $local.Methods | Where-Object Name -EQ 'Send'
     if (!($send.Body.Instructions | Where-Object { $_.Operand -and $_.Operand.ToString() -match '::Enqueue' })) { throw 'Recheck local host command timing; queue contract changed.' }
-    Write-Output 'PASS: 15 native method signatures, preset fields, Default-or-purchased skin ownership, distinct WitchHat discovery/unlockedCharms gates, local connection count and deferred command contract. Game code was not executed.'
+    Write-Output 'PASS: 18 native method signatures, preset/weapon/fruit response fields, native weapon equip and fruit sync paths, Default-or-purchased skin ownership, distinct journal gates, local connection count and deferred command contract. Game code was not executed.'
 } finally { $game.Dispose(); $mirror.Dispose() }

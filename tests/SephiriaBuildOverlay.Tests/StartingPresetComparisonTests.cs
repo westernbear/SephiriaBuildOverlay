@@ -14,6 +14,13 @@ public sealed class StartingPresetComparisonTests
         Assert.Empty(StartingPresetComparison.ChangedSections(NativePreset.ParseCompact(Requested), NativePreset.ParseCompact(reordered)));
     }
 
+    [Fact]
+    public void BindingFruitIdsToNativeCaseIsNotPartialFailure()
+    {
+        Assert.Empty(StartingPresetComparison.ChangedSections(NativePreset.ParseCompact(Requested),
+            NativePreset.ParseCompact(Requested.Replace("ice,", "ICE,").Replace("fire,", "FIRE,"))));
+    }
+
     [Theory]
     [InlineData("W:500", "W:0", "시작 무기")]
     [InlineData("C:Squirrel", "C:PinkRabbit", "의상")]

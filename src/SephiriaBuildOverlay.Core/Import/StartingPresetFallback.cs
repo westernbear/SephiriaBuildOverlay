@@ -20,18 +20,7 @@ public static class StartingPresetFallback
             if (binding.AllowsAutomaticAction) return binding.GameKey;
             warnings.Add($"{slug}: 시작 세팅 매핑 미검증"); return null;
         }
-        if (!string.IsNullOrWhiteSpace(build.WeaponSlug))
-        {
-            try
-            {
-                var path = catalog.BuildWeaponPath(build.WeaponSlug!);
-                var entries = path.Select(key => catalog.Entries.Single(x => x.Kind == CatalogKind.Weapon && x.GameKey == key)).ToArray();
-                if (entries.All(x => Verified(x.Slug, CatalogKind.Weapon) is not null) &&
-                    int.TryParse(path[0], NumberStyles.None, CultureInfo.InvariantCulture, out var root)) preset.SetWeapon(root);
-            }
-            catch (Exception ex) when (ex is KeyNotFoundException or InvalidOperationException)
-            { warnings.Add("시작 무기 경로를 검증하지 못했습니다."); }
-        }
+        ApplyWeapon(preset, build.WeaponSlug, catalog, entities, warnings);
         if (!string.IsNullOrWhiteSpace(build.CostumeSlug) && Verified(build.CostumeSlug!, CatalogKind.Costume) is { } costume)
             preset.SetValidatedCostume(costume, preset.Costume == costume ? preset.Skin : "");
         if (build.HasTalentAllocation)
@@ -67,10 +56,19 @@ public static class StartingPresetFallback
                     if (ids.TryGetValue(item.Slug, out var id)) preset.Pocket.Add((-1, id, 1));
             }
         }
-        if (build.FruitSkewer is not null)
+        ApplyFruitSkewer(preset, build.FruitSkewer);
+        // Run through the strict parser before allowing any native mutation.
+        return NativePreset.ParseCompact(preset.Compact());
+    }
+
+    // Structured fruit settings are authoritative when present, including an
+    // explicit empty list. A missing field preserves the native preset's data.
+    public static void ApplyFruitSkewer(NativePreset preset, IReadOnlyList<ImportedFruit>? fruits)
+    {
+        if (fruits is not null)
         {
             preset.Fruits.Clear(); preset.SetAdaptive(false);
-            foreach (var fruit in build.FruitSkewer)
+            foreach (var fruit in fruits)
             {
                 if (fruit.Value < -16 || fruit.Value > 16) throw new FormatException("과일꼬치 수량 제한을 초과했습니다.");
                 if (fruit.Key == "adaptive_drop_bonus") { preset.SetAdaptive(fruit.Value > 0); continue; }
@@ -79,8 +77,25 @@ public static class StartingPresetFallback
                 if (preset.Fruits.Count > 512) throw new FormatException("과일꼬치 항목 수 제한을 초과했습니다.");
             }
         }
-        // Run through the strict parser before allowing any native mutation.
-        return NativePreset.ParseCompact(preset.Compact());
+    }
+
+    // Wiki's weapon is the final target. The lobby may equip only the verified
+    // root, never grant the final upgrade or rely on a stale embedded preset W.
+    public static void ApplyWeapon(NativePreset preset, string? slug, VersionedCatalog catalog,
+        IReadOnlyList<GameEntityDescriptor> entities, ICollection<string> warnings)
+    {
+        if (string.IsNullOrWhiteSpace(slug)) return;
+        try
+        {
+            var path = catalog.BuildWeaponPath(slug!);
+            var entries = path.Select(key => catalog.Entries.Single(x => x.Kind == CatalogKind.Weapon && x.GameKey == key)).ToArray();
+            foreach (var entry in entries)
+                if (!catalog.Verify(entry.Slug, CatalogKind.Weapon, entities).AllowsAutomaticAction)
+                { warnings.Add(entry.Slug + ": 시작 무기 매핑 미검증"); return; }
+            if (int.TryParse(path[0], NumberStyles.None, CultureInfo.InvariantCulture, out var root)) preset.SetWeapon(root);
+        }
+        catch (Exception ex) when (ex is KeyNotFoundException or InvalidOperationException)
+        { warnings.Add("시작 무기 경로를 검증하지 못했습니다."); }
     }
 
     public static string Category(string slug) => slug switch

@@ -76,6 +76,9 @@ internal sealed partial class UnityGameGateway
             var preset = !string.IsNullOrWhiteSpace(build.NativePresetCode)
                 ? NativePreset.Decode(build.NativePresetCode!)
                 : StartingPresetFallback.Create(build, backup, _catalog, DiscoverCatalogEntities(), VerifiedPassiveId, fallbackWarnings);
+            StartingPresetFallback.ApplyFruitSkewer(preset, build.FruitSkewer);
+            if (!string.IsNullOrWhiteSpace(build.NativePresetCode))
+                StartingPresetFallback.ApplyWeapon(preset, build.WeaponSlug, _catalog, DiscoverCatalogEntities(), fallbackWarnings);
             var requested = preset.Compact();
             var locked = new StartingPresetWarnings();
             foreach (var data in weapons.Cast<object>())
@@ -161,6 +164,7 @@ internal sealed partial class UnityGameGateway
             // Host commands are queued through LocalConnectionToClient.Update,
             // not immediate. Observe the server-applied stats before capacity.
             await WaitForStartingStats(avatar!, preset, passiveEntities, importContext, cancellationToken);
+            await WaitForStartingWeapon(panel, storage, avatar!, importContext, cancellationToken);
             // Native preset UI also waits 0.2s for perk/capacity refresh. Keep
             // temporary loadout empty until that refresh has completed.
             await Task.Delay(200, cancellationToken);
@@ -202,18 +206,24 @@ internal sealed partial class UnityGameGateway
             var message = ApplyCompact(panel, preset.Compact());
             NativeCall(panel, "UpdateCurrentPlayer", null, false);
             await WaitForStartingStats(avatar!, preset, passiveEntities, importContext, cancellationToken);
+            var weaponWarning = await WaitForStartingWeapon(panel, storage, avatar!, importContext, cancellationToken);
+            await WaitForStartingFruit(storage, preset, importContext, cancellationToken);
             var applied = NativePreset.ParseCompact((string)NativeCall(panel, "BuildCompactPresetData", "")!);
             locked.RemoveAppliedOptions(applied);
             save.Invoke(null, new object[] { true, false });
             _log.LogInfo("Starting preset applied through native import/update; source=" + (string.IsNullOrWhiteSpace(build.NativePresetCode) ? "wiki-fields" : "preset-code") + "; permanent purchases excluded.");
+            _log.LogInfo("Starting fruit skewer confirmed: source=" + (build.FruitSkewer is null ? "native-preset" : "wiki-fields") +
+                ", adaptive=" + preset.Adaptive + ", fruits=" + string.Join(";", preset.Fruits.Select(x => x.Category + ":" + x.Value)));
             foreach (var warning in fallbackWarnings) _log.LogWarning("Starting preset: " + warning);
             foreach (var item in locked.Items) _log.LogWarning("Starting preset locked option excluded: " + item);
             foreach (var item in locked.FavoriteItems) _log.LogWarning("Starting preset favorite unavailable in journal (build target retained): " + item);
             var adjusted = StartingPresetComparison.ChangedSections(NativePreset.ParseCompact(requested), applied);
             var limited = adjusted.Count > 0 ? " 조정된 항목: " + string.Join(" · ", adjusted) + "." : "";
+            var resultWarning = locked.Bubble ?? (adjusted.Count > 0 ? "현재 포인트·용량·선택 조건에 맞춰 조정했습니다.\n" + string.Join(" · ", adjusted) :
+                fallbackWarnings.Count > 0 ? "일부 시작 옵션을 매핑하지 못했습니다. 현재 설정을 확인하세요." : null);
+            if (weaponWarning is not null) resultWarning = resultWarning is null ? weaponWarning : resultWarning + "\n" + weaponWarning;
             return new StartingPresetResult("시작 프리셋 적용 완료 (현재 설정만 변경, 저장 슬롯 유지)." + limited + "\n" + message,
-                applied: true, warning: locked.Bubble ?? (adjusted.Count > 0 ? "현재 포인트·용량·선택 조건에 맞춰 조정했습니다.\n" + string.Join(" · ", adjusted) :
-                    fallbackWarnings.Count > 0 ? "일부 시작 옵션을 매핑하지 못했습니다. 현재 설정을 확인하세요." : null));
+                applied: true, warning: resultWarning);
         }
         catch (Exception ex)
         {
@@ -230,6 +240,9 @@ internal sealed partial class UnityGameGateway
                     var entities = StaticCall("PassiveDatabase", "GetAll") as IEnumerable ?? throw new InvalidOperationException("특성 목록이 없습니다.");
                     var avatar = ReadNamedObject(panel, "playerAvatar") ?? throw new InvalidOperationException("플레이어가 없습니다.");
                     await WaitForStartingStats(avatar, previous, entities, importContext!, cancellationToken);
+                    var storage = ReadNamedObject(panel, "playerLocalDataStorage") ?? throw new InvalidOperationException("플레이어 저장소가 없습니다.");
+                    await WaitForStartingWeapon(panel, storage, avatar, importContext!, cancellationToken);
+                    await WaitForStartingFruit(storage, previous, importContext!, cancellationToken);
                 }
                 catch (Exception restoreError) { _log.LogError("Starting preset rollback failed: " + restoreError); return new StartingPresetResult("시작 프리셋 실패 및 복원 실패", warning: "시작 세팅 복원 실패. 네이티브 프리셋에서 현재 설정을 확인하세요."); }
             }
@@ -270,6 +283,58 @@ internal sealed partial class UnityGameGateway
             if (complete) return;
         } while (Time.unscaledTime < deadline);
         throw new TimeoutException("시작 프리셋 특성 요청 결과가 5초 안에 확인되지 않았습니다.");
+    }
+
+    private async Task<string?> WaitForStartingWeapon(object panel, object storage, object avatar, string context, CancellationToken token)
+    {
+        // Native import may replace an unavailable selection, and a costume
+        // may force its own weapon. Verify those accepted rules, not a grant.
+        var accepted = NativePreset.ParseCompact((string)NativeCall(panel, "BuildCompactPresetData", "")!);
+        var costume = StaticCall("CostumeDatabase", "FindCostumeByID", accepted.Costume)
+            ?? throw new InvalidOperationException("적용된 의상을 확인할 수 없습니다.");
+        var forcedWeapon = ReadNamedObject(costume, "defaultWeapon");
+        var forcedId = forcedWeapon is null ? null : ReadNamedNullableInt(forcedWeapon, "id");
+        if (forcedWeapon is not null && !forcedId.HasValue) throw new InvalidOperationException("의상의 고정 무기를 확인할 수 없습니다.");
+        var controllerType = GameType("WeaponControllerSimple") ?? throw new InvalidOperationException("무기 컨트롤러가 없습니다.");
+        var deadline = Time.unscaledTime + 5f;
+        do
+        {
+            await Task.Delay(50, token);
+            token.ThrowIfCancellationRequested();
+            if (_disposed || StartingPresetContext() != context) throw new InvalidOperationException("시작 무기 적용 중 런/플레이어가 변경되었습니다.");
+            var controller = (avatar as Component)?.GetComponent(controllerType) ?? ReadNamedObject(avatar, "weaponController");
+            var weapon = controller is null ? null : ReadNamedObject(controller, "currentWeapon");
+            var equipped = weapon is null ? null : ReadNamedNullableInt(weapon, "entityId");
+            if (!StartingWeaponState.Matches(accepted.Weapon, forcedId, ReadNamedNullableInt(storage, "defaultWeapon"), equipped)) continue;
+            _log.LogInfo("Starting weapon confirmed: selected=" + accepted.Weapon + ", equipped=" + equipped + ", costumeFixed=" + forcedId);
+            return forcedId.HasValue && forcedId != accepted.Weapon ? "선택한 의상의 고정 시작 무기가 적용됩니다." : null;
+        } while (Time.unscaledTime < deadline);
+        throw new TimeoutException("시작 무기 장착 결과가 5초 안에 확인되지 않았습니다.");
+    }
+
+    private async Task WaitForStartingFruit(object storage, NativePreset preset, string context, CancellationToken token)
+    {
+        var deadline = Time.unscaledTime + 5f;
+        do
+        {
+            await Task.Delay(50, token);
+            token.ThrowIfCancellationRequested();
+            if (_disposed || StartingPresetContext() != context) throw new InvalidOperationException("과일꼬치 적용 중 런/플레이어가 변경되었습니다.");
+            List<(string Category, int Value)>? fruits = null;
+            if (ReadNamedObject(storage, "fruitSkewerBonus") is IEnumerable entries)
+            {
+                fruits = new();
+                foreach (var entry in entries)
+                {
+                    var category = entry is null ? null : ReadNamedString(entry, "categoryName");
+                    var value = entry is null ? null : ReadNamedNullableInt(entry, "weight");
+                    if (string.IsNullOrWhiteSpace(category) || !value.HasValue || fruits.Count >= 512) { fruits = null; break; }
+                    fruits.Add((category!, value.Value));
+                }
+            }
+            if (StartingFruitState.Matches(preset, ReadNamedNullableInt(storage, "adaptiveItemDropBonus"), fruits)) return;
+        } while (Time.unscaledTime < deadline);
+        throw new TimeoutException("과일꼬치 적용 결과가 5초 안에 확인되지 않았습니다.");
     }
 
     private static object? NativeCall(object instance, string method, params object?[] args) =>

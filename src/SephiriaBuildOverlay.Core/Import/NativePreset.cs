@@ -121,13 +121,25 @@ public sealed class NativePreset
         var slots = Math.Max(0, fruitCapacity);
         Adaptive = slots > 0 ? Adaptive : 0;
         slots -= Adaptive;
+        // Wiki slugs are lowercase, while native compact presets/catalog IDs
+        // use their exact (usually uppercase) spelling. Write the real ID, not
+        // merely a case-insensitive membership check: native import is ordinal.
+        var categoryIds = categories.GroupBy(x => x, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(x => x.Key, x => x.ToArray(), StringComparer.OrdinalIgnoreCase);
         var counts = new Dictionary<(string, int), int>();
-        Fruits.RemoveAll(x =>
+        var selected = new List<(string Category, int Value)>();
+        foreach (var fruit in Fruits)
         {
+            if (!categoryIds.TryGetValue(fruit.Category, out var matches)) continue;
+            var category = matches.FirstOrDefault(x => string.Equals(x, fruit.Category, StringComparison.Ordinal))
+                ?? (matches.Length == 1 ? matches[0] : null);
+            if (category is null) continue; // Ambiguous binding is not permission.
+            var x = (Category: category, fruit.Value);
             counts.TryGetValue(x, out var used);
-            if (slots <= 0 || !categories.Contains(x.Category) || used >= Math.Max(0, x.Value > 0 ? plusLimit : minusLimit)) return true;
-            counts[x] = used + 1; slots--; return false;
-        });
+            if (slots <= 0 || used >= Math.Max(0, x.Value > 0 ? plusLimit : minusLimit)) continue;
+            counts[x] = used + 1; slots--; selected.Add(x);
+        }
+        Fruits.Clear(); Fruits.AddRange(selected);
     }
 
     public string Compact(bool includeLoadout = true)

@@ -14,7 +14,8 @@ internal static class StartingPresetComparison
         if (!SameCounts(requested.Passives.Where(x => x.Points > 0), applied.Passives.Where(x => x.Points > 0))) changed.Add("특성 포인트");
         // Imported -1 instance IDs become local IDs; that is not an exclusion.
         if (!SameCounts(requested.Pocket.Select(x => (x.Entity, x.Quantity)), applied.Pocket.Select(x => (x.Entity, x.Quantity)))) changed.Add("시작 주머니");
-        if (requested.Adaptive != applied.Adaptive || !SameCounts(requested.Fruits, applied.Fruits)) changed.Add("과일꼬치");
+        if (requested.Adaptive != applied.Adaptive || !SameCounts(requested.Fruits.Select(x => (x.Category.ToUpperInvariant(), x.Value)),
+            applied.Fruits.Select(x => (x.Category.ToUpperInvariant(), x.Value)))) changed.Add("과일꼬치");
         return changed;
     }
 
