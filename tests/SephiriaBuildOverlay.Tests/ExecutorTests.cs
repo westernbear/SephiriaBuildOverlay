@@ -5,6 +5,34 @@ namespace SephiriaBuildOverlay.Tests;
 
 public sealed class ExecutorTests
 {
+    [Theory]
+    [InlineData(InventoryAdmission.Full)]
+    [InlineData(InventoryAdmission.LimitReached)]
+    [InlineData(InventoryAdmission.Unverified)]
+    public async Task FreshCapacityGuardRejectsEvenAForgedRecommendationWithoutSending(InventoryAdmission admission)
+    {
+        var snapshot = Snapshot(candidates: new[] { new ScreenCandidate("target", CandidateKind.Artifact, "a", admission: admission) });
+        var gateway = new FakeGateway(snapshot);
+        var result = await new ConfirmedActionExecutor(gateway).ConfirmOnceAsync(Action(snapshot));
+        Assert.Equal(ActionExecutionStatus.Rejected, result.Status);
+        Assert.Equal(InventoryAdmissionPolicy.BlockReason(admission), result.Message);
+        Assert.Equal(0, gateway.SendCount);
+    }
+
+    [Fact]
+    public async Task BlockedTargetExplainsSpaceWithoutWaitingAndVerifiedMergeStillSendsOneRequest()
+    {
+        var snapshot = Snapshot(candidates: new[] { new ScreenCandidate("target", CandidateKind.Artifact, "a", admission: InventoryAdmission.Merge) });
+        var gateway = new FakeGateway(snapshot);
+        var executor = new ConfirmedActionExecutor(gateway);
+        var blocked = new RecommendedAction(ActionKind.Select, "target", "", snapshot.Identity, automaticBindingAllowed: false,
+            executionBlockReason: InventoryAdmissionPolicy.BlockReason(InventoryAdmission.Full));
+        Assert.Equal(ActionExecutionStatus.Rejected, (await executor.ConfirmOnceAsync(blocked)).Status);
+        Assert.Equal(0, gateway.SendCount);
+        Assert.True((await executor.ConfirmOnceAsync(Action(snapshot))).Succeeded);
+        Assert.Equal(1, gateway.SendCount);
+    }
+
     [Fact]
     public async Task ForgedAutomaticRecommendationCannotConsumeManualCandidate()
     {

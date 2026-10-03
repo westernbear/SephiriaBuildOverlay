@@ -87,9 +87,44 @@ internal sealed class JointBoardPlanner
             }
             if (!changed) break;
         }
-        // Reserve a bounded two-tablet lookahead so conditional synergies do
-        // not disappear at a coordinate-descent plateau. No exhaustive search.
+        // Exact joint rotations at the incumbent positions, ONLY when their
+        // complete product fits the reserved budget. Three or more individually
+        // neutral rotations can remove stacked disable effects together; the
+        // top-four single-tablet beams cannot represent that transition.
         limit = evaluationBudget;
+        var rotationSeed = best;
+        var rotationDomains = orderedTablets.Select(t => (t.Id, Options: t.Options
+            .Where(o => o.Position.Equals(rotationSeed.Positions[t.Id]))
+            .GroupBy(o => o.Rotation).Select(g => g.First())
+            .OrderBy(o => (o.Rotation - rotationSeed.Rotations[t.Id] + 4) % 4).ToArray()))
+            .Where(t => t.Options.Length > 1).ToArray();
+        long rotationBound = 1;
+        foreach (var domain in rotationDomains)
+        {
+            if (rotationBound > (limit - evaluations) / 2 / domain.Options.Length) { rotationBound = limit + 1L; break; }
+            rotationBound *= domain.Options.Length;
+        }
+        if (rotationDomains.Length >= 2 && rotationBound <= (limit - evaluations) / 2)
+        {
+            var rotations = rotationSeed.Rotations.ToDictionary(x => x.Key, x => x.Value);
+            void VisitRotations(int depth)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (depth == rotationDomains.Length)
+                {
+                    var candidate = new BoardLayout(rotationSeed.Positions, rotations);
+                    Try(candidate);
+                    if (evaluations < limit) Try(MatchArtifacts(input, candidate, cancellationToken));
+                    return;
+                }
+                var domain = rotationDomains[depth];
+                foreach (var option in domain.Options)
+                { rotations[domain.Id] = option.Rotation; VisitRotations(depth + 1); }
+            }
+            VisitRotations(0);
+        }
+        // Remaining budget: bounded two-tablet POSITION lookahead. Neither this
+        // nor the joint-rotation phase claims a global optimum on large boards.
         for (var i = 0; i < orderedTablets.Length && evaluations < limit; i++)
         for (var j = i + 1; j < orderedTablets.Length && evaluations < limit; j++)
         {

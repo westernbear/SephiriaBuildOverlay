@@ -17,7 +17,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
 {
     public const string PluginGuid = "io.github.sephiria.build-overlay";
     public const string PluginName = "Sephiria Build Overlay";
-    public const string PluginVersion = "0.1.18";
+    public const string PluginVersion = "0.1.19";
 
     private ConfigEntry<KeyCode> _importKey = null!;
     private ConfigEntry<KeyCode> _overlayKey = null!;
@@ -267,6 +267,8 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
             if (_lastSnapshot?.Screen == ScreenKind.Inventory && _gateway.BatchBoardReady &&
                 (_recommendation?.Action is null || InventoryPlacementBatch.Eligible(_recommendation.Action))) StartPlacement(_lastSnapshot);
             else if (_recommendation?.Action is not null) _ = ConfirmCurrentAsync(_recommendation.Action);
+            else if (_recommendation is not null && _lastSnapshot?.Candidates.Any(x => x.Admission == InventoryAdmission.Full) == true)
+                Notify(_recommendation.Message, NotificationKind.Warning);
         }
         TickPlacement();
     }

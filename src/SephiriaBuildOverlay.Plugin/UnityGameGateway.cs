@@ -603,7 +603,7 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
             void Add(string? value) { foreach (var c in value ?? string.Empty) { hash ^= c; hash *= 1099511628211L; } }
             Add(runId); Add(playerId); Add(screen.ToString()); Add(weapon); Add(miracle); Add(money.ToString()); Add(dice.ToString());
             Add(boardSignature);
-            foreach (var candidate in candidates.OrderBy(x => x.Token)) { Add(candidate.Token); Add(candidate.CatalogKey); Add(candidate.Kind.ToString()); Add(candidate.MoneyCost.ToString()); Add(candidate.DiceCost.ToString()); Add(candidate.IsSelectable.ToString()); Add(candidate.IsFreeReroll.ToString()); Add(candidate.AutomaticActionAllowed.ToString()); Add(candidate.AdditionalCostDescription); }
+            foreach (var candidate in candidates.OrderBy(x => x.Token)) { Add(candidate.Token); Add(candidate.CatalogKey); Add(candidate.Kind.ToString()); Add(candidate.MoneyCost.ToString()); Add(candidate.DiceCost.ToString()); Add(candidate.IsSelectable.ToString()); Add(candidate.IsFreeReroll.ToString()); Add(candidate.AutomaticActionAllowed.ToString()); Add(candidate.AdditionalCostDescription); Add(candidate.Admission.ToString()); }
             foreach (var item in inventory.OrderBy(x => x.InstanceId)) { Add(item.InstanceId); Add(item.CatalogKey); Add(item.X.ToString()); Add(item.Y.ToString()); }
             return hash;
         }

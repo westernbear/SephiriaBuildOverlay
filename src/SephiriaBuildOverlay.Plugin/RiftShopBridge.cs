@@ -44,7 +44,8 @@ internal sealed partial class UnityGameGateway
                 if (price < 0) continue;
                 var token = "rift:" + arm.GetInstanceID();
                 candidates.Add(new ScreenCandidate(token, kind.Value, key, automaticActionAllowed: false,
-                    additionalCostDescription: ShopOfferPolicy.SapphireCost(price)));
+                    additionalCostDescription: ShopOfferPolicy.SapphireCost(price),
+                    admission: ReadInventoryAdmission(ReadNamedObject(avatar, "Inventory"), entity, allowWisdomMerge: false)));
                 _worldCandidateVisuals[token] = visual;
                 if (kind == CandidateKind.Tablet) _rewardTabletSpecs.Add((token, entity, 0));
             }

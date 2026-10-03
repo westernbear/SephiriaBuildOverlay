@@ -45,7 +45,10 @@ internal sealed partial class UnityGameGateway
                 var group = ReadNamedObject(panel, "rewardsGroup") as CanvasGroup;
                 if (key is not null && method is not null && group is not null)
                 {
-                    AddCandidate(element, tablet ? CandidateKind.Tablet : CandidateKind.Artifact, key, candidates, () => method.Invoke(panel, new object[] { element }), selectable: group.interactable);
+                    var avatar = ReadNamedObject(panel, "openedAvatar");
+                    var inventory = avatar is null ? null : ReadNamedObject(avatar, "Inventory");
+                    AddCandidate(element, tablet ? CandidateKind.Tablet : CandidateKind.Artifact, key, candidates, () => method.Invoke(panel, new object[] { element }),
+                        selectable: group.interactable, admission: ReadInventoryAdmission(inventory, entity, allowWisdomMerge: true));
                     if (tablet && entity is not null && reward is not null) _rewardTabletSpecs.Add((element.GetInstanceID().ToString(System.Globalization.CultureInfo.InvariantCulture), entity, ReadNamedNullableInt(reward, "instanceID") ?? 0));
                 }
             }
@@ -141,7 +144,8 @@ internal sealed partial class UnityGameGateway
         AddCandidate(icon, kind.Value, key, candidates,
             () => request.Invoke(buyer, new object[] { shop, shopInventory, checked((sbyte)x.Value), checked((sbyte)y.Value), (sbyte)-1, (sbyte)-1 }),
             money: voucher == true ? 0 : price.Value, selectable: button is null || IsSelectable(button),
-            automatic: voucher == false, additionalCost: voucher == true ? "거래권 1장 · 수동 확인" : voucher is null ? $"돈 {price} · 거래권 상태 확인 필요 · 수동 확인" : null);
+            automatic: voucher == false, additionalCost: voucher == true ? "거래권 1장 · 수동 확인" : voucher is null ? $"돈 {price} · 거래권 상태 확인 필요 · 수동 확인" : null,
+            admission: ReadInventoryAdmission(buyerInventory, entity, allowWisdomMerge: true));
         if (kind == CandidateKind.Tablet) _rewardTabletSpecs.Add((icon.GetInstanceID().ToString(System.Globalization.CultureInfo.InvariantCulture), entity!,
             ReadNamedNullableInt(item!, "InstanceID") ?? ReadNamedNullableInt(item!, "instanceID") ?? 0));
     }
@@ -193,7 +197,8 @@ internal sealed partial class UnityGameGateway
         // Native new-stock purchases open a second confirmation dialog. Keep
         // this flow manual rather than authorizing that dialog's YES implicitly.
         AddCandidate(icon, kind.Value, key, candidates, null, money: price.Value,
-            selectable: IsSelectable(button), automatic: false, additionalCost: $"돈 {price} · 게임 구매 창에서 확인");
+            selectable: IsSelectable(button), automatic: false, additionalCost: $"돈 {price} · 게임 구매 창에서 확인",
+            admission: ReadInventoryAdmission(ReadNamedObject(panel, "Buyer"), entity, allowWisdomMerge: true));
         if (kind == CandidateKind.Tablet) _rewardTabletSpecs.Add((icon.GetInstanceID().ToString(System.Globalization.CultureInfo.InvariantCulture), entity!,
             ReadNamedNullableInt(entry, "instanceID") ?? 0));
     }
@@ -216,12 +221,13 @@ internal sealed partial class UnityGameGateway
     }
 
     private void AddCandidate(Component visual, CandidateKind kind, string? key, List<ScreenCandidate> candidates, Action? request,
-        int money = 0, int dice = 0, bool free = false, bool selectable = true, bool automatic = true, string? additionalCost = null)
+        int money = 0, int dice = 0, bool free = false, bool selectable = true, bool automatic = true, string? additionalCost = null,
+        InventoryAdmission admission = InventoryAdmission.Available)
     {
         var token = visual.GetInstanceID().ToString(System.Globalization.CultureInfo.InvariantCulture);
         if (candidates.Any(x => x.Token == token)) return;
-        candidates.Add(new ScreenCandidate(token, kind, key, money, dice, free, selectable && visual.gameObject.activeInHierarchy, automatic, additionalCost));
-        if (automatic && request is not null) _actions[token] = request;
+        candidates.Add(new ScreenCandidate(token, kind, key, money, dice, free, selectable && visual.gameObject.activeInHierarchy, automatic, additionalCost, admission));
+        if (automatic && request is not null && InventoryAdmissionPolicy.BlockReason(admission) is null) _actions[token] = request;
         if (visual.transform is RectTransform rect) _rectangles[token] = rect;
     }
 

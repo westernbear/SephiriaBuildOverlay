@@ -37,11 +37,14 @@ public sealed class RecommendationEngine
             .ThenBy(x => x.Target.Priority)
             .ToArray();
 
+        Recommendation? blocked = null;
         foreach (var goal in remaining)
         {
-            var candidate = snapshot.Candidates.FirstOrDefault(x => x.IsSelectable &&
-                (x.Kind == CandidateKind.Artifact || x.Kind == CandidateKind.Item) && x.CatalogKey == goal.Target.CatalogKey);
+            var candidate = snapshot.Candidates.Where(x => x.IsSelectable &&
+                (x.Kind == CandidateKind.Artifact || x.Kind == CandidateKind.Item) && x.CatalogKey == goal.Target.CatalogKey)
+                .OrderBy(x => InventoryAdmissionPolicy.BlockReason(x.Admission) is null ? 0 : 1).FirstOrDefault();
             if (candidate is null) continue;
+            var blockReason = InventoryAdmissionPolicy.BlockReason(candidate.Admission);
             var action = new RecommendedAction(
                 shop ? ActionKind.Buy : ActionKind.Select,
                 candidate.Token,
@@ -51,9 +54,23 @@ public sealed class RecommendationEngine
                 candidate.DiceCost,
                 DiceWarning(plan, state, snapshot, candidate),
                 $"{goal.Target.CatalogKey} 획득" + CostDetail(candidate),
-                IsAutomaticAllowed(goal.Target.CatalogKey) && candidate.AutomaticActionAllowed);
+                IsAutomaticAllowed(goal.Target.CatalogKey) && candidate.AutomaticActionAllowed && blockReason is null,
+                executionBlockReason: blockReason);
             var affordability = candidate.MoneyCost > snapshot.Money ? " (재화 부족: 실행 시 중단)" : string.Empty;
-            return new Recommendation(action, action.Reason + affordability + CostDetail(candidate));
+            var result = new Recommendation(action, blockReason ?? action.Reason + affordability + CostDetail(candidate));
+            if (blockReason is null) return result;
+            blocked ??= result;
+        }
+
+        // Retain the target's frame and explain why it cannot be acquired. Do
+        // not spend rerolls, abandon it, or invent a discard/sale automatically.
+        if (blocked is not null) return blocked;
+        var items = snapshot.Candidates.Where(x => x.IsSelectable && InventoryAdmissionPolicy.IsInventoryItem(x.Kind)).ToArray();
+        if (items.Length > 0 && items.All(x => x.Admission == InventoryAdmission.Full))
+        {
+            var conversion = snapshot.Candidates.FirstOrDefault(x => x.IsSelectable && x.Kind == CandidateKind.AbandonOrConvert);
+            return conversion is null ? new Recommendation(null, InventoryAdmissionPolicy.BlockReason(InventoryAdmission.Full)!) :
+                ConvertReward(plan, state, snapshot, conversion, "가방이 가득 차고 빌드 목표 후보가 없어 주사위 변환을 제안합니다.");
         }
 
         var freeReroll = snapshot.Candidates.FirstOrDefault(x => RerollAvailable(x, snapshot) && x.IsFreeReroll);
@@ -64,14 +81,16 @@ public sealed class RecommendationEngine
             return Reroll(plan, state, snapshot, paidReroll, "목표가 없어 유료 리롤을 제안합니다.");
         var abandon = snapshot.Candidates.FirstOrDefault(x => x.IsSelectable && x.Kind == CandidateKind.AbandonOrConvert);
         if (abandon is not null)
-        {
-            var action = new RecommendedAction(ActionKind.AbandonOrConvert, abandon.Token,
-                "빌드 밖 후보만 있어 게임의 포기/주사위 변환을 제안합니다.", snapshot.Identity,
-                abandon.MoneyCost, abandon.DiceCost, DiceWarning(plan, state, snapshot, abandon),
-                abandon.AdditionalCostDescription, abandon.AutomaticActionAllowed);
-            return new Recommendation(action, action.Reason);
-        }
+            return ConvertReward(plan, state, snapshot, abandon, "빌드 밖 후보만 있어 게임의 포기/주사위 변환을 제안합니다.");
         return new Recommendation(null, "빌드 목표가 없고 리롤/포기도 불가능합니다. 수동 결정을 기다립니다.");
+    }
+
+    private static Recommendation ConvertReward(BuildPlan plan, ActiveBuildState state, RunSnapshot snapshot, ScreenCandidate candidate, string reason)
+    {
+        var action = new RecommendedAction(ActionKind.AbandonOrConvert, candidate.Token, reason, snapshot.Identity,
+            candidate.MoneyCost, candidate.DiceCost, DiceWarning(plan, state, snapshot, candidate),
+            candidate.AdditionalCostDescription, candidate.AutomaticActionAllowed);
+        return new Recommendation(action, reason);
     }
 
     private Recommendation RecommendWeapon(BuildPlan plan, ActiveBuildState state, RunSnapshot snapshot)

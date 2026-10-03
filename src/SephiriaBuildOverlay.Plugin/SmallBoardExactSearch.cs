@@ -4,7 +4,7 @@ namespace SephiriaBuildOverlay.Plugin;
 
 internal static class SmallBoardExactSearch
 {
-    // Enumerate only when a conservative product bound fits the same budget.
+    // Enumerate only when a conservative all-different bound fits the budget.
     // This covers conditional effects and duplicate quantity caps exactly;
     // large boards never enter an unbounded factorial search.
     public static BoardOptimizationResult? Solve(BoardOptimizationInput input, CancellationToken token, int budget)
@@ -21,11 +21,20 @@ internal static class SmallBoardExactSearch
                 : tablet.Options.Where(x => !pinned.Contains(x.Position)).Select(x => (Position: x.Position, Rotation: (int?)x.Rotation)).Distinct().ToArray();
             return (Id: id, Domain: domain);
         }).OrderBy(x => x.Domain.Length).ThenBy(x => x.Id, StringComparer.Ordinal).ToArray();
+        var freePositions = variables.SelectMany(v => v.Domain.Select(d => d.Position)).Distinct().Count();
         long bound = 1;
-        foreach (var v in variables)
+        for (var depth = 0; depth < variables.Length; depth++)
         {
-            if (v.Domain.Length == 0 || bound > budget / v.Domain.Length) return null;
-            bound *= v.Domain.Length;
+            var v = variables[depth];
+            if (v.Domain.Length == 0 || freePositions <= depth) return null;
+            // Every prefix occupies depth DIFFERENT cells, even when a tablet
+            // has several rotations at a cell. Both bounds are conservative;
+            // taking their minimum admits 7! without mistaking rotations for
+            // additional free cells or excluding pinned occupancy.
+            var rotationsPerPosition = v.Domain.GroupBy(d => d.Position).Max(g => g.Count());
+            var choices = Math.Min(v.Domain.Length, (long)(freePositions - depth) * rotationsPerPosition);
+            if (bound > budget / choices) return null;
+            bound *= choices;
         }
         if (bound > budget) return null;
         var before = JointBoardPlanner.Evaluate(input, start); var score = before; var best = start; var count = 0;

@@ -25,7 +25,8 @@ internal sealed partial class UnityGameGateway
 
     private void CaptureTabletRewards(ScreenKind screen, List<ScreenCandidate> candidates)
     {
-        if (screen is not (ScreenKind.ArtifactReward or ScreenKind.Shop) || _rewardTabletSpecs.Count == 0 || _placementPlan is null)
+        if (screen is not (ScreenKind.ArtifactReward or ScreenKind.Shop) || _rewardTabletSpecs.Count == 0 || _placementPlan is null ||
+            !candidates.Any(x => x.Kind == CandidateKind.Tablet && InventoryAdmissionPolicy.BlockReason(x.Admission) is null))
         { ClearTabletRewards(); return; }
         var signature = screen + "|" + _boardContext + "|" + _boardSignature + "|" + string.Join(";", _rewardTabletSpecs.Select(x => x.Token + ":" + x.Instance + ":" + ReadNamedString(x.Entity, "id"))) +
             "|" + string.Join(";", candidates.Select(x => x.Token + ":" + x.Kind + ":" + x.CatalogKey + ":" + x.IsSelectable + ":" + x.MoneyCost + ":" + x.AutomaticActionAllowed + ":" + x.AdditionalCostDescription));

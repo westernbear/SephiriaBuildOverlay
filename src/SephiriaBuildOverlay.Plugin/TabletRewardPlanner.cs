@@ -54,10 +54,13 @@ internal static class TabletRewardPlanner
     {
         if (snapshot.Screen is not (ScreenKind.ArtifactReward or ScreenKind.Shop) || artifact.Action?.Kind is ActionKind.Select or ActionKind.Buy ||
             !hasTablets || !snapshot.IsLocalPlayerOwned || snapshot.ServerRequestPending) return artifact;
+        var tablets = snapshot.Candidates.Where(x => x.Kind == CandidateKind.Tablet && x.IsSelectable).ToArray();
+        if (tablets.Length > 0 && tablets.All(x => x.Admission == InventoryAdmission.Full)) return artifact;
         if (calculating) return new Recommendation(null, "석판 효과를 비교 중입니다.");
         if (suggestion is null) return artifact;
         var candidate = snapshot.Candidates.FirstOrDefault(x => x.Token == suggestion.Offer.Token && x.Kind == CandidateKind.Tablet && x.CatalogKey == suggestion.Offer.Key && x.IsSelectable);
         if (candidate is null) return artifact;
+        if (InventoryAdmissionPolicy.BlockReason(candidate.Admission) is not null) return artifact;
         var cost = string.IsNullOrWhiteSpace(candidate.AdditionalCostDescription) ? "" : " · " + candidate.AdditionalCostDescription;
         var action = new RecommendedAction(snapshot.Screen == ScreenKind.Shop ? ActionKind.Buy : ActionKind.Select, candidate.Token, suggestion.Reason, snapshot.Identity,
             candidate.MoneyCost, candidate.DiceCost, expectedResult: suggestion.Reason + cost, automaticBindingAllowed: candidate.AutomaticActionAllowed);

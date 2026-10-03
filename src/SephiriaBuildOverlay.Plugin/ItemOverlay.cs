@@ -53,6 +53,8 @@ internal sealed partial class UnityGameGateway
                     CandidateFrameKind.Required => new Color(1f, .83f, .35f),
                     _ => new Color(.45f, .8f, 1f)
                 };
+                var admissionBlock = InventoryAdmissionPolicy.BlockReason(candidate.Admission);
+                if (admissionBlock is not null) color = new Color(1f, .4f, .35f);
                 if (enchantRank?.Rank == 1) color = new Color(.9f, .55f, 1f);
                 var thickness = CandidateFramePolicy.Thickness(frame, scale);
                 // Draw outside the existing card, leaving its rarity frame and
@@ -76,7 +78,8 @@ internal sealed partial class UnityGameGateway
                 {
                     var halo = new Rect(outer.x - thickness - 2, outer.y - thickness - 2, outer.width + (thickness + 2) * 2, outer.height + (thickness + 2) * 2);
                     _nativeLayer?.Border("candidate-next:" + candidate.Token, halo, new Color(color.r, color.g, color.b, .75f), Math.Max(2, thickness / 2));
-                    var key = CandidateFramePolicy.ConfirmationLabel(_lastSnapshot.Screen, action!.Kind, confirmKey, action.AutomaticBindingAllowed);
+                    var key = admissionBlock is not null ? candidate.Admission == InventoryAdmission.Full ? "공간 부족" : "획득 불가" :
+                        CandidateFramePolicy.ConfirmationLabel(_lastSnapshot.Screen, action!.Kind, confirmKey, action.AutomaticBindingAllowed);
                     var badgeWidth = Math.Max(28 * scale, _itemLabel.CalcSize(new GUIContent(key)).x + 8);
                     var badge = new Rect(rect.xMax - badgeWidth, rect.yMax - 22 * scale, badgeWidth, 22 * scale);
                     _nativeLayer?.Box("key-bg:" + candidate.Token, badge, new Color(.025f, .035f, .055f, .9f));
@@ -98,7 +101,8 @@ internal sealed partial class UnityGameGateway
                 {
                     var acquired = state?.EffectiveAcquisitions(target.CatalogKey) ?? 0;
                     var uncertain = state is not null && state.Artifacts.TryGetValue(target.CatalogKey, out var progress) && progress.IsUncertain;
-                    var detail = _enchantMode ? (enchantRank?.Reason ?? "강화 한도 또는 상태 확인 필요 · 수동 선택") : $"{(target.Role == TargetRole.Required ? "필수" : "추천")} · {(uncertain ? "최소 " : "")}{acquired}/{target.DesiredAcquisitions}";
+                    var detail = _enchantMode ? (enchantRank?.Reason ?? "강화 한도 또는 상태 확인 필요 · 수동 선택") :
+                        admissionBlock ?? $"{(target.Role == TargetRole.Required ? "필수" : "추천")} · {(uncertain ? "최소 " : "")}{acquired}/{target.DesiredAcquisitions}";
                     var detailWidth = Math.Min(Screen.width - 4, Math.Max(rect.width, _itemLabel.CalcSize(new GUIContent(detail)).x + 12));
                     var detailRect = new Rect(Mathf.Clamp(rect.center.x - detailWidth / 2, 2, Screen.width - detailWidth - 2), Math.Max(2, rect.y - 28 * scale), detailWidth, 24 * scale);
                     _nativeLayer?.Box("detail-bg:" + candidate.Token, detailRect, new Color(.025f, .035f, .055f, .85f));

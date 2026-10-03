@@ -64,6 +64,8 @@ public sealed class ConfirmedActionExecutor
             return new ActionExecutionResult(ActionExecutionStatus.Busy, "이전 서버 응답을 기다리는 중입니다.");
         try
         {
+            if (recommendation.ExecutionBlockReason is not null)
+                return new ActionExecutionResult(ActionExecutionStatus.Rejected, recommendation.ExecutionBlockReason);
             if (!recommendation.AutomaticBindingAllowed)
                 return new ActionExecutionResult(ActionExecutionStatus.UnsafeBinding, "자동 실행이 허용되지 않는 추천입니다. 게임에서 수동으로 확인하세요.");
 
@@ -74,6 +76,10 @@ public sealed class ConfirmedActionExecutor
                 return new ActionExecutionResult(ActionExecutionStatus.Stale, "화면 또는 상태가 바뀌어 오래된 추천을 폐기했습니다.");
             if (current.ServerRequestPending)
                 return new ActionExecutionResult(ActionExecutionStatus.Busy, "게임이 이전 요청을 처리 중입니다.");
+            var candidate = current.Candidates.FirstOrDefault(x => x.Token == recommendation.TargetToken);
+            if (candidate is not null && recommendation.Kind is ActionKind.Select or ActionKind.Buy &&
+                InventoryAdmissionPolicy.IsInventoryItem(candidate.Kind) && InventoryAdmissionPolicy.BlockReason(candidate.Admission) is { } blocked)
+                return new ActionExecutionResult(ActionExecutionStatus.Rejected, blocked);
             if (recommendation.MoneyCost > current.Money)
                 return new ActionExecutionResult(ActionExecutionStatus.Rejected, "보유 재화가 부족합니다.");
             if (recommendation.DiceCost > current.SharedDice)

@@ -35,7 +35,8 @@ public sealed class ScreenCandidate
         bool isFreeReroll = false,
         bool isSelectable = true,
         bool automaticActionAllowed = true,
-        string? additionalCostDescription = null)
+        string? additionalCostDescription = null,
+        InventoryAdmission admission = InventoryAdmission.Available)
     {
         Token = token;
         Kind = kind;
@@ -46,6 +47,7 @@ public sealed class ScreenCandidate
         IsSelectable = isSelectable;
         AutomaticActionAllowed = automaticActionAllowed;
         AdditionalCostDescription = additionalCostDescription;
+        Admission = admission;
     }
 
     public string Token { get; }
@@ -57,6 +59,7 @@ public sealed class ScreenCandidate
     public bool IsSelectable { get; }
     public bool AutomaticActionAllowed { get; }
     public string? AdditionalCostDescription { get; }
+    public InventoryAdmission Admission { get; }
 }
 
 public sealed class InventoryArtifact
@@ -168,7 +171,8 @@ public sealed class RecommendedAction
         int diceCost = 0,
         DiceRisk diceRisk = DiceRisk.None,
         string? expectedResult = null,
-        bool automaticBindingAllowed = true)
+        bool automaticBindingAllowed = true,
+        string? executionBlockReason = null)
     {
         Kind = kind;
         TargetToken = targetToken;
@@ -179,6 +183,7 @@ public sealed class RecommendedAction
         DiceRisk = diceRisk;
         ExpectedResult = expectedResult ?? string.Empty;
         AutomaticBindingAllowed = automaticBindingAllowed;
+        ExecutionBlockReason = executionBlockReason;
     }
 
     public ActionKind Kind { get; }
@@ -190,6 +195,7 @@ public sealed class RecommendedAction
     public DiceRisk DiceRisk { get; }
     public string ExpectedResult { get; }
     public bool AutomaticBindingAllowed { get; }
+    public string? ExecutionBlockReason { get; }
 }
 
 public sealed class Recommendation

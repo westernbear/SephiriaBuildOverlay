@@ -8,6 +8,19 @@ namespace SephiriaBuildOverlay.Tests;
 
 public sealed class TabletRewardTests
 {
+    [Theory]
+    [InlineData(InventoryAdmission.Full, true)]
+    [InlineData(InventoryAdmission.Full, false)]
+    [InlineData(InventoryAdmission.LimitReached, false)]
+    [InlineData(InventoryAdmission.Unverified, false)]
+    public void AdmissionChangeCannotReuseAnOldHelpfulTabletOrWaitForever(InventoryAdmission admission, bool calculating)
+    {
+        var suggestion = TabletRewardPlanner.Recommend(Board(), new[] { Offer() });
+        var snapshot = Snapshot(screen: ScreenKind.ArtifactReward, candidates: new[] {
+            new ScreenCandidate("tablet", CandidateKind.Tablet, "2100", admission: admission) });
+        var fallback = new Recommendation(null, "가방을 확인하세요.");
+        Assert.Same(fallback, TabletRewardPlanner.Choose(fallback, snapshot, true, calculating, suggestion));
+    }
     private static BoardOptimizationInput Board(bool full = false, ArtifactCondition condition = ArtifactCondition.None, int level = 0) => new(3, 1, 3,
         Enumerable.Range(0, 3).Select(x => new BoardCell(new(x, 0), level)),
         new[] { new BoardArtifact("a", "a", new(0, 0), 5, 0, false, condition) }, Array.Empty<BoardTablet>(),
