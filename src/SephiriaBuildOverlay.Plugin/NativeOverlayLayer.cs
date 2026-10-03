@@ -17,8 +17,8 @@ internal sealed partial class UnityGameGateway
         var status = registry?["UI_CharacterStatusPanel"];
         var icon = status is null ? null : (ReadNamedObject(status, "itemIcons") as System.Collections.IEnumerable)?.OfType<Component>().FirstOrDefault();
         var template = icon is null ? null : ReadNamedObject(icon, "powerText") as Component;
-        var font = template is null ? null : ReadNamedObject(template, "font") as UnityEngine.Object;
-        if (font == null) { _nativeLayer?.SetVisible(false); return; }
+        template ??= _worldCandidateTextTemplate;
+        var font = (template is null ? null : ReadNamedObject(template, "font") as UnityEngine.Object) ?? _nativeFont;
         if (_nativeLayer is null)
         {
             var textType = GameType("TMPro.TextMeshProUGUI");
@@ -27,12 +27,13 @@ internal sealed partial class UnityGameGateway
             _nativeLayer = new NativeOverlayLayer(textType, imageType);
         }
         _nativeFont = font;
-        if (template!.transform is RectTransform templateRect && templateRect.rect.height > 0)
+        if (template != null && template.transform is RectTransform templateRect && templateRect.rect.height > 0)
         {
             var localSize = Convert.ToSingle(ReadNamedObject(template, "fontSize") ?? 5f);
             _nativeFontPixels = Math.Max(14f, localSize * ScreenRect(templateRect).height / templateRect.rect.height);
         }
-        _nativeLayer.Begin(font);
+        // Item frames remain visible even before inventory text templates exist.
+        if (font != null) _nativeLayer.Begin(font); else _nativeLayer.BeginGraphics();
     }
 
     public void EndNativeOverlay() => _nativeLayer?.End();
@@ -123,6 +124,7 @@ internal sealed partial class UnityGameGateway
         }
         public void Label(string key, Rect rectangle, string text, Color color, float pixels, bool wrappedLeft = false)
         {
+            if (_font == null) return;
             var element = Get(key, rectangle, _textType);
             if (element.Font != _font) { Set(element.Component, "font", _font); element.Font = _font; }
             if (element.Text != text) { Set(element.Component, "text", text); element.Text = text; }

@@ -17,7 +17,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
 {
     public const string PluginGuid = "io.github.sephiria.build-overlay";
     public const string PluginName = "Sephiria Build Overlay";
-    public const string PluginVersion = "0.1.20";
+    public const string PluginVersion = "0.1.21";
 
     private ConfigEntry<KeyCode> _importKey = null!;
     private ConfigEntry<KeyCode> _overlayKey = null!;
@@ -234,6 +234,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
         }
 
         TickStartingPreset();
+        _gateway.TickTabletRewardCalculation();
         if (!_importing && _plan is not null && _state is not null && Time.unscaledTime >= _nextSnapshotAt)
         {
             var snapshot = pendingSnapshot ?? _gateway.CaptureOnMainThread();
@@ -434,6 +435,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
         try
         {
             _harmony = new Harmony(PluginGuid + ".progress");
+            InstallRiftShopPatch();
             var inputType = AccessTools.TypeByName("PlayerInputController");
             var inputGate = inputType is null ? null : AccessTools.PropertyGetter(inputType, "BlockAvatarInput");
             if (inputGate is null) throw new MissingMethodException("PlayerInputController.BlockAvatarInput");

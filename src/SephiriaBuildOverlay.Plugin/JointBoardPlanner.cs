@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Text;
 using SephiriaBuildOverlay.Core.Models;
 using SephiriaBuildOverlay.Core.Solvers;
 
@@ -15,7 +16,7 @@ internal sealed class JointBoardPlanner
         return new BoardLayout(positions, input.Tablets.ToDictionary(x => x.Id, x => x.Rotation, StringComparer.Ordinal));
     }
 
-    public BoardOptimizationResult Solve(BoardOptimizationInput input, CancellationToken cancellationToken = default, int evaluationBudget = 6000, bool useExactSearch = true)
+    public BoardOptimizationResult Solve(BoardOptimizationInput input, CancellationToken cancellationToken = default, int evaluationBudget = 6000, bool useExactSearch = true, bool useMatchingCache = true)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var start = Current(input);
@@ -38,6 +39,21 @@ internal sealed class JointBoardPlanner
         var orderedArtifacts = input.Artifacts.Where(x => x.Movable).OrderBy(x => x.Id, StringComparer.Ordinal).ToArray();
         var limit = orderedTablets.Length >= 2 && evaluationBudget >= 32 ? evaluationBudget - evaluationBudget / 4 : evaluationBudget;
         var beams = orderedTablets.ToDictionary(x => x.Id, _ => new List<(BoardTabletOption Option, BoardObjective Score)>());
+        var matchingCache = new Dictionary<string, BoardLayout>(StringComparer.Ordinal);
+        var positionIds = start.Positions.Keys.OrderBy(x => x, StringComparer.Ordinal).ToArray();
+        var rotationIds = start.Rotations.Keys.OrderBy(x => x, StringComparer.Ordinal).ToArray();
+        BoardLayout Match(BoardLayout layout)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!useMatchingCache) return MatchArtifacts(input, layout, cancellationToken);
+            var key = new StringBuilder();
+            foreach (var id in positionIds) { var p = layout.Positions[id]; key.Append(p.X).Append(',').Append(p.Y).Append(';'); }
+            key.Append('|'); foreach (var id in rotationIds) key.Append(layout.Rotations[id]).Append(';');
+            var signature = key.ToString();
+            if (!matchingCache.TryGetValue(signature, out var result))
+                matchingCache[signature] = result = MatchArtifacts(input, layout, cancellationToken);
+            return result;
+        }
         bool Try(BoardLayout? candidate, BoardTabletOption? beamOption = null, string? tabletId = null)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -69,7 +85,7 @@ internal sealed class JointBoardPlanner
                 if (evaluations >= supportLimit) break;
                 changed |= Try(candidate);
             }
-            changed |= Try(MatchArtifacts(input, best, cancellationToken));
+            changed |= Try(Match(best));
             foreach (var tablet in orderedTablets)
             {
                 var seed = best;
@@ -88,10 +104,10 @@ internal sealed class JointBoardPlanner
                     // A tablet may create a useful slot that is empty in the
                     // current layout. Score the joint assignment as well, even
                     // when moving/rotating the tablet alone gives no benefit.
-                    if (evaluations < limit) changed |= Try(MatchArtifacts(input, candidate, cancellationToken));
+                    if (evaluations < limit) changed |= Try(Match(candidate));
                 }
             }
-            changed |= Try(MatchArtifacts(input, best, cancellationToken));
+            changed |= Try(Match(best));
             // Exact full-board scoring for neighbor and conditional-tablet
             // changes, including occupied destinations/full-board swaps.
             foreach (var artifact in orderedArtifacts)
@@ -132,7 +148,7 @@ internal sealed class JointBoardPlanner
                 {
                     var candidate = new BoardLayout(rotationSeed.Positions, rotations);
                     Try(candidate);
-                    if (evaluations < limit) Try(MatchArtifacts(input, candidate, cancellationToken));
+                    if (evaluations < limit) Try(Match(candidate));
                     return;
                 }
                 var domain = rotationDomains[depth];
@@ -160,7 +176,7 @@ internal sealed class JointBoardPlanner
                 var candidate = new BoardLayout(two.Positions, rotations);
                 if (input.Tablets.Any(t => Option(t, candidate) is null)) continue;
                 Try(candidate);
-                if (evaluations < limit) Try(MatchArtifacts(input, candidate, cancellationToken));
+                if (evaluations < limit) Try(Match(candidate));
             }
         }
         return new BoardOptimizationResult(best, baseline, bestScore, evaluations, evaluations >= evaluationBudget);
@@ -255,13 +271,17 @@ internal sealed class JointBoardPlanner
         var special = new SpecialArtifactEvaluation(input, layout, cells);
         long requiredActive = 0, requiredLevel = 0, recommendedActive = 0, recommendedLevel = 0, requiredPriority = 0, recommendedPriority = 0;
         long requiredEffects = 0, recommendedEffects = 0;
-        foreach (var goal in input.Goals)
+        var requiredCore = new long[input.RequiredTiers * 3]; var recommendedCore = new long[input.RecommendedTiers * 3];
+        foreach (var binding in input.GoalArtifacts)
         {
-            var values = input.Artifacts.Where(x => x.Key == goal.CatalogKey)
+            var goal = binding.Goal;
+            var values = binding.Artifacts
                 .Select(special.Value)
                 .OrderByDescending(x => x.Active).ThenByDescending(x => x.Level).ThenByDescending(x => x.Effect).Take(goal.DesiredAcquisitions).ToArray();
             var level = values.Sum(x => (long)x.Level);
-            var priority = level * PriorityWeight(input, goal);
+            var priority = level * binding.Weight;
+            var tier = goal.Role == TargetRole.Required ? requiredCore : recommendedCore;
+            tier[binding.Tier] += values.Count(x => x.Active); tier[binding.Tier + 1] += level; tier[binding.Tier + 2] += values.Sum(x => x.Effect);
             if (goal.Role == TargetRole.Required) { requiredActive += values.Count(x => x.Active); requiredLevel += level; requiredPriority += priority; requiredEffects += values.Sum(x => x.Effect); }
             else { recommendedActive += values.Count(x => x.Active); recommendedLevel += level; recommendedPriority += priority; recommendedEffects += values.Sum(x => x.Effect); }
         }
@@ -272,13 +292,12 @@ internal sealed class JointBoardPlanner
         var negativePenalty = input.Artifacts.Where(a => a.Movable && input.Goals.Any(g => g.CatalogKey == a.Key))
             .Sum(a => NegativePenalty(a, cells[layout.Positions[a.Id]]));
         return new BoardObjective(requiredActive, requiredLevel, recommendedActive, recommendedLevel, movement, rotations, requiredPriority, recommendedPriority, negativePenalty,
-            requiredEffects, recommendedEffects, combo);
+            requiredEffects, recommendedEffects, combo,
+            requiredCore, recommendedCore);
     }
 
     private static long NegativePenalty(BoardArtifact artifact, BoardCell cell) => Math.Min(int.MaxValue,
         Math.Max(0L, -(long)cell.Level + artifact.Enchant * (long)(cell.Multiplier == 0 ? 1 : cell.Multiplier)));
-
-    private static int PriorityWeight(BoardOptimizationInput input, ArtifactTarget goal) => 1 + input.Goals.Count(x => x.Role == goal.Role && x.Priority > goal.Priority);
 
     private static BoardLayout MatchArtifacts(BoardOptimizationInput input, BoardLayout layout, CancellationToken cancellationToken)
     {
@@ -291,34 +310,47 @@ internal sealed class JointBoardPlanner
         var n = cells.Length;
         var levelBound = artifacts.Sum(x => (long)x.Maximum) + 1;
         var movementBound = (long)n * (input.Width + input.Height) + 1;
-        var priorityBound = levelBound * (input.Goals.Count + 1);
         BigInteger negativeWeight = movementBound;
-        BigInteger recommendedPriorityWeight = ((BigInteger)artifacts.Length * int.MaxValue + 1) * negativeWeight;
-        var recommendedLevelWeight = priorityBound * recommendedPriorityWeight;
-        var recommendedActiveWeight = levelBound * recommendedLevelWeight;
-        var requiredPriorityWeight = (n + 1) * recommendedActiveWeight;
-        var requiredLevelWeight = priorityBound * requiredPriorityWeight;
-        var requiredActiveWeight = levelBound * requiredLevelWeight;
+        BigInteger suffix = ((BigInteger)artifacts.Length * int.MaxValue + 1) * negativeWeight;
+        var weights = new Dictionary<(TargetRole Role, int Priority), (BigInteger Active, BigInteger Level)>();
+        // Exact mixed-radix priority tiers: no number of lower-priority levels
+        // may outweigh one core level. Coupled special effects are re-evaluated
+        // on the whole board; matching remains a proposal, never an authority.
+        foreach (var tier in input.GoalArtifacts.Select(b => (b.Goal.Role, b.Goal.Priority)).Distinct()
+            .OrderByDescending(g => g.Role == TargetRole.Required).ThenBy(g => g.Priority).Reverse())
+        {
+            var levelWeight = suffix; suffix *= levelBound;
+            var activeWeight = suffix; suffix *= n + 1;
+            weights[tier] = (activeWeight, levelWeight);
+        }
+        var requiredActiveWeight = suffix;
         // Rectangular matching avoids solving dummy rows for every empty slot.
         var costs = new BigInteger[artifacts.Length, n]; var infinity = requiredActiveWeight * (n + 2) * 4;
+        var residentEnchants = input.Artifacts.ToDictionary(a => layout.Positions[a.Id], a => a.Enchant);
         for (var i = 0; i < artifacts.Length; i++)
-        for (var j = 0; j < n; j++)
         {
-            var artifact = artifacts[i]; var cell = cells[j];
-            if (artifact.PlacementEffect.PreserveSide && (artifact.Position.X <= 2) != (cell.Position.X <= 2))
-            { costs[i, j] = infinity; continue; }
+            var artifact = artifacts[i];
             var goal = input.Goals.FirstOrDefault(x => x.CatalogKey == artifact.Key);
-            // Correct the per-instance enchant: the level map includes the
-            // occupant's enchant, which must not be carried with the slot.
-            var resident = input.Artifacts.FirstOrDefault(x => layout.Positions[x.Id].Equals(cell.Position));
-            var multiplier = cell.Multiplier == 0 ? 1 : cell.Multiplier;
-            var projected = new BoardCell(cell.Position, checked(cell.Level + (artifact.Enchant - (resident?.Enchant ?? 0)) * multiplier), cell.Disabled, cell.Ignore, cell.Multiplier);
-            var value = Value(input, layout, artifact, cell.Position, projected);
-            var priority = goal is null ? 0 : PriorityWeight(input, goal);
-            var benefit = goal is null ? BigInteger.Zero : goal.Role == TargetRole.Required
-                ? (value.Active ? requiredActiveWeight : 0) + value.Level * (requiredLevelWeight + priority * requiredPriorityWeight)
-                : (value.Active ? recommendedActiveWeight : 0) + value.Level * (recommendedLevelWeight + priority * recommendedPriorityWeight);
-            costs[i, j] = artifact.Position.ManhattanDistance(cell.Position) + (goal is null ? 0 : NegativePenalty(artifact, projected) * negativeWeight) - benefit;
+            for (var j = 0; j < n; j++)
+            {
+                var cell = cells[j];
+                if (artifact.PlacementEffect.PreserveSide && (artifact.Position.X <= 2) != (cell.Position.X <= 2))
+                { costs[i, j] = infinity; continue; }
+                // Correct the per-instance enchant: the level map includes the
+                // occupant's enchant, which must not be carried with the slot.
+                residentEnchants.TryGetValue(cell.Position, out var residentEnchant);
+                var multiplier = cell.Multiplier == 0 ? 1 : cell.Multiplier;
+                var projected = new BoardCell(cell.Position, checked(cell.Level + (artifact.Enchant - residentEnchant) * multiplier), cell.Disabled, cell.Ignore, cell.Multiplier);
+                var value = Value(input, layout, artifact, cell.Position, projected);
+                var benefit = BigInteger.Zero;
+                if (goal is not null)
+                {
+                    var weight = weights[(goal.Role, goal.Priority)];
+                    benefit = (value.Active ? weight.Active : 0) + value.Level * weight.Level;
+                    if (goal.Role == TargetRole.Required && value.Active) benefit += requiredActiveWeight;
+                }
+                costs[i, j] = artifact.Position.ManhattanDistance(cell.Position) + (goal is null ? 0 : NegativePenalty(artifact, projected) * negativeWeight) - benefit;
+            }
         }
         var assignment = RectangularAssignment.Match(costs, infinity, cancellationToken);
         var positions = layout.Positions.ToDictionary(x => x.Key, x => x.Value);

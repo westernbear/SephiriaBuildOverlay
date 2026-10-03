@@ -20,6 +20,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\SephiriaBuildOverlay.Core\SephiriaBuildOverlay.Core.csproj" />
     <ProjectReference Include="..\..\src\SephiriaBuildOverlay.Updater\SephiriaBuildOverlay.Updater.csproj" ReferenceOutputAssembly="false" OutputItemType="Content" CopyToOutputDirectory="PreserveNewest" />
+    <ProjectReference Include="..\..\src\SephiriaBuildOverlay.Plugin\SephiriaBuildOverlay.Plugin.csproj" ReferenceOutputAssembly="false" OutputItemType="Content" CopyToOutputDirectory="PreserveNewest" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\NotificationQueue.cs" Link="NotificationQueue.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\NotificationText.cs" Link="NotificationText.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\StartingPresetWarnings.cs" Link="StartingPresetWarnings.cs" />
@@ -66,6 +67,7 @@
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\ShopOfferPolicy.cs" Link="ShopOfferPolicy.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\ShopPriceBinding.cs" Link="ShopPriceBinding.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\TabletRewardPlanner.cs" Link="TabletRewardPlanner.cs" />
+    <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\ResumableOptionCache.cs" Link="ResumableOptionCache.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\SynthesisFeedbackPolicy.cs" Link="SynthesisFeedbackPolicy.cs" />
   </ItemGroup>
 </Project>

@@ -1,7 +1,7 @@
 param(
     [string]$GameDir = 'C:\Program Files (x86)\Steam\steamapps\common\Sephiria',
     [string]$SteamExe = 'C:\Program Files (x86)\Steam\steam.exe',
-    [string]$ExpectedVersion = '0.1.20',
+    [string]$ExpectedVersion = '0.1.21',
     [switch]$NativeUiContract,
     [switch]$StartingCatalogContract,
     [switch]$SpecialArtifactCatalogContract,

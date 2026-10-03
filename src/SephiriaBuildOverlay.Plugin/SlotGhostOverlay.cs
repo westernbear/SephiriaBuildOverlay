@@ -30,6 +30,7 @@ internal sealed partial class UnityGameGateway
     private bool _boardConditional;
     private bool _boardVisible;
     private object? _boardInventory;
+    private (int Width, int Height, int Storage)? _rewardBoardDimensions;
     private Component? _boardPanel;
     internal int GhostCount => _ghostResultSignature == _boardSignature ? _ghostAssignments.Count : 0;
     private float _ghostPreviewUntil;
@@ -91,6 +92,7 @@ internal sealed partial class UnityGameGateway
         _enchantMode = false; _tabletMixMode = false; _enchantRanks.Clear(); _enchantArtifacts.Clear();
         _slotVisuals.Clear(); _itemSprites.Clear(); _slotLevels.Clear(); _disabledSlots.Clear(); _boardItems.Clear();
         _boardVisible = false; _pointerRotation = null; _boardSignature = "";
+        _rewardBoardDimensions = null;
         _boardArtifacts.Clear(); _observedArtifactCategories.Clear(); _optimizationUnavailable = null; _optimizationAction = null; _optimizationStep = null;
         _boardContext = $"{runId}:{playerId}:{owned}";
         _boardInventory = LocalInventory();
@@ -109,6 +111,7 @@ internal sealed partial class UnityGameGateway
         var height = ReadNamedNullableInt(_boardInventory, "Height") ?? 0;
         var storage = ReadNamedNullableInt(_boardInventory, "CurrentInventoryStorage") ?? 0;
         if (width < 1 || height < 1 || width > 32 || height > 32 || storage < 1) return;
+        if (readOnlyReward) _rewardBoardDimensions = (width, height, storage);
         var levels = ReadCellMap(_boardInventory, "levelMatrix");
         var disabled = ReadCellMap(_boardInventory, "disableMatrix");
         var slots = new List<GhostSlot>();
@@ -187,6 +190,15 @@ internal sealed partial class UnityGameGateway
                 CaptureSynthesis(input, candidates, registry); return;
             }
             ClearSynthesis();
+            if (screen is ScreenKind.ArtifactReward or ScreenKind.Shop && !PlacementBatchEnabled)
+            {
+                // Reward comparison has its own baseline solve. A hidden 6000-
+                // trial ghost solve only competes with it for CPU and can never
+                // dispatch an inventory move on this screen.
+                if (_ghostTask is not null || _optimizationResult is not null) CancelGhostCalculation();
+                _optimizationInput = input;
+                return;
+            }
             CalculateOptimization(input);
         }
         catch (Exception ex) { CancelGhostCalculation(preserveContinuation: true); _optimizationUnavailable = ex.GetBaseException().Message; }

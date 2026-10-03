@@ -14,6 +14,26 @@ internal sealed partial class UnityGameGateway
     private bool _rewardCapturing;
     private float _rewardCaptureStarted;
 
+    internal void TickTabletRewardCalculation()
+    {
+        if (_disposed || _lastSnapshot is null || !_rewardCapturing && _rewardTask?.IsCompleted != true) return;
+        try
+        {
+            if (_rewardCapturing && _optimizationInput is null && _optimizationUnavailable == "석판 효과 맵 준비 중" &&
+                _lastSnapshot.IsLocalPlayerOwned && _rewardBoardDimensions is { } dimensions)
+            {
+                try
+                {
+                    _optimizationInput = CaptureOptimizationInput(dimensions.Width, dimensions.Height, dimensions.Storage);
+                    _optimizationUnavailable = null;
+                }
+                catch (InvalidOperationException ex) when (ex.Message == "석판 효과 맵 준비 중") { return; }
+            }
+            CaptureTabletRewards(_lastSnapshot.Screen, _lastSnapshot.Candidates.ToList());
+        }
+        catch (Exception ex) { ClearTabletRewards(); _log.LogWarning("Tablet reward preparation stopped: " + ex.GetBaseException().Message); }
+    }
+
     private void ClearTabletRewards()
     {
         var cancel = _rewardCancellation; var task = _rewardTask;
@@ -29,14 +49,15 @@ internal sealed partial class UnityGameGateway
             !candidates.Any(x => x.Kind == CandidateKind.Tablet && InventoryAdmissionPolicy.BlockReason(x.Admission) is null))
         { ClearTabletRewards(); return; }
         var signature = screen + "|" + _boardContext + "|" + _boardSignature + "|" + string.Join(";", _rewardTabletSpecs.Select(x => x.Token + ":" + x.Instance + ":" + ReadNamedString(x.Entity, "id"))) +
-            "|" + string.Join(";", candidates.Select(x => x.Token + ":" + x.Kind + ":" + x.CatalogKey + ":" + x.IsSelectable + ":" + x.MoneyCost + ":" + x.AutomaticActionAllowed + ":" + x.AdditionalCostDescription));
+            "|" + string.Join(";", candidates.Select(x => x.Token + ":" + x.Kind + ":" + x.CatalogKey + ":" + x.IsSelectable + ":" + x.MoneyCost + ":" + x.AutomaticActionAllowed + ":" + x.AdditionalCostDescription)) +
+            "|model:" + (_optimizationInput is null ? "preparing" : OptimizationInvariant(_optimizationInput));
         if (_rewardSignature != signature) { ClearTabletRewards(); _rewardSignature = signature; _rewardCapturing = true; _rewardCaptureStarted = Time.unscaledTime; }
         if (_optimizationInput is null || _optimizationInput.Unavailable is not null)
-        { if (Time.unscaledTime - _rewardCaptureStarted > 3) _rewardCapturing = false; return; }
+        { if (_optimizationUnavailable != "석판 효과 맵 준비 중" && Time.unscaledTime - _rewardCaptureStarted > 3) _rewardCapturing = false; return; }
         if (_rewardCapturing)
         {
             var offers = new List<TabletRewardOffer>();
-            _optionCaptureStarted = System.Diagnostics.Stopwatch.GetTimestamp();
+            BeginOptionCaptureSlice();
             try
             {
                 foreach (var spec in _rewardTabletSpecs.Take(12))

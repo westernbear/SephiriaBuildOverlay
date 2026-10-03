@@ -18,6 +18,22 @@ try {
     $stock = $npc.Fields | Where-Object Name -EQ 'replenishments'
     if ($stock.FieldType.FullName -ne 'System.Collections.Generic.List`1<UnitAI_NewBasic/ReplenishmentItem>') { throw 'Native replenishment collection changed.' }
     $itemType = $game.MainModule.Types | Where-Object Name -EQ 'EItemType'
+    $rift = $game.MainModule.Types | Where-Object Name -EQ 'PocketDimensionShop'
+    if (!($rift.Fields | Where-Object { $_.Name -eq 'arms' -and $_.FieldType.FullName -eq 'PocketDimensionShopArm[]' }) -or
+        !($rift.Fields | Where-Object { $_.Name -eq 'player' -and $_.FieldType.Name -eq 'PlayerSpawner' })) { throw 'Rift owner/offer collection changed.' }
+    $start = $rift.Methods | Where-Object Name -EQ 'Start'
+    foreach ($member in @('GameCamera::get_Observer()', 'PocketDimensionShopArm::SetShop(PocketDimensionShop)', 'PocketDimensionShop::player')) {
+        if (!($start.Body.Instructions | Where-Object { $_.Operand -and $_.Operand.ToString().Contains($member) })) { throw "Rift owner initialization changed: $member" }
+    }
+    $arm = $game.MainModule.Types | Where-Object Name -EQ 'PocketDimensionShopArm'
+    foreach ($field in @('shop','item','data','costType','itemRenderer','interactable','priceText')) {
+        if (!($arm.Fields | Where-Object Name -EQ $field)) { throw "Rift offer member missing: $field" }
+    }
+    $costType = $game.MainModule.Types | Where-Object Name -EQ 'PocketDimensionCostType'
+    $sapphireKinds = @($costType.Fields | Where-Object HasConstant | ForEach-Object Constant | Sort-Object)
+    if (($sapphireKinds -join ',') -ne '0,1') { throw 'Rift sapphire cost types changed.' }
+    $camera = $game.MainModule.Types | Where-Object Name -EQ 'GameCamera'
+    if (!($camera.Properties | Where-Object { $_.Name -eq 'Camera' -and $_.PropertyType.FullName -eq 'UnityEngine.Camera' })) { throw 'Rift projection camera changed.' }
     foreach ($kind in @(@('Charm',5),@('StoneTablet',6))) {
         $field = $itemType.Fields | Where-Object Name -EQ $kind[0]
         if (!$field -or $field.Constant -ne $kind[1]) { throw "Merchant item kind changed: $($kind[0])" }

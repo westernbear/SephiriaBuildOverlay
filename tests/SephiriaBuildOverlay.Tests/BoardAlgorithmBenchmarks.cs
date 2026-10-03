@@ -71,4 +71,25 @@ public sealed class BoardAlgorithmBenchmarks
         var goals = artifacts.Select((a, i) => new ArtifactTarget(a.Key, 1, i < 6 ? TargetRole.Required : TargetRole.Recommended, 0));
         return new BoardOptimizationInput(6, 6, 36, cells, artifacts, tablets, items, goals);
     }
+
+    [Fact]
+    public void MatchingMemoizationKeepsExactSearchSequenceAndQuality()
+    {
+        var cachedTime = TimeSpan.Zero; var uncachedTime = TimeSpan.Zero;
+        for (var seed = -1; seed < 8; seed++)
+        {
+            var input = DenseBoard(Math.Max(0, seed)); var solver = new JointBoardPlanner();
+            var watch = Stopwatch.StartNew();
+            var uncached = solver.Solve(input, evaluationBudget: 1024, useExactSearch: false, useMatchingCache: false);
+            watch.Stop(); var elapsed = watch.Elapsed; watch.Restart();
+            var cached = solver.Solve(input, evaluationBudget: 1024, useExactSearch: false);
+            watch.Stop();
+            Assert.Equal(uncached.Evaluations, cached.Evaluations); Assert.Equal(0, uncached.After.CompareTo(cached.After));
+            Assert.Equal(uncached.Layout.Positions.OrderBy(x => x.Key), cached.Layout.Positions.OrderBy(x => x.Key));
+            Assert.Equal(uncached.Layout.Rotations.OrderBy(x => x.Key), cached.Layout.Rotations.OrderBy(x => x.Key));
+            if (seed < 0) continue;
+            uncachedTime += elapsed; cachedTime += watch.Elapsed;
+        }
+        _output.WriteLine($"Same 8 boards / 1024 evaluations: uncached={uncachedTime.TotalMilliseconds:F1}ms cached={cachedTime.TotalMilliseconds:F1}ms; identical layout, objective and evaluation count. Synthetic CPU, not game FPS.");
+    }
 }

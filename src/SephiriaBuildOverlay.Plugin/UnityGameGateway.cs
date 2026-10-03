@@ -59,6 +59,7 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
         PreparePlayerComponents(localPlayer, freshDiscovery);
         var screen = FindActiveScreen(out var panel);
         _actions.Clear(); _rectangles.Clear(); _actionOutcomes.Clear(); _worldCandidateVisuals.Clear();
+        _worldCandidateTextTemplate = null;
         _rewardTabletSpecs.Clear();
         var candidates = new List<ScreenCandidate>();
         if (panel is not null)
@@ -312,6 +313,7 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
         _requestPending = false;
         _actions.Clear(); _rectangles.Clear(); _panels.Clear();
         ClearTabletRewards(); _worldCandidateVisuals.Clear();
+        _riftShops.Clear(); _worldCandidateTextTemplate = null; _rewardBoardDimensions = null; _tabletOptionCache.Clear();
         CancelGhostCalculation(); _slotVisuals.Clear(); _itemSprites.Clear();
         _nativeLayer?.Dispose(destroyUnityObjects); _nativeLayer = null; _nativeFont = null;
         _notificationLayer?.Dispose(destroyUnityObjects); _notificationLayer = null; _notificationFont = null;
@@ -337,6 +339,9 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
 
     private ScreenKind CaptureWorldCandidates(GameObject localPlayer, List<ScreenCandidate> candidates)
     {
+        // Passive sapphire guidance is not a nearby interaction or a purchase.
+        // Keep normal world actions behind the game's native interaction gate.
+        if (CaptureRiftShop(candidates)) return ScreenKind.Shop;
         // Use the game's own nearby-interaction registry. Distance alone would
         // allow interacting through walls or with props outside the native range.
         var checker = _playerComponents.FirstOrDefault(x => x != null && x.GetType().Name == "InteractableChecker");
@@ -348,7 +353,6 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
         }
         var registered = checker is null ? null : ReadNamedObject(checker, "interactables") as IEnumerable;
         if (registered is null || !ReadBool(checker!, "canDoInteractive")) return ScreenKind.None;
-        if (CaptureRiftShop(registered, localPlayer, candidates)) return ScreenKind.Shop;
         var nearby = registered.Cast<object>().OfType<MonoBehaviour>()
             .Where(x => x != null && x.enabled && x.gameObject.activeInHierarchy &&
                         x.GetType().Name is "MiracleOrb" or "WeaponSpawner")
@@ -459,6 +463,8 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
         _panels.Clear(); _fallbackAvatar = null;
         _actions.Clear(); _rectangles.Clear();
         ClearTabletRewards(); _worldCandidateVisuals.Clear();
+        _riftShops.Clear(); _riftShopScanNeeded = true; _worldCandidateTextTemplate = null;
+        _rewardBoardDimensions = null;
         CancelGhostCalculation(); _boardVisible = false;
     }
 

@@ -26,7 +26,7 @@ public sealed class NotificationAndModalRegressionTests
         queue.Enqueue("<color=red>미해금</color>", NotificationKind.Warning);
         queue.Enqueue("미해금", NotificationKind.Warning);
         queue.Enqueue("<indent=10></indent><color=red></color>", NotificationKind.Warning);
-        Assert.Equal(1, queue.PendingCount);
+        Assert.Equal("미해금", queue.Current!.Text);
         queue.Advance(0, true);
         Assert.Equal("미해금", queue.Current!.Text); Assert.Equal(NotificationKind.Warning, queue.Current.Kind);
         queue.Advance(7.9f, true); Assert.NotNull(queue.Current);

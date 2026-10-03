@@ -10,7 +10,7 @@ namespace SephiriaBuildOverlay.Plugin;
 internal sealed partial class UnityGameGateway
 {
     private readonly List<BoardArtifact> _boardArtifacts = new();
-    private readonly Dictionary<string, IReadOnlyList<BoardTabletOption>> _tabletOptionCache = new(StringComparer.Ordinal);
+    private readonly ResumableOptionCache<BoardTabletOption> _tabletOptionCache = new();
     private BoardOptimizationInput? _optimizationInput;
     private BoardOptimizationResult? _optimizationResult;
     private readonly BoardPlanContinuation _boardContinuation = new();
@@ -19,9 +19,13 @@ internal sealed partial class UnityGameGateway
     private string? _optimizationModel;
     private string? _optimizationUnavailable;
     private long _optionCaptureStarted;
-    private string _optionBuildKey = "";
-    private readonly List<BoardTabletOption> _optionBuild = new();
-    private int _optionBuildIndex;
+    private int _optionCaptureFrame = -1;
+    private void BeginOptionCaptureSlice()
+    {
+        if (_optionCaptureFrame == Time.frameCount) return;
+        _optionCaptureFrame = Time.frameCount;
+        _optionCaptureStarted = System.Diagnostics.Stopwatch.GetTimestamp();
+    }
 
     private BoardArtifact CaptureArtifact(object item, object charm, string id, string key, GridPoint position)
     {
@@ -78,8 +82,7 @@ internal sealed partial class UnityGameGateway
                 new[] { typeof(int), typeof(bool) }, null)?.Invoke(null, new object[] { id, ReadBool(tablet, "isRotatable") }) is true
             : NativeCanRotate(tablet));
         var key = $"{width}:{height}:{storage}:{canRotate}:{(fixedPlacement ? current.ToString() : "*")}:{(canRotate ? -1 : rotation)}|{query.Length}:{query}|{condition}";
-        if (_tabletOptionCache.TryGetValue(key, out var cached)) return cached;
-        if (_tabletOptionCache.Count >= 128) _tabletOptionCache.Clear();
+        if (_tabletOptionCache.TryGet(key, out var cached)) return cached;
         var parse = tablet.GetType().GetMethod("ParseQuery", BindingFlags.Static | BindingFlags.Public) ?? throw new InvalidOperationException("게임 쿼리 파서 누락");
         var positionType = GameType("ItemPosition") ?? throw new InvalidOperationException("좌표 형식 누락");
         var constructor = positionType.GetConstructor(new[] { typeof(int), typeof(int) }) ?? throw new InvalidOperationException("좌표 생성자 누락");
@@ -88,16 +91,11 @@ internal sealed partial class UnityGameGateway
             var args = new object?[] { text, width, height, storage, constructor.Invoke(new object[] { point.X, point.Y }), angle, null };
             return parse.Invoke(null, args) as IEnumerable ?? throw new InvalidOperationException("게임 파서 결과 누락");
         }
-        if (_optionBuildKey != key) { _optionBuildKey = key; _optionBuild.Clear(); _optionBuildIndex = 0; }
         var points = fixedPlacement ? new[] { current } : Enumerable.Range(0, Math.Min(width * height, storage)).Select(i => new GridPoint(i % width, i / width)).ToArray();
         var angles = canRotate ? new[] { 0, 1, 2, 3 } : new[] { rotation };
-        while (_optionBuildIndex < points.Length * angles.Length)
+        BoardTabletOption Build(int index)
         {
-            // Parse on the main thread in bounded slices. No 500-query burst
-            // when the inventory first opens; completed maps remain cached.
-            if ((System.Diagnostics.Stopwatch.GetTimestamp() - _optionCaptureStarted) * 1000d / System.Diagnostics.Stopwatch.Frequency >= 3)
-                throw new InvalidOperationException("석판 효과 맵 준비 중");
-            var point = points[_optionBuildIndex / angles.Length]; var angle = angles[_optionBuildIndex % angles.Length];
+            var point = points[index / angles.Length]; var angle = angles[index % angles.Length];
             var effects = new List<BoardEffect>(); var conditions = new List<BoardCondition>();
             foreach (var addition in Parse(query, point, angle).Cast<object>())
             {
@@ -115,11 +113,11 @@ internal sealed partial class UnityGameGateway
                 conditions.Add(new BoardCondition(ReadNativePosition(addition), value switch
                 { "ITEM" => BoardConditionKind.AnyItem, "CHARM" => BoardConditionKind.Charm, "PLACED" => BoardConditionKind.Placed, _ => BoardConditionKind.None }));
             }
-            _optionBuild.Add(new BoardTabletOption(point, angle, effects, conditions)); _optionBuildIndex++;
+            return new BoardTabletOption(point, angle, effects, conditions);
         }
-        _tabletOptionCache[key] = _optionBuild.ToArray();
-        _optionBuildKey = ""; _optionBuild.Clear(); _optionBuildIndex = 0;
-        return _tabletOptionCache[key];
+        return _tabletOptionCache.Advance(key, points.Length * angles.Length, Build,
+            () => (System.Diagnostics.Stopwatch.GetTimestamp() - _optionCaptureStarted) * 1000d / System.Diagnostics.Stopwatch.Frequency >= 3)
+            ?? throw new InvalidOperationException("석판 효과 맵 준비 중");
     }
 
     private static GridPoint ReadNativePosition(object range)
@@ -130,7 +128,7 @@ internal sealed partial class UnityGameGateway
 
     private BoardOptimizationInput CaptureOptimizationInput(int width, int height, int storage)
     {
-        _optionCaptureStarted = System.Diagnostics.Stopwatch.GetTimestamp();
+        BeginOptionCaptureSlice();
         if (_slotVisuals.Count > 64) throw new InvalidOperationException("64칸을 초과한 보드는 수동 배치 필요");
         var inventory = _boardInventory!;
         var disable = ReadCellMap(inventory, "disableMatrix"); var ignore = ReadCellMap(inventory, "ignoreCriteriaMatrix");
