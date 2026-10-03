@@ -214,8 +214,13 @@ internal sealed class JointBoardPlanner
         // ownership is constant throughout this solver, so that tier is constant.
         var movement = input.Items.Sum(x => x.Value.ManhattanDistance(layout.Positions[x.Key]));
         var rotations = input.Tablets.Sum(x => (layout.Rotations[x.Id] - x.Rotation + 4) % 4);
-        return new BoardObjective(requiredActive, requiredLevel, recommendedActive, recommendedLevel, movement, rotations, requiredPriority, recommendedPriority);
+        var negativePenalty = input.Artifacts.Where(a => a.Movable && input.Goals.Any(g => g.CatalogKey == a.Key))
+            .Sum(a => NegativePenalty(a, cells[layout.Positions[a.Id]]));
+        return new BoardObjective(requiredActive, requiredLevel, recommendedActive, recommendedLevel, movement, rotations, requiredPriority, recommendedPriority, negativePenalty);
     }
+
+    private static long NegativePenalty(BoardArtifact artifact, BoardCell cell) => Math.Min(int.MaxValue,
+        Math.Max(0L, -(long)cell.Level + artifact.Enchant * (long)(cell.Multiplier == 0 ? 1 : cell.Multiplier)));
 
     private static int PriorityWeight(BoardOptimizationInput input, ArtifactTarget goal) => 1 + input.Goals.Count(x => x.Role == goal.Role && x.Priority > goal.Priority);
 
@@ -231,7 +236,8 @@ internal sealed class JointBoardPlanner
         var levelBound = artifacts.Sum(x => (long)x.Maximum) + 1;
         var movementBound = (long)n * (input.Width + input.Height) + 1;
         var priorityBound = levelBound * (input.Goals.Count + 1);
-        BigInteger recommendedPriorityWeight = movementBound;
+        BigInteger negativeWeight = movementBound;
+        BigInteger recommendedPriorityWeight = ((BigInteger)artifacts.Length * int.MaxValue + 1) * negativeWeight;
         var recommendedLevelWeight = priorityBound * recommendedPriorityWeight;
         var recommendedActiveWeight = levelBound * recommendedLevelWeight;
         var requiredPriorityWeight = (n + 1) * recommendedActiveWeight;
@@ -254,7 +260,7 @@ internal sealed class JointBoardPlanner
             var benefit = goal is null ? BigInteger.Zero : goal.Role == TargetRole.Required
                 ? (value.Active ? requiredActiveWeight : 0) + value.Level * (requiredLevelWeight + priority * requiredPriorityWeight)
                 : (value.Active ? recommendedActiveWeight : 0) + value.Level * (recommendedLevelWeight + priority * recommendedPriorityWeight);
-            costs[i, j] = artifact.Position.ManhattanDistance(cell.Position) - benefit;
+            costs[i, j] = artifact.Position.ManhattanDistance(cell.Position) + (goal is null ? 0 : NegativePenalty(artifact, projected) * negativeWeight) - benefit;
         }
         var assignment = RectangularAssignment.Match(costs, infinity, cancellationToken);
         var positions = layout.Positions.ToDictionary(x => x.Key, x => x.Value);

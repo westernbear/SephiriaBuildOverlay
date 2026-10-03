@@ -6,6 +6,42 @@ namespace SephiriaBuildOverlay.Tests;
 
 public sealed class BoardOptimizationTests
 {
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    public void ZeroSlotBeatsNegativeEvenWhenActivationAndDisplayedLevelsAreTied(bool exact, bool inactiveCondition)
+    {
+        var condition = inactiveCondition ? ArtifactCondition.External : ArtifactCondition.None;
+        var a = new BoardArtifact("a", "ice", P(0), 5, 0, true, condition, conditionActive: condition != ArtifactCondition.External);
+        var input = Board(2, 1, new[] { a }, Array.Empty<BoardTablet>(), new[] { Goal("ice") },
+            new[] { new BoardCell(P(0), -2), new BoardCell(P(1), 0) });
+        var result = new JointBoardPlanner().Solve(input, useExactSearch: exact);
+        Assert.True(result.Improved); Assert.Equal(P(1), result.Layout.Positions["a"]);
+        Assert.Equal(2, result.Before.NegativePenalty); Assert.Equal(0, result.After.NegativePenalty);
+        Assert.NotNull(BoardOptimizationStep.Next(input, result.Layout));
+    }
+
+    [Fact]
+    public void CompensatedNegativeSlotStillLosesToZeroWhenBothLevelsAlreadySufficient()
+    {
+        var a = new BoardArtifact("a", "ice", P(0), 1, 3, true);
+        var input = Board(2, 1, new[] { a }, Array.Empty<BoardTablet>(), new[] { Goal("ice") },
+            new[] { new BoardCell(P(0), -2), new BoardCell(P(1), 0) });
+        var result = new JointBoardPlanner().Solve(input, useExactSearch: false);
+        Assert.Equal(result.Before.RequiredLevel, result.After.RequiredLevel);
+        Assert.True(result.Improved); Assert.Equal(P(1), result.Layout.Positions["a"]);
+    }
+
+    [Fact]
+    public void NegativePenaltyDoesNotOverrideRequiredActivationAndZeroToZeroDoesNotChurn()
+    {
+        Assert.True(new BoardObjective(1, 0, 0, 0, 4, 0, negativePenalty: 20).CompareBenefits(new(0, 0, 0, 0, 0, 0)) > 0);
+        var a = new BoardArtifact("a", "ice", P(0), 5, 0, true);
+        var input = Board(2, 1, new[] { a }, Array.Empty<BoardTablet>(), new[] { Goal("ice") });
+        var result = new JointBoardPlanner().Solve(input, useExactSearch: false);
+        Assert.False(result.Improved); Assert.Equal(P(0), result.Layout.Positions["a"]);
+    }
     private static GridPoint P(int x, int y = 0) => new(x, y);
     private static ArtifactTarget Goal(string key, TargetRole role = TargetRole.Required, int count = 1) => new(key, count, role, 0);
     private static BoardOptimizationInput Board(int width, int height, BoardArtifact[] artifacts, BoardTablet[] tablets,

@@ -10,7 +10,8 @@ internal enum CandidateFrameKind { None, Required, Recommended, NextAction }
 internal static class CandidateFramePolicy
 {
     public static string ConfirmationLabel(ScreenKind screen, ActionKind kind, string key, bool automaticAllowed) =>
-        !automaticAllowed ? "수동" : screen != ScreenKind.WeaponUpgrade ? key : (kind == ActionKind.Reroll ? "리롤 · " : "선택 · ") + key;
+        !automaticAllowed ? "수동" : screen == ScreenKind.ArtifactReward && kind == ActionKind.AbandonOrConvert ? "주사위 변환 · " + key :
+        screen != ScreenKind.WeaponUpgrade ? key : (kind == ActionKind.Reroll ? "리롤 · " : "선택 · ") + key;
 
     public static float Thickness(CandidateFrameKind frame, float scale) => Math.Max(frame == CandidateFrameKind.NextAction ? 4 : 3,
         (float)Math.Round((frame == CandidateFrameKind.NextAction ? 4 : 3) * scale));

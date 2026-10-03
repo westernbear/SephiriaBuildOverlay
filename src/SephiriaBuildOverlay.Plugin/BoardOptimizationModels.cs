@@ -107,9 +107,9 @@ internal sealed class BoardOptimizationResult
 internal readonly struct BoardObjective : IComparable<BoardObjective>
 {
     public BoardObjective(long requiredActive, long requiredLevel, long recommendedActive, long recommendedLevel, int movement, int rotations,
-        long requiredPriority = 0, long recommendedPriority = 0)
+        long requiredPriority = 0, long recommendedPriority = 0, long negativePenalty = 0)
     { RequiredActive = requiredActive; RequiredLevel = requiredLevel; RecommendedActive = recommendedActive; RecommendedLevel = recommendedLevel; Movement = movement; Rotations = rotations;
-      RequiredPriority = requiredPriority; RecommendedPriority = recommendedPriority; }
+      RequiredPriority = requiredPriority; RecommendedPriority = recommendedPriority; NegativePenalty = negativePenalty; }
     public long RequiredActive { get; }
     public long RequiredLevel { get; }
     public long RecommendedActive { get; }
@@ -118,6 +118,7 @@ internal readonly struct BoardObjective : IComparable<BoardObjective>
     public int Rotations { get; }
     public long RequiredPriority { get; }
     public long RecommendedPriority { get; }
+    public long NegativePenalty { get; }
     public int CompareBenefits(BoardObjective other)
     {
         var c = RequiredActive.CompareTo(other.RequiredActive); if (c != 0) return c;
@@ -125,7 +126,10 @@ internal readonly struct BoardObjective : IComparable<BoardObjective>
         c = RequiredPriority.CompareTo(other.RequiredPriority); if (c != 0) return c;
         c = RecommendedActive.CompareTo(other.RecommendedActive); if (c != 0) return c;
         c = RecommendedLevel.CompareTo(other.RecommendedLevel); if (c != 0) return c;
-        return RecommendedPriority.CompareTo(other.RecommendedPriority);
+        c = RecommendedPriority.CompareTo(other.RecommendedPriority); if (c != 0) return c;
+        // An inactive/level-zero artifact must not leave a negative slot tied
+        // with a harmless zero slot merely because both displayed levels clamp.
+        return other.NegativePenalty.CompareTo(NegativePenalty);
     }
     public int CompareTo(BoardObjective other)
     { var c = CompareBenefits(other); if (c != 0) return c; c = other.Movement.CompareTo(Movement); return c != 0 ? c : other.Rotations.CompareTo(Rotations); }

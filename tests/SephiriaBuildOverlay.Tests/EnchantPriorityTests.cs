@@ -12,7 +12,7 @@ public sealed class EnchantPriorityTests
     [Fact]
     public void RoleThenBuildPriorityPrecedeCurrentEnhancementState()
     {
-        var ranks = EnchantPriority.Rank(new[] { Item("c", "c"), Item("b", "b"), Item("a", "a", level: 5) },
+        var ranks = EnchantPriority.Rank(new[] { Item("c", "c"), Item("b", "b"), Item("a", "a", level: 4) },
             new[] { Goal("c", TargetRole.Recommended, -10), Goal("b", priority: 1), Goal("a", priority: 0) });
         Assert.Equal(new[] { "a", "b", "c" }, ranks.Select(x => x.Artifact.Id));
         Assert.Equal(new[] { 1, 2, 3 }, ranks.Select(x => x.Rank));
@@ -23,18 +23,18 @@ public sealed class EnchantPriorityTests
     {
         var artifacts = new[] { Item("z", level: 5), Item("b", enchant: 2), Item("c"), Item("a"), Item("inactive", active: false) };
         var ranks = EnchantPriority.Rank(artifacts, new[] { Goal("a") });
-        Assert.Equal(new[] { "a", "c", "b", "inactive", "z" }, ranks.Select(x => x.Artifact.Id));
+        Assert.Equal(new[] { "a", "c", "b", "inactive" }, ranks.Select(x => x.Artifact.Id));
         Assert.Equal(ranks.Select(x => x.Artifact.Id), EnchantPriority.Rank(artifacts.Reverse(), new[] { Goal("a") }).Select(x => x.Artifact.Id));
     }
 
     [Fact]
-    public void NativeCapIsEnchantCountNotCurrentCellLevel()
+    public void BothNativeEnchantCapAndAlreadySufficientTotalLevelAreExcluded()
     {
         var ranks = EnchantPriority.Rank(new[] { Item("already-max", enchant: 5), Item("zero", maximum: 0),
-            Item("cell-max", level: 5), Item("unknown", enchant: null), Item("negative", enchant: -1) }, new[] { Goal("a") });
+            Item("cell-max", level: 5), Item("over-max", level: 8), Item("useful", level: 4), Item("unknown", enchant: null), Item("negative", enchant: -1) }, new[] { Goal("a") });
         Assert.Single(ranks);
-        Assert.Equal("cell-max", ranks[0].Artifact.Id);
-        Assert.False(ranks[0].Artifact.ImmediateBenefit);
+        Assert.Equal("useful", ranks[0].Artifact.Id);
+        Assert.True(ranks[0].Artifact.ImmediateBenefit);
     }
 
     [Fact]
@@ -50,7 +50,8 @@ public sealed class EnchantPriorityTests
     [Fact]
     public void UnknownActivationIsGuidanceNotClaimedBenefit()
     {
-        var rank = Assert.Single(EnchantPriority.Rank(new[] { Item("a", active: null, level: null) }, new[] { Goal("a") }));
+        Assert.Empty(EnchantPriority.Rank(new[] { Item("a", active: null, level: null) }, new[] { Goal("a") }));
+        var rank = Assert.Single(EnchantPriority.Rank(new[] { Item("a", active: null, level: 2) }, new[] { Goal("a") }));
         Assert.Contains("수동 확인", rank.Reason);
     }
 }

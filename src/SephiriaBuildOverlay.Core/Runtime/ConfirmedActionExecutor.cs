@@ -56,7 +56,8 @@ public sealed class ConfirmedActionExecutor
         _serverTimeout = serverTimeout ?? TimeSpan.FromSeconds(5);
     }
 
-    // This is the sole mutation entry point and must only be called for one explicit confirm-key press.
+    // One native request per call. The caller needs an explicit confirmation;
+    // a confirmed inventory-only batch may authorize successive free moves.
     public async Task<ActionExecutionResult> ConfirmOnceAsync(RecommendedAction recommendation, CancellationToken cancellationToken = default)
     {
         if (Interlocked.CompareExchange(ref _executing, 1, 0) != 0)
@@ -64,7 +65,7 @@ public sealed class ConfirmedActionExecutor
         try
         {
             if (!recommendation.AutomaticBindingAllowed)
-                return new ActionExecutionResult(ActionExecutionStatus.UnsafeBinding, "카탈로그 검증 실패로 자동 행동이 비활성화되었습니다.");
+                return new ActionExecutionResult(ActionExecutionStatus.UnsafeBinding, "자동 실행이 허용되지 않는 추천입니다. 게임에서 수동으로 확인하세요.");
 
             var current = await _gateway.CaptureSnapshotAsync(cancellationToken).ConfigureAwait(false);
             if (!current.IsLocalPlayerOwned)
@@ -77,7 +78,7 @@ public sealed class ConfirmedActionExecutor
                 return new ActionExecutionResult(ActionExecutionStatus.Rejected, "보유 재화가 부족합니다.");
             if (recommendation.DiceCost > current.SharedDice)
                 return new ActionExecutionResult(ActionExecutionStatus.Rejected, "공유 주사위가 부족합니다.");
-            if (!current.Candidates.Any(x => x.Token == recommendation.TargetToken && x.IsSelectable &&
+            if (!current.Candidates.Any(x => x.Token == recommendation.TargetToken && x.IsSelectable && x.AutomaticActionAllowed &&
                 x.MoneyCost == recommendation.MoneyCost && x.DiceCost == recommendation.DiceCost))
                 return new ActionExecutionResult(ActionExecutionStatus.Stale, "대상 후보 또는 비용이 바뀌었습니다.");
 

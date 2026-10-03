@@ -19,7 +19,7 @@ public sealed class ActionOutcomeObserver
 
     public void RecordReward(string catalogKey)
     {
-        if (_target.Kind == CandidateKind.Artifact && _target.CatalogKey == catalogKey)
+        if (_target.Kind is CandidateKind.Artifact or CandidateKind.Tablet && _target.CatalogKey == catalogKey)
             _rewardObserved = true;
     }
 
@@ -32,7 +32,7 @@ public sealed class ActionOutcomeObserver
         {
             ActionKind.Select or ActionKind.Buy => _target.Kind switch
             {
-                CandidateKind.Artifact => _rewardObserved || after.Inventory.Count(x => x.CatalogKey == _target.CatalogKey) >
+                CandidateKind.Artifact or CandidateKind.Tablet => _rewardObserved || after.Inventory.Count(x => x.CatalogKey == _target.CatalogKey) >
                     _before.Inventory.Count(x => x.CatalogKey == _target.CatalogKey),
                 CandidateKind.Weapon => after.CurrentWeapon == _target.CatalogKey && after.CurrentWeapon != _before.CurrentWeapon,
                 CandidateKind.Miracle => after.MiracleKeys.Contains(_target.CatalogKey!) && !_before.MiracleKeys.Contains(_target.CatalogKey!),

@@ -32,7 +32,7 @@ internal sealed class BoardOptimizationStep
             if (!target.Rotations.TryGetValue(tablet.Id, out var angle) || angle == tablet.Rotation) continue;
             if (visible is not null && !visible(tablet.Position, tablet.Position)) continue;
             // Native rotates forward only: never pretend an inverse turn costs
-            // one request or send several turns for one F8 press.
+            // one request. A batch waits for each native forward turn.
             var rotations = current.Rotations.ToDictionary(x => x.Key, x => x.Value);
             rotations[tablet.Id] = (tablet.Rotation + 1) % 4;
             return new BoardOptimizationStep(tablet.Id, tablet.Position, tablet.Position, null, tablet.Rotation, new BoardLayout(current.Positions, rotations));

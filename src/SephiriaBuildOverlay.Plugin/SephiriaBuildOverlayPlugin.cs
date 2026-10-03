@@ -17,7 +17,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
 {
     public const string PluginGuid = "io.github.sephiria.build-overlay";
     public const string PluginName = "Sephiria Build Overlay";
-    public const string PluginVersion = "0.1.15";
+    public const string PluginVersion = "0.1.16";
 
     private ConfigEntry<KeyCode> _importKey = null!;
     private ConfigEntry<KeyCode> _overlayKey = null!;
@@ -67,6 +67,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
                 return;
             }
             _modalInput.SetVisible(value);
+            if (value) StopPlacement("자동배치 중단: 빌드 창이 열렸습니다.");
             if (!value) _nativeBuildWindow?.Hide();
             if (!value) ReleaseSystemCursor();
             _confirmRequested = false;
@@ -109,7 +110,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
         _importKey.Value = (KeyCode)ImportShortcutMigration.Migrate((int)_importKey.Value, (int)KeyCode.F6, (int)KeyCode.F9, migrated.Value);
         if (!migrated.Value) { migrated.Value = true; Config.Save(); }
         _overlayKey = Config.Bind("Keys", "Overlay", KeyCode.F7, "인게임 오버레이 전환");
-        _confirmKey = Config.Bind("Keys", "ConfirmOneAction", KeyCode.F8, "추천 동작 하나 확인");
+        _confirmKey = Config.Bind("Keys", "ConfirmOneAction", KeyCode.F8, "추천 동작 확인 / 인벤토리 전체 자동배치 시작·중단");
         _padModifier = Config.Bind("Gamepad", "Modifier", "selectButton", new ConfigDescription(
             "게임 패드 모드에서 이 버튼을 누른 채 방향키 ↑ 검토 / ← 표시 / → 한 동작 확인. 기본 View/Back/Share/−. 네이티브 입력은 검토 창 밖에서 차단하지 않음",
             new AcceptableValueList<string>("selectButton", "leftStickButton", "rightStickButton")));
@@ -145,7 +146,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
     }
 
     private void OnDestroy() => Shutdown();
-    private void OnApplicationFocus(bool focused) { if (!focused) _nativeBuildWindow?.CancelResize(); }
+    private void OnApplicationFocus(bool focused) { if (!focused) { _nativeBuildWindow?.CancelResize(); StopPlacement("자동배치 중단: 게임 포커스를 잃었습니다."); } }
 
     private void Shutdown()
     {
@@ -159,6 +160,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
         _lifetime.Stop();
         StopAutomaticUpdates();
         _confirmRequested = false;
+        StopPlacement("게임 종료");
         _source?.Dispose();
         _gateway?.Dispose(destroyUnityObjects: !_quitting);
         // Live ScriptEngine unload still unpatches. Process shutdown must not
@@ -206,7 +208,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
             _showImport = !_showImport;
             Logger.LogInfo($"Import key received. Visible={_showImport}");
         }
-        if (_overlayToggleRequested) { _overlayToggleRequested = false; _showOverlay = !_showOverlay; }
+        if (_overlayToggleRequested) { _overlayToggleRequested = false; _showOverlay = !_showOverlay; if (!_showOverlay) StopPlacement("자동배치 중단: 오버레이가 꺼졌습니다."); }
 
         if (!_importing && _plan is null && _showOverlay && Time.unscaledTime >= _nextSnapshotAt)
         {
@@ -244,7 +246,9 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
                 _state = ActiveBuildState.Activate(_plan, snapshot);
                 _status = "새 런을 감지해 진행 상태를 분리했습니다.";
             }
-            _recommendation = snapshot.Screen is ScreenKind.Inventory or ScreenKind.TabletBoard ? _gateway.RecommendPlacement(snapshot) : _recommendationEngine!.Recommend(_plan, _state, snapshot);
+            _recommendation = snapshot.Screen is ScreenKind.Inventory or ScreenKind.TabletBoard || _placementBatch.Active
+                ? _gateway.RecommendPlacement(snapshot) : _recommendationEngine!.Recommend(_plan, _state, snapshot);
+            if (snapshot.Screen == ScreenKind.ArtifactReward && !_placementBatch.Active) _recommendation = _gateway.RecommendReward(_recommendation, snapshot);
             if (!string.IsNullOrEmpty(_plan.MiracleTarget) && snapshot.MiracleKeys.Contains(_plan.MiracleTarget!))
                 _state.MarkMiracleAcquired();
             _gateway.SetHighlight(_recommendation.Action?.TargetToken);
@@ -252,13 +256,27 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
 
         var confirmed = _confirmRequested;
         _confirmRequested = false;
+        if (confirmed && (_placementBatch.Active || _postRewardPlacement))
+        {
+            StopPlacement("자동배치를 중단했습니다.");
+            return;
+        }
         if (confirmed && (_plan is null || _state is null)) Logger.LogInfo("Confirmation ignored: no active reviewed build.");
-        if (confirmed && _showOverlay && !_gateway.IsGhostPreview && !ControllerReviewPreview && !_modalInput.Capturing && !_importing && !_executing && _plan is not null && _state is not null && _recommendation?.Action is not null)
-            _ = ConfirmCurrentAsync(_recommendation.Action);
+        if (confirmed && Application.isFocused && _showOverlay && !_gateway.IsGhostPreview && !ControllerReviewPreview && !_modalInput.Capturing && !_importing && !_executing && _plan is not null && _state is not null)
+        {
+            if (_lastSnapshot?.Screen == ScreenKind.Inventory && _gateway.BatchBoardReady &&
+                (_recommendation?.Action is null || InventoryPlacementBatch.Eligible(_recommendation.Action))) StartPlacement(_lastSnapshot);
+            else if (_recommendation?.Action is not null) _ = ConfirmCurrentAsync(_recommendation.Action);
+        }
+        TickPlacement();
     }
 
-    private async Task ConfirmCurrentAsync(RecommendedAction action)
+    private async Task ConfirmCurrentAsync(RecommendedAction action, bool placementStep = false)
     {
+        var before = _lastSnapshot;
+        var candidate = before?.Candidates.FirstOrDefault(x => x.Token == action.TargetToken);
+        var build = _plan?.SourceBuildId;
+        var authorization = _placementAuthorizationEpoch;
         _executing = true;
         try
         {
@@ -266,6 +284,13 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
             if (_lifetime.Stopped) return;
             Logger.LogInfo($"Confirmed action result: kind={action.Kind}, result={result.Status}, message={result.Message}");
             lock (_uiStateGate) _status = result.Message;
+            if (placementStep)
+            {
+                _placementBatch.Acknowledge(result, Time.unscaledTime);
+                if (!_placementBatch.Active) _gateway.PlacementBatchEnabled = false;
+            }
+            else if (before is not null && authorization == _placementAuthorizationEpoch && build == _plan?.SourceBuildId &&
+                InventoryPlacementBatch.FollowsArtifactSelection(before.Screen, action, candidate, result)) QueuePlacementAfterReward(before);
             if (!result.Succeeded) Notify(result.Message, NotificationKind.Warning);
         }
         catch (OperationCanceledException) when (_lifetime.Stopped) { }
@@ -273,12 +298,14 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
         catch (Exception ex) when (!_lifetime.Stopped)
         {
             Logger.LogError(ex);
+            if (placementStep) StopPlacement("자동배치 중단: " + ex.Message);
             lock (_uiStateGate) _status = "행동 실행 오류: " + ex.Message;
             Notify("행동을 실행하지 못했습니다. 게임 상태를 확인하세요.", NotificationKind.Error);
         }
         finally
         {
             _executing = false;
+            _nextSnapshotAt = 0;
         }
     }
 
@@ -553,7 +580,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
         {
             case PadCommand.Import: _importToggleRequested = true; _controllerMenu.Reset(); break;
             case PadCommand.Overlay: _overlayToggleRequested = true; break;
-            case PadCommand.Confirm: if (!_executing && !_importing && !_modalInput.Capturing) _confirmRequested = true; break;
+            case PadCommand.Confirm: if ((!_executing || _placementBatch.Active || _postRewardPlacement) && !_importing && !_modalInput.Capturing) _confirmRequested = true; break;
             case PadCommand.Previous: _controllerMenu.Navigate(-1); break;
             case PadCommand.Next: _controllerMenu.Navigate(1); break;
             case PadCommand.Submit: if (_controllerModalGateReady && !_importing && !_executing) _controllerMenu.Activate(); break;

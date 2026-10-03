@@ -55,5 +55,10 @@
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\TabletSynthesisPlanner.cs" Link="TabletSynthesisPlanner.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\SmallBoardExactSearch.cs" Link="SmallBoardExactSearch.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\RectangularAssignment.cs" Link="RectangularAssignment.cs" />
+    <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\NativePanelVisibility.cs" Link="NativePanelVisibility.cs" />
+    <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\InventoryPlacementBatch.cs" Link="InventoryPlacementBatch.cs" />
+    <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\ShopOfferPolicy.cs" Link="ShopOfferPolicy.cs" />
+    <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\TabletRewardPlanner.cs" Link="TabletRewardPlanner.cs" />
+    <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\SynthesisFeedbackPolicy.cs" Link="SynthesisFeedbackPolicy.cs" />
   </ItemGroup>
 </Project>

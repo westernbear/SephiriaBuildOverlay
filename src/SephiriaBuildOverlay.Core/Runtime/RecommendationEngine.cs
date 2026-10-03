@@ -50,16 +50,16 @@ public sealed class RecommendationEngine
                 candidate.MoneyCost,
                 candidate.DiceCost,
                 DiceWarning(plan, state, snapshot, candidate),
-                $"{goal.Target.CatalogKey} 획득",
-                IsAutomaticAllowed(goal.Target.CatalogKey));
+                $"{goal.Target.CatalogKey} 획득" + CostDetail(candidate),
+                IsAutomaticAllowed(goal.Target.CatalogKey) && candidate.AutomaticActionAllowed);
             var affordability = candidate.MoneyCost > snapshot.Money ? " (재화 부족: 실행 시 중단)" : string.Empty;
-            return new Recommendation(action, action.Reason + affordability);
+            return new Recommendation(action, action.Reason + affordability + CostDetail(candidate));
         }
 
-        var freeReroll = snapshot.Candidates.FirstOrDefault(x => x.IsSelectable && x.Kind == CandidateKind.Reroll && x.IsFreeReroll);
+        var freeReroll = snapshot.Candidates.FirstOrDefault(x => RerollAvailable(x, snapshot) && x.IsFreeReroll);
         if (freeReroll is not null)
             return Reroll(plan, state, snapshot, freeReroll, "목표가 없어 무료 리롤을 제안합니다.");
-        var paidReroll = snapshot.Candidates.FirstOrDefault(x => x.IsSelectable && x.Kind == CandidateKind.Reroll && !x.IsFreeReroll);
+        var paidReroll = snapshot.Candidates.FirstOrDefault(x => RerollAvailable(x, snapshot) && !x.IsFreeReroll);
         if (paidReroll is not null)
             return Reroll(plan, state, snapshot, paidReroll, "목표가 없어 유료 리롤을 제안합니다.");
         var abandon = snapshot.Candidates.FirstOrDefault(x => x.IsSelectable && x.Kind == CandidateKind.AbandonOrConvert);
@@ -67,7 +67,8 @@ public sealed class RecommendationEngine
         {
             var action = new RecommendedAction(ActionKind.AbandonOrConvert, abandon.Token,
                 "빌드 밖 후보만 있어 게임의 포기/주사위 변환을 제안합니다.", snapshot.Identity,
-                abandon.MoneyCost, abandon.DiceCost, DiceWarning(plan, state, snapshot, abandon));
+                abandon.MoneyCost, abandon.DiceCost, DiceWarning(plan, state, snapshot, abandon),
+                abandon.AdditionalCostDescription, abandon.AutomaticActionAllowed);
             return new Recommendation(action, action.Reason);
         }
         return new Recommendation(null, "빌드 목표가 없고 리롤/포기도 불가능합니다. 수동 결정을 기다립니다.");
@@ -85,10 +86,10 @@ public sealed class RecommendationEngine
         {
             var action = new RecommendedAction(ActionKind.Select, candidate.Token, $"목표 무기 경로의 다음 단계: {next}",
                 snapshot.Identity, candidate.MoneyCost, candidate.DiceCost, DiceWarning(plan, state, snapshot, candidate),
-                $"무기 {next}", IsAutomaticAllowed(next));
+                $"무기 {next}", IsAutomaticAllowed(next) && candidate.AutomaticActionAllowed);
             return new Recommendation(action, action.Reason);
         }
-        var reroll = snapshot.Candidates.FirstOrDefault(x => x.IsSelectable && x.Kind == CandidateKind.Reroll);
+        var reroll = snapshot.Candidates.FirstOrDefault(x => RerollAvailable(x, snapshot));
         return reroll is not null
             ? Reroll(plan, state, snapshot, reroll, "목표 무기 자식이 없어 리롤을 제안합니다.")
             : new Recommendation(null, "목표 무기 자식이 없고 리롤할 수 없습니다.");
@@ -103,10 +104,10 @@ public sealed class RecommendationEngine
         if (target is not null)
         {
             var action = new RecommendedAction(ActionKind.Select, target.Token, "목표 나무 뿌리 능력", snapshot.Identity,
-                target.MoneyCost, target.DiceCost, DiceRisk.None, $"기적 {plan.MiracleTarget}", IsAutomaticAllowed(plan.MiracleTarget));
+                target.MoneyCost, target.DiceCost, DiceRisk.None, $"기적 {plan.MiracleTarget}", IsAutomaticAllowed(plan.MiracleTarget) && target.AutomaticActionAllowed);
             return new Recommendation(action, action.Reason);
         }
-        var reroll = snapshot.Candidates.FirstOrDefault(x => x.IsSelectable && x.Kind == CandidateKind.Reroll);
+        var reroll = snapshot.Candidates.FirstOrDefault(x => RerollAvailable(x, snapshot));
         return reroll is not null
             ? Reroll(plan, state, snapshot, reroll, "목표 나무 뿌리 능력이 없어 리롤을 최우선 제안합니다.")
             : new Recommendation(null, "목표 나무 뿌리 능력이 없고 리롤할 수 없습니다.");
@@ -115,9 +116,15 @@ public sealed class RecommendationEngine
     private Recommendation Reroll(BuildPlan plan, ActiveBuildState state, RunSnapshot snapshot, ScreenCandidate candidate, string reason)
     {
         var action = new RecommendedAction(ActionKind.Reroll, candidate.Token, reason, snapshot.Identity,
-            candidate.MoneyCost, candidate.DiceCost, DiceWarning(plan, state, snapshot, candidate), "후보 갱신");
-        return new Recommendation(action, reason);
+            candidate.MoneyCost, candidate.DiceCost, DiceWarning(plan, state, snapshot, candidate), "후보 갱신" + CostDetail(candidate), candidate.AutomaticActionAllowed);
+        return new Recommendation(action, reason + CostDetail(candidate));
     }
+
+    private static string CostDetail(ScreenCandidate candidate) => string.IsNullOrEmpty(candidate.AdditionalCostDescription)
+        ? string.Empty : " · " + candidate.AdditionalCostDescription;
+
+    private static bool RerollAvailable(ScreenCandidate candidate, RunSnapshot snapshot) => candidate.IsSelectable &&
+        candidate.Kind == CandidateKind.Reroll && candidate.DiceCost <= snapshot.SharedDice && candidate.MoneyCost <= snapshot.Money;
 
     private static DiceRisk DiceWarning(BuildPlan plan, ActiveBuildState state, RunSnapshot snapshot, ScreenCandidate candidate)
     {

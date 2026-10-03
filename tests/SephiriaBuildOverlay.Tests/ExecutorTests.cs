@@ -5,6 +5,14 @@ namespace SephiriaBuildOverlay.Tests;
 
 public sealed class ExecutorTests
 {
+    [Fact]
+    public async Task ForgedAutomaticRecommendationCannotConsumeManualCandidate()
+    {
+        var s = Snapshot(candidates: new[] { new ScreenCandidate("target", CandidateKind.Artifact, "a", automaticActionAllowed: false) });
+        var gateway = new FakeGateway(s);
+        Assert.False((await new ConfirmedActionExecutor(gateway).ConfirmOnceAsync(Action(s))).Succeeded);
+        Assert.Equal(0, gateway.SendCount);
+    }
     [Theory]
     [InlineData(false, false)]
     [InlineData(true, true)]

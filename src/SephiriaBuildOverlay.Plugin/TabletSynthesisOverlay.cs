@@ -16,6 +16,7 @@ internal sealed partial class UnityGameGateway
     private CancellationTokenSource? _synthesisCancellation;
     private TabletSynthesisSuggestion? _synthesisSuggestion;
     private RectTransform? _synthesisButton;
+    private RectTransform? _synthesisBoard;
     private int _synthesisCost;
     private string _synthesisStatus = "합성 추천 계산 중";
     private readonly Dictionary<string, (string Id, int Rotation)> _synthesisFrames = new(StringComparer.Ordinal);
@@ -29,7 +30,7 @@ internal sealed partial class UnityGameGateway
         else cancellation?.Dispose();
         _synthesisCancellation = null; _synthesisTask = null; _synthesisSuggestion = null;
         _synthesisSignature = ""; _synthesisSpecs.Clear(); _synthesisRecipes.Clear(); _synthesisSpecIndex = 0;
-        _synthesisFrames.Clear(); _synthesisButton = null;
+        _synthesisFrames.Clear(); _synthesisButton = null; _synthesisBoard = null;
     }
 
     private void CaptureSynthesis(BoardOptimizationInput input, List<ScreenCandidate> candidates, IDictionary? registry)
@@ -41,8 +42,15 @@ internal sealed partial class UnityGameGateway
         var used = mixer is null ? null : ReadNamedObject(mixer, "LocalUsed") as bool?;
         var cost = mixer is null ? null : ReadNamedNullableInt(mixer, "mixCost");
         if (panel == null || !panel.gameObject.activeInHierarchy || !ReadBool(panel, "IsOpened") || avatar is null ||
-            !ReferenceEquals(ReadNamedObject(avatar, "Inventory"), _boardInventory) || used != false || cost is null or < 0)
+            !ReferenceEquals(ReadNamedObject(avatar, "Inventory"), _boardInventory) || cost is null or < 0)
         { ClearSynthesis(); _synthesisStatus = "합성 장치 또는 로컬 플레이어 확인 필요"; return; }
+        if (used != false)
+        {
+            ClearSynthesis(); _synthesisStatus = used == true ? "이미 사용한 합성 장치" : "합성 장치 상태 확인 필요";
+            if (used == true)
+            { _synthesisButton = (ReadNamedObject(panel, "mixButton") as Component)?.transform as RectTransform; _synthesisBoard = ReadNamedObject(panel, "slotElementZone") as RectTransform ?? _synthesisButton?.parent as RectTransform; }
+            return;
+        }
         _synthesisCost = cost.Value;
         _synthesisButton = (ReadNamedObject(panel, "mixButton") as Component)?.transform as RectTransform;
         (string? Id, int Rotation) Selected(string name)
@@ -62,6 +70,7 @@ internal sealed partial class UnityGameGateway
         {
             ClearSynthesis(); _synthesisSignature = signature;
             _synthesisButton = (ReadNamedObject(panel, "mixButton") as Component)?.transform as RectTransform;
+            _synthesisBoard = ReadNamedObject(panel, "slotElementZone") as RectTransform ?? _synthesisButton?.parent as RectTransform;
             _synthesisStatus = "합성 추천 계산 중";
             var materials = new List<(BoardTablet Tablet, bool CanRotate)>();
             foreach (var t in input.Tablets.Where(t => t.Movable && t.Key != "2101").OrderBy(t =>
@@ -130,7 +139,22 @@ internal sealed partial class UnityGameGateway
 
     private void DrawTabletSynthesisOverlay(float scale, Vector2 mouse, GameObject? focused)
     {
-        if (!_tabletMixMode || _synthesisSuggestion is null || _lastSnapshot?.Screen != ScreenKind.TabletBoard) return;
+        if (!_tabletMixMode || _lastSnapshot?.Screen != ScreenKind.TabletBoard) return;
+        if (SynthesisFeedbackPolicy.NoRecommendation(true, _synthesisStatus == "합성 추천 계산 중", _synthesisTask is not null, _synthesisSuggestion is not null))
+        {
+            var visual = _synthesisBoard ?? _synthesisButton;
+            if (visual != null && visual.gameObject.activeInHierarchy)
+            {
+                var rect = ScreenRect(visual); var red = new Color(1f, .3f, .3f);
+                _nativeLayer?.Border("synthesis-empty-contrast", new Rect(rect.x - 5, rect.y - 5, rect.width + 10, rect.height + 10), new Color(.025f, .015f, .04f, .95f), 5 * scale);
+                _nativeLayer?.Border("synthesis-empty", new Rect(rect.x - 3, rect.y - 3, rect.width + 6, rect.height + 6), red, 3 * scale);
+                var label = new Rect(rect.x, rect.yMax + 4, rect.width, 24 * scale);
+                _nativeLayer?.Box("synthesis-empty-bg", label, new Color(.035f, .015f, .055f, .92f));
+                _nativeLayer?.Label("synthesis-empty-label", label, _synthesisStatus == "이미 사용한 합성 장치" ? "합성 완료 · 다시 합성 불가" : "추천 조합 없음", red, Mathf.Round(_nativeFontPixels * scale));
+            }
+            return;
+        }
+        if (_synthesisSuggestion is null) return;
         var color = new Color(.9f, .55f, 1f); var pixels = Mathf.Round(_nativeFontPixels * scale);
         var clip = _boardPanel is null ? null : ReadNamedObject(_boardPanel, "inventoryZone") as RectTransform;
         if (clip == null) return;

@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Collections;
 using SephiriaBuildOverlay.Core.Models;
 using SephiriaBuildOverlay.Core.Runtime;
 using UnityEngine;
@@ -28,10 +29,16 @@ internal sealed partial class UnityGameGateway
                 // Unknown IDs must still have a visual label. They cannot become
                 // automatic goals without a verified catalog binding.
                 var key = reward is null ? null : ReadNamedString(reward, "entityID");
+                var entity = key is not null && int.TryParse(key, out var entityId)
+                    ? GameType("ItemDatabase")?.GetMethod("FindItemById", BindingFlags.Public | BindingFlags.Static)?.Invoke(null, new object[] { entityId }) : null;
+                var tablet = entity is not null && ReadNamedNullableInt(entity, "type") == 6;
                 var method = panel.GetType().GetMethod("HandleSephiriteElementRightClicked", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
                 var group = ReadNamedObject(panel, "rewardsGroup") as CanvasGroup;
                 if (key is not null && method is not null && group is not null)
-                    AddCandidate(element, CandidateKind.Artifact, key, candidates, () => method.Invoke(panel, new object[] { element }), selectable: group.interactable);
+                {
+                    AddCandidate(element, tablet ? CandidateKind.Tablet : CandidateKind.Artifact, key, candidates, () => method.Invoke(panel, new object[] { element }), selectable: group.interactable);
+                    if (tablet && entity is not null && reward is not null) _rewardTabletSpecs.Add((element.GetInstanceID().ToString(System.Globalization.CultureInfo.InvariantCulture), entity, ReadNamedNullableInt(reward, "instanceID") ?? 0));
+                }
             }
             else if (screen == ScreenKind.MiracleChoice && element.GetType().Name == "UI_MiracleElement")
             {
@@ -55,7 +62,12 @@ internal sealed partial class UnityGameGateway
             }
             else if (screen == ScreenKind.Shop && element.GetType().Name == "UI_NewInventoryIcon")
                 CaptureShopItem(panel, element, candidates);
+            else if (screen == ScreenKind.Shop && element.GetType().Name == "UI_ReplenishmentIcon")
+                CaptureReplenishmentItem(panel, element, candidates);
         }
+
+        if (screen == ScreenKind.Shop) CaptureShopReplenishment(panel, candidates);
+        if (screen == ScreenKind.ArtifactReward) CaptureRewardConversion(panel, candidates);
 
         if (screen is ScreenKind.MiracleChoice or ScreenKind.WeaponUpgrade or ScreenKind.ArtifactReward)
         {
@@ -77,6 +89,24 @@ internal sealed partial class UnityGameGateway
         }
     }
 
+    private void CaptureRewardConversion(Component panel, List<ScreenCandidate> candidates)
+    {
+        var group = ReadNamedObject(panel, "convertRerollDiceButtonGroup") as CanvasGroup;
+        var method = panel.GetType().GetMethod("ConvertRerollDice", BindingFlags.Instance | BindingFlags.Public);
+        var avatar = ReadNamedObject(panel, "openedAvatar") as Component;
+        if (group == null || !group.gameObject.activeInHierarchy || !group.interactable || method is null ||
+            avatar == null || !_playerComponents.Contains(avatar) || ReadNamedObject(panel, "sephirite") is null) return;
+        var button = group.GetComponentsInChildren<Component>(false).FirstOrDefault(x => x != null && IsType(x.GetType(), "UnityEngine.UI.Button"));
+        AddCandidate(group.transform, CandidateKind.AbandonOrConvert, null, candidates, () => method.Invoke(panel, null),
+            selectable: button is null || IsSelectable(button), additionalCost: "주사위 +1 · 게임 확인 창에서 변환");
+        _actionOutcomes[group.transform.GetInstanceID().ToString(System.Globalization.CultureInfo.InvariantCulture)] = _ =>
+        {
+            var manager = ReadStatic("UIManager", "Instance");
+            var registry = manager is null ? null : ReadNamedObject(manager, "uiElementsByTypename") as IDictionary;
+            return registry?["UI_MessageBoxHolder"] is object holder && ReadBool(holder, "HasOpenedBox");
+        };
+    }
+
     private void CaptureShopItem(Component panel, Component icon, List<ScreenCandidate> candidates)
     {
         var shopInventory = ReadNamedObject(panel, "Shop");
@@ -91,33 +121,83 @@ internal sealed partial class UnityGameGateway
         var x = ReadNamedNullableInt(icon, "X");
         var y = ReadNamedNullableInt(icon, "Y");
         if (key is null || buyer is null || shop is null || !x.HasValue || !y.HasValue) return;
-        // The normal purchase route automatically consumes a trade voucher when
-        // present. Until that cost can be displayed, leave such purchases manual.
+        // Keep guidance when a voucher is present; do not silently consume it.
         var voucherCheck = buyerInventory.GetType().GetMethod("TryGetTradeVoucher", BindingFlags.Instance | BindingFlags.Public);
-        if (voucherCheck is null || Convert.ToBoolean(voucherCheck.Invoke(buyerInventory, new object?[] { null }))) return;
-        // Same pure price function used by UI_ShopPanel. Normal BuyFromShop
-        // validates resources on the server.
+        var voucher = voucherCheck is null ? (bool?)null : Convert.ToBoolean(voucherCheck.Invoke(buyerInventory, new object?[] { null }));
+        var price = ShopPrice(entity!, buyer, shop);
+        var request = buyer.GetType().GetMethod("BuyFromShop", BindingFlags.Instance | BindingFlags.Public);
+        if (!price.HasValue || price < 0 || request is null || !ReadBool(panel, "canSell")) return;
+        var button = ReadNamedObject(icon, "button") as Component;
+        AddCandidate(icon, CandidateKind.Artifact, key, candidates,
+            () => request.Invoke(buyer, new object[] { shop, shopInventory, checked((sbyte)x.Value), checked((sbyte)y.Value), (sbyte)-1, (sbyte)-1 }),
+            money: voucher == true ? 0 : price.Value, selectable: button is null || IsSelectable(button),
+            automatic: voucher == false, additionalCost: voucher == true ? "거래권 1장 · 수동 확인" : voucher is null ? $"돈 {price} · 거래권 상태 확인 필요 · 수동 확인" : null);
+    }
+
+    private int? ShopPrice(object entity, object buyer, object shop)
+    {
+        // Native pure pricing function, not a rendered/localized price string.
         var statMethod = buyer.GetType().GetMethod("GetCustomStat", BindingFlags.Instance | BindingFlags.Public);
-        if (statMethod is null) return;
+        if (statMethod is null) return null;
         var stat = Enum.Parse(statMethod.GetParameters()[0].ParameterType, "Negotiation");
         var buyerNegotiation = statMethod.Invoke(buyer, new[] { stat });
         var shopNegotiation = statMethod.Invoke(shop, new[] { stat });
         var priceMethod = HarmonyLib.AccessTools.TypeByName("ItemDatabase")?.GetMethod("GetItemBuyPrice", BindingFlags.Static | BindingFlags.Public);
-        var request = buyer.GetType().GetMethod("BuyFromShop", BindingFlags.Instance | BindingFlags.Public);
-        if (priceMethod is null || request is null) return;
-        var price = Convert.ToInt32(priceMethod.Invoke(null, new[] { entity, shopNegotiation, buyerNegotiation }));
-        if (price < 0 || !ReadBool(panel, "canSell")) return;
-        AddCandidate(icon, CandidateKind.Artifact, key, candidates,
-            () => request.Invoke(buyer, new object[] { shop, shopInventory, checked((sbyte)x.Value), checked((sbyte)y.Value), (sbyte)-1, (sbyte)-1 }), money: price);
+        return priceMethod is null ? null : Convert.ToInt32(priceMethod.Invoke(null, new[] { entity, shopNegotiation, buyerNegotiation }));
     }
 
-    private void AddCandidate(Component visual, CandidateKind kind, string? key, List<ScreenCandidate> candidates, Action request,
-        int money = 0, int dice = 0, bool free = false, bool selectable = true)
+    private Component? LocalShopNpc(Component panel)
+    {
+        var buyerInventory = ReadNamedObject(panel, "Buyer");
+        if (buyerInventory is null || !IsLocalInventory(buyerInventory) || ReadNamedObject(panel, "ShopCharacter") is not Component shop) return null;
+        var type = GameType("UnitAI_NewBasic");
+        return type is null ? null : shop.GetComponent(type);
+    }
+
+    private void CaptureReplenishmentItem(Component panel, Component icon, List<ScreenCandidate> candidates)
+    {
+        var npc = LocalShopNpc(panel);
+        if (npc == null || !ReferenceEquals(ReadNamedObject(icon, "Shop"), npc) || !ReadBool(panel, "canSell")) return;
+        var index = ReadNamedNullableInt(icon, "ReplenishmentIdx");
+        var stock = ReadNamedObject(npc, "replenishments") as IList;
+        var entity = ReadNamedObject(icon, "Entity");
+        var key = entity is null ? null : EntityKey(entity, CatalogKind.Artifact);
+        if (!index.HasValue || stock is null || index < 0 || index >= stock.Count || stock[index.Value] is not object entry ||
+            ReadBool(entry, "purchased") || key is null || ReadNamedString(entry, "entityID") != key) return;
+        var buyer = ReadNamedObject(panel, "BuyerCharacter"); var shop = ReadNamedObject(panel, "ShopCharacter");
+        var button = ReadNamedObject(icon, "button") as Component;
+        var price = buyer is null || shop is null ? null : ShopPrice(entity!, buyer, shop);
+        if (!price.HasValue || price < 0 || button is null) return;
+        // Native new-stock purchases open a second confirmation dialog. Keep
+        // this flow manual rather than authorizing that dialog's YES implicitly.
+        AddCandidate(icon, CandidateKind.Artifact, key, candidates, null, money: price.Value,
+            selectable: IsSelectable(button), automatic: false, additionalCost: $"돈 {price} · 게임 구매 창에서 확인");
+    }
+
+    private void CaptureShopReplenishment(Component panel, List<ScreenCandidate> candidates)
+    {
+        var npc = LocalShopNpc(panel);
+        var visual = ReadNamedObject(panel, "replenishmentButton") as GameObject;
+        var stock = npc is null ? null : ReadNamedObject(npc, "replenishments") as IList;
+        var tries = npc is null ? null : ReadNamedNullableInt(npc, "replenishmentTryCount");
+        if (npc == null || visual == null || stock is null || !tries.HasValue) return;
+        // The game's handler refuses replenishment when every stock item was
+        // purchased. Availability follows native rules, not shared dice.
+        var available = ShopOfferPolicy.CanReplenish(visual.activeInHierarchy, stock.Count,
+            stock.Cast<object>().Count(x => !ReadBool(x, "purchased")));
+        if (!available || NativePickerBusy()) return;
+        var button = visual.GetComponentsInChildren<Component>(false).FirstOrDefault(x => x != null && IsType(x.GetType(), "UnityEngine.UI.Button"));
+        AddCandidate(visual.transform, CandidateKind.Reroll, null, candidates, null, selectable: button is null || IsSelectable(button),
+            automatic: false, additionalCost: ShopOfferPolicy.SapphireCost(ShopOfferPolicy.ReplenishmentCost(tries.Value)));
+    }
+
+    private void AddCandidate(Component visual, CandidateKind kind, string? key, List<ScreenCandidate> candidates, Action? request,
+        int money = 0, int dice = 0, bool free = false, bool selectable = true, bool automatic = true, string? additionalCost = null)
     {
         var token = visual.GetInstanceID().ToString(System.Globalization.CultureInfo.InvariantCulture);
         if (candidates.Any(x => x.Token == token)) return;
-        candidates.Add(new ScreenCandidate(token, kind, key, money, dice, free, selectable && visual.gameObject.activeInHierarchy));
-        _actions[token] = request;
+        candidates.Add(new ScreenCandidate(token, kind, key, money, dice, free, selectable && visual.gameObject.activeInHierarchy, automatic, additionalCost));
+        if (automatic && request is not null) _actions[token] = request;
         if (visual.transform is RectTransform rect) _rectangles[token] = rect;
     }
 

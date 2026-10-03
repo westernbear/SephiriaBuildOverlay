@@ -58,7 +58,8 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
         var playerId = FindLocalPlayerId(out var owned, out var localPlayer);
         PreparePlayerComponents(localPlayer, freshDiscovery);
         var screen = FindActiveScreen(out var panel);
-        _actions.Clear(); _rectangles.Clear(); _actionOutcomes.Clear();
+        _actions.Clear(); _rectangles.Clear(); _actionOutcomes.Clear(); _worldCandidateVisuals.Clear();
+        _rewardTabletSpecs.Clear();
         var candidates = new List<ScreenCandidate>();
         if (panel is not null)
         {
@@ -91,6 +92,12 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
         var currentWeapon = ReadCurrentWeapon(localPlayer);
         var miracleKeys = GetLocalMiracleKeys(localPlayer);
         var currentMiracle = miracleKeys.FirstOrDefault();
+        try { CaptureTabletRewards(screen, candidates); }
+        catch (Exception ex)
+        {
+            ClearTabletRewards();
+            if (Time.unscaledTime >= _nextBridgeWarning) { _nextBridgeWarning = Time.unscaledTime + 30; _log.LogWarning("Tablet reward bridge unavailable: " + ex.GetBaseException().Message); }
+        }
         var revision = StableRevision(runId, playerId, screen, candidates, inventory, currentWeapon, string.Join(",", miracleKeys.OrderBy(x => x, StringComparer.Ordinal)), money, dice, _boardSignature);
         _lastSnapshot = new RunSnapshot(runId, playerId, revision, screen, candidates, inventory,
             currentWeapon, currentMiracle, money, dice, owned, _requestPending, miracleKeys);
@@ -304,6 +311,7 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
         _confirmation = null;
         _requestPending = false;
         _actions.Clear(); _rectangles.Clear(); _panels.Clear();
+        ClearTabletRewards(); _worldCandidateVisuals.Clear();
         CancelGhostCalculation(); _slotVisuals.Clear(); _itemSprites.Clear();
         _nativeLayer?.Dispose(destroyUnityObjects); _nativeLayer = null; _nativeFont = null;
         _notificationLayer?.Dispose(destroyUnityObjects); _notificationLayer = null; _notificationFont = null;
@@ -316,9 +324,10 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
         foreach (var hit in _panels)
         {
             var component = hit.Component;
-            if (component == null || !component.gameObject.activeInHierarchy || !component.enabled) continue;
-            if (FindMember(component.GetType(), "IsOpened") is not null && !ReadBool(component, "IsOpened")) continue;
-            if (FindMember(component.GetType(), "Showing") is not null && !ReadBool(component, "Showing")) continue;
+            if (component == null) continue;
+            bool? opened = FindMember(component.GetType(), "IsOpened") is null ? null : ReadBool(component, "IsOpened");
+            bool? showing = FindMember(component.GetType(), "Showing") is null ? null : ReadBool(component, "Showing");
+            if (!NativePanelVisibility.IsVisible(component.gameObject.activeInHierarchy, component.enabled, opened, showing)) continue;
             panel = component.gameObject;
             return hit.Screen;
         }
@@ -339,6 +348,7 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
         }
         var registered = checker is null ? null : ReadNamedObject(checker, "interactables") as IEnumerable;
         if (registered is null || !ReadBool(checker!, "canDoInteractive")) return ScreenKind.None;
+        if (CaptureRiftShop(registered, localPlayer, candidates)) return ScreenKind.Shop;
         var nearby = registered.Cast<object>().OfType<MonoBehaviour>()
             .Where(x => x != null && x.enabled && x.gameObject.activeInHierarchy &&
                         x.GetType().Name is "MiracleOrb" or "WeaponSpawner")
@@ -404,7 +414,8 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
             var instanceId = ReadNamedNullableInt(value, "InstanceID", "instanceID", "IUID");
             if (!entityId.HasValue || !instanceId.HasValue) continue;
             var key = entityId.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
-            if (!_entityKeys[CatalogKind.Artifact].Contains(key)) continue;
+            var entity = ReadNamedObject(value, "Entity");
+            if (!_entityKeys[CatalogKind.Artifact].Contains(key) && (entity is null || ReadNamedNullableInt(entity, "type") != 6)) continue;
             var xPosition = ReadNamedNullableInt(value, "XIdx", "x") ?? -1;
             var yPosition = ReadNamedNullableInt(value, "YIdx", "y") ?? -1;
             result.Add(new InventoryArtifact(instanceId.Value.ToString(), key, xPosition, yPosition));
@@ -447,6 +458,7 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
         _nextDiscoveryAt = 0; _nextComponentsAt = 0;
         _panels.Clear(); _fallbackAvatar = null;
         _actions.Clear(); _rectangles.Clear();
+        ClearTabletRewards(); _worldCandidateVisuals.Clear();
         CancelGhostCalculation(); _boardVisible = false;
     }
 
@@ -591,7 +603,7 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
             void Add(string? value) { foreach (var c in value ?? string.Empty) { hash ^= c; hash *= 1099511628211L; } }
             Add(runId); Add(playerId); Add(screen.ToString()); Add(weapon); Add(miracle); Add(money.ToString()); Add(dice.ToString());
             Add(boardSignature);
-            foreach (var candidate in candidates.OrderBy(x => x.Token)) { Add(candidate.Token); Add(candidate.CatalogKey); Add(candidate.Kind.ToString()); Add(candidate.MoneyCost.ToString()); Add(candidate.DiceCost.ToString()); Add(candidate.IsSelectable.ToString()); Add(candidate.IsFreeReroll.ToString()); }
+            foreach (var candidate in candidates.OrderBy(x => x.Token)) { Add(candidate.Token); Add(candidate.CatalogKey); Add(candidate.Kind.ToString()); Add(candidate.MoneyCost.ToString()); Add(candidate.DiceCost.ToString()); Add(candidate.IsSelectable.ToString()); Add(candidate.IsFreeReroll.ToString()); Add(candidate.AutomaticActionAllowed.ToString()); Add(candidate.AdditionalCostDescription); }
             foreach (var item in inventory.OrderBy(x => x.InstanceId)) { Add(item.InstanceId); Add(item.CatalogKey); Add(item.X.ToString()); Add(item.Y.ToString()); }
             return hash;
         }

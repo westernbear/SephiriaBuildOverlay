@@ -12,7 +12,8 @@ internal sealed class EnchantArtifact
     public int? Enchant { get; }
     public int? DisplayedLevel { get; }
     public bool? Active { get; }
-    public bool Eligible => Maximum > 0 && Enchant.HasValue && Enchant.Value >= 0 && Enchant.Value < Maximum;
+    public bool Eligible => Maximum > 0 && Enchant.HasValue && Enchant.Value >= 0 && Enchant.Value < Maximum &&
+        DisplayedLevel.HasValue && DisplayedLevel.Value >= 0 && DisplayedLevel.Value < Maximum;
     public bool ImmediateBenefit => Active == true && DisplayedLevel.HasValue && DisplayedLevel.Value >= 0 && DisplayedLevel.Value < Maximum;
 }
 internal sealed class EnchantRank
@@ -27,8 +28,8 @@ internal sealed class EnchantRank
 }
 internal static class EnchantPriority
 {
-    // Guidance only, never a RecommendedAction. MaxLevel caps enchant COUNT,
-    // not eligibility based on displayed cell level. Duplicates keep own IDs.
+    // Guidance only. Native enchant eligibility is necessary but not sufficient:
+    // spending another enchant at an already sufficient total level is wasteful.
     public static IReadOnlyList<EnchantRank> Rank(IEnumerable<EnchantArtifact> artifacts, IEnumerable<ArtifactTarget> goals)
     {
         var targets = goals.Where(x => x.Role is TargetRole.Required or TargetRole.Recommended)

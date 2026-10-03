@@ -20,7 +20,8 @@ public enum CandidateKind
     Weapon,
     Miracle,
     Reroll,
-    AbandonOrConvert
+    AbandonOrConvert,
+    Tablet
 }
 
 public sealed class ScreenCandidate
@@ -32,7 +33,9 @@ public sealed class ScreenCandidate
         int moneyCost = 0,
         int diceCost = 0,
         bool isFreeReroll = false,
-        bool isSelectable = true)
+        bool isSelectable = true,
+        bool automaticActionAllowed = true,
+        string? additionalCostDescription = null)
     {
         Token = token;
         Kind = kind;
@@ -41,6 +44,8 @@ public sealed class ScreenCandidate
         DiceCost = diceCost;
         IsFreeReroll = isFreeReroll;
         IsSelectable = isSelectable;
+        AutomaticActionAllowed = automaticActionAllowed;
+        AdditionalCostDescription = additionalCostDescription;
     }
 
     public string Token { get; }
@@ -50,6 +55,8 @@ public sealed class ScreenCandidate
     public int DiceCost { get; }
     public bool IsFreeReroll { get; }
     public bool IsSelectable { get; }
+    public bool AutomaticActionAllowed { get; }
+    public string? AdditionalCostDescription { get; }
 }
 
 public sealed class InventoryArtifact

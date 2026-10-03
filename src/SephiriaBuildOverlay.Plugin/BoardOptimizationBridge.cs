@@ -15,6 +15,8 @@ internal sealed partial class UnityGameGateway
     private BoardOptimizationResult? _optimizationResult;
     private readonly BoardPlanContinuation _boardContinuation = new();
     private RecommendedAction? _optimizationAction;
+    private BoardOptimizationStep? _optimizationStep;
+    private string? _optimizationModel;
     private string? _optimizationUnavailable;
     private long _optionCaptureStarted;
     private string _optionBuildKey = "";
@@ -67,14 +69,17 @@ internal sealed partial class UnityGameGateway
             condition != ArtifactCondition.Unknown, condition, enabled, magicType?.IsInstanceOfType(charm) == true, conditionActive);
     }
 
-    private IReadOnlyList<BoardTabletOption> NativeTabletOptions(object tablet, int width, int height, int storage, GridPoint current, int rotation, bool fixedPlacement)
+    private IReadOnlyList<BoardTabletOption> NativeTabletOptions(object tablet, int width, int height, int storage, GridPoint current, int rotation, bool fixedPlacement, int? rewardInstance = null)
     {
-        var id = ReadNamedNullableInt(tablet, "instanceID") ?? throw new InvalidOperationException("석판 ID 누락");
+        var id = rewardInstance ?? ReadNamedNullableInt(tablet, "instanceID") ?? throw new InvalidOperationException("석판 ID 누락");
         var query = tablet.GetType().GetMethod("GetQuery")?.Invoke(tablet, new object[] { id }) as string;
         var condition = tablet.GetType().GetMethod("GetConditionQuery")?.Invoke(tablet, new object[] { id }) as string;
         if (query is null || condition is null) throw new InvalidOperationException("석판 쿼리 조회 불가");
         if (query.Length + condition.Length > 32768) throw new InvalidOperationException("너무 큰 석판 효과 쿼리");
-        var canRotate = !fixedPlacement && NativeCanRotate(tablet);
+        var canRotate = !fixedPlacement && (rewardInstance.HasValue
+            ? GameType("DungeonManager")?.GetMethod("IsTabletRotatable", BindingFlags.Static | BindingFlags.Public, null,
+                new[] { typeof(int), typeof(bool) }, null)?.Invoke(null, new object[] { id, ReadBool(tablet, "isRotatable") }) is true
+            : NativeCanRotate(tablet));
         var key = $"{width}:{height}:{storage}:{canRotate}:{(fixedPlacement ? current.ToString() : "*")}:{(canRotate ? -1 : rotation)}|{query.Length}:{query}|{condition}";
         if (_tabletOptionCache.TryGetValue(key, out var cached)) return cached;
         if (_tabletOptionCache.Count >= 128) _tabletOptionCache.Clear();
@@ -87,7 +92,7 @@ internal sealed partial class UnityGameGateway
             return parse.Invoke(null, args) as IEnumerable ?? throw new InvalidOperationException("게임 파서 결과 누락");
         }
         if (_optionBuildKey != key) { _optionBuildKey = key; _optionBuild.Clear(); _optionBuildIndex = 0; }
-        var points = fixedPlacement ? new[] { current } : _slotVisuals.Keys.OrderBy(x => x.Y).ThenBy(x => x.X).ToArray();
+        var points = fixedPlacement ? new[] { current } : Enumerable.Range(0, Math.Min(width * height, storage)).Select(i => new GridPoint(i % width, i / width)).ToArray();
         var angles = canRotate ? new[] { 0, 1, 2, 3 } : new[] { rotation };
         while (_optionBuildIndex < points.Length * angles.Length)
         {
@@ -215,6 +220,7 @@ internal sealed partial class UnityGameGateway
             _ghostTask = Task.Run(() => new JointBoardPlanner().Solve(input, token), token);
         }
         _optimizationInput = input;
+        _optimizationModel = (_placementPlan?.SourceBuildId.ToString() ?? "inactive") + "|" + invariant;
         if (_ghostTask is { IsCompleted: true })
         {
             if (_ghostTask.Status == TaskStatus.RanToCompletion && _ghostTaskSignature == _boardSignature)
@@ -249,6 +255,7 @@ internal sealed partial class UnityGameGateway
         if (step is null && BoardOptimizationStep.Next(_optimizationInput, _optimizationResult.Layout) is not null)
             _optimizationUnavailable = "다음 배치 슬롯이 화면 밖에 있습니다 · 인벤토리를 스크롤해 주세요";
         if (step is null || !_slotVisuals.TryGetValue(step.From, out var sourceIcon) || !_slotVisuals.TryGetValue(step.To, out var targetIcon)) return;
+        _optimizationStep = step;
         var item = _boardItems.FirstOrDefault(x => x.InstanceId == step.Id);
         if (item is null) return;
         if (step.Rotation.HasValue)

@@ -65,7 +65,7 @@ internal sealed partial class UnityGameGateway
         _ghostCancellation = null;
         _ghostTask = null; _ghostAssignments = Array.Empty<ArtifactAssignment>();
         _ghostResultSignature = ""; _ghostTaskSignature = "";
-        _optimizationInput = null; _optimizationResult = null; _optimizationAction = null;
+        _optimizationInput = null; _optimizationResult = null; _optimizationAction = null; _optimizationStep = null; _optimizationModel = null;
         if (!preserveContinuation) _boardContinuation.Clear();
         ClearSynthesis();
     }
@@ -91,15 +91,17 @@ internal sealed partial class UnityGameGateway
         _enchantMode = false; _tabletMixMode = false; _enchantRanks.Clear(); _enchantArtifacts.Clear();
         _slotVisuals.Clear(); _itemSprites.Clear(); _slotLevels.Clear(); _disabledSlots.Clear(); _boardItems.Clear();
         _boardVisible = false; _pointerRotation = null; _boardSignature = "";
-        _boardArtifacts.Clear(); _optimizationUnavailable = null; _optimizationAction = null;
+        _boardArtifacts.Clear(); _optimizationUnavailable = null; _optimizationAction = null; _optimizationStep = null;
         _boardContext = $"{runId}:{playerId}:{owned}";
         _boardInventory = LocalInventory();
         var manager = ReadStatic("UIManager", "Instance");
         var registry = manager is null ? null : ReadNamedObject(manager, "uiElementsByTypename") as IDictionary;
         _boardPanel = registry?["UI_CharacterStatusPanel"] as Component;
-        if (_boardPanel == null || !_boardPanel.gameObject.activeInHierarchy || !ReadBool(_boardPanel, "IsOpened") || _boardInventory is null) { CancelGhostCalculation(); return; }
-        if (ReadNamedObject(_boardPanel, "PlayerAvatar") is not Component avatar || !ReferenceEquals(ReadNamedObject(avatar, "Inventory"), _boardInventory)) { CancelGhostCalculation(); return; }
-        _boardVisible = true;
+        var readOnlyReward = screen == ScreenKind.ArtifactReward && _rewardTabletSpecs.Count > 0 && _placementPlan is not null;
+        if (_boardPanel == null || _boardInventory is null) { CancelGhostCalculation(); return; }
+        _boardVisible = _boardPanel.gameObject.activeInHierarchy && ReadBool(_boardPanel, "IsOpened");
+        if (!_boardVisible && !readOnlyReward) { CancelGhostCalculation(); return; }
+        if (_boardVisible && (ReadNamedObject(_boardPanel, "PlayerAvatar") is not Component avatar || !ReferenceEquals(ReadNamedObject(avatar, "Inventory"), _boardInventory))) { CancelGhostCalculation(); return; }
         _enchantMode = owned && screen == ScreenKind.Inventory && ReadNamedObject(_boardPanel, "InventoryMode")?.ToString() == "Enchant";
         _tabletMixMode = owned && screen == ScreenKind.TabletBoard && ReadNamedString(_boardPanel, "InventoryMode") == "TabletMix";
         if (ReadNamedObject(_boardPanel, "itemIcons") is not IEnumerable icons || ReadNamedObject(_boardInventory, "inventoryMatrix") is not IEnumerable contents) return;
@@ -121,6 +123,17 @@ internal sealed partial class UnityGameGateway
             _slotLevels[position] = level;
             if (disable > 0) _disabledSlots.Add(position);
             slots.Add(new GhostSlot(position, level, disable > 0));
+        }
+        // Closed inventory: read immutable board cells, never open UI or attach
+        // action rectangles merely to score a tablet reward.
+        if (readOnlyReward && !_boardVisible)
+        {
+            slots.Clear(); _slotLevels.Clear(); _disabledSlots.Clear();
+            for (var i = 0; i < Math.Min(width * height, storage); i++)
+            {
+                var p = new GridPoint(i % width, i / width); levels.TryGetValue(p, out var level); disabled.TryGetValue(p, out var disable);
+                _slotLevels[p] = level; if (disable > 0) _disabledSlots.Add(p); slots.Add(new GhostSlot(p, level, disable > 0));
+            }
         }
         foreach (var pair in contents)
         {
@@ -177,7 +190,7 @@ internal sealed partial class UnityGameGateway
             CalculateOptimization(input);
         }
         catch (Exception ex) { CancelGhostCalculation(preserveContinuation: true); _optimizationUnavailable = ex.GetBaseException().Message; }
-        if (_requestPending || screen != ScreenKind.Inventory || _ghostResultSignature != _boardSignature) return;
+        if (!_boardVisible || _requestPending || screen != ScreenKind.Inventory && !(PlacementBatchEnabled && screen == ScreenKind.ArtifactReward) || _ghostResultSignature != _boardSignature) return;
         CaptureOptimizationAction(candidates);
     }
 

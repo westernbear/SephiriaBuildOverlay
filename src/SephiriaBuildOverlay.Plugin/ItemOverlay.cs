@@ -37,14 +37,14 @@ internal sealed partial class UnityGameGateway
         {
             foreach (var candidate in _lastSnapshot.Candidates)
             {
-                if (!_rectangles.TryGetValue(candidate.Token, out var visual) || visual == null || !visual.gameObject.activeInHierarchy) continue;
-                var rect = ScreenRect(visual);
+                if (!TryCandidateRect(candidate.Token, out var rect, out var visual)) continue;
                 if (rect.width < 4 || rect.height < 4) continue;
                 var target = plan?.Artifacts.FirstOrDefault(x => x.CatalogKey == candidate.CatalogKey);
                 _enchantRanks.TryGetValue(candidate.Token, out var enchantRank);
                 var selected = !_enchantMode && action?.TargetToken == candidate.Token;
                 var otherTarget = candidate.CatalogKey is not null && plan is not null &&
                     (plan.WeaponPath.Contains(candidate.CatalogKey) || plan.MiracleTarget == candidate.CatalogKey);
+                if (_enchantMode && enchantRank is null) continue;
                 var frame = CandidateFramePolicy.Resolve(plan is not null, target?.Role, otherTarget, selected);
                 if (frame == CandidateFrameKind.None) continue;
                 var color = frame switch
@@ -93,7 +93,7 @@ internal sealed partial class UnityGameGateway
                     _nativeLayer?.Box("rotation-bg:" + candidate.Token, detailRect, new Color(.025f, .035f, .055f, .85f));
                     _nativeLayer?.Label("rotation:" + candidate.Token, detailRect, detail, color, Mathf.Round(_nativeFontPixels * scale));
                 }
-                if (target is not null && (_controllerMode ? focused != null &&
+                if (target is not null && (_controllerMode ? focused != null && visual != null &&
                     (focused.transform == visual.transform || focused.transform.IsChildOf(visual.transform) || visual.transform.IsChildOf(focused.transform)) : rect.Contains(mouse)))
                 {
                     var acquired = state?.EffectiveAcquisitions(target.CatalogKey) ?? 0;
@@ -105,8 +105,8 @@ internal sealed partial class UnityGameGateway
                     _nativeLayer?.Label("detail:" + candidate.Token, detailRect, detail, color, Mathf.Round(_nativeFontPixels * scale));
                 }
                 if (!selected || action is null) continue;
-                if (action.MoneyCost == 0 && action.DiceCost == 0 && action.DiceRisk == DiceRisk.None) continue;
-                var cost = action.MoneyCost > 0 ? $"돈 {action.MoneyCost}" : action.DiceCost > 0 ? $"주사위 {_lastSnapshot.SharedDice} → {Math.Max(0, _lastSnapshot.SharedDice - action.DiceCost)}" : "소비 없음";
+                if (action.MoneyCost == 0 && action.DiceCost == 0 && action.DiceRisk == DiceRisk.None && string.IsNullOrEmpty(candidate.AdditionalCostDescription)) continue;
+                var cost = candidate.AdditionalCostDescription ?? (action.MoneyCost > 0 ? $"돈 {action.MoneyCost}" : action.DiceCost > 0 ? $"주사위 {_lastSnapshot.SharedDice} → {Math.Max(0, _lastSnapshot.SharedDice - action.DiceCost)}" : "소비 없음");
                 var risk = action.DiceRisk switch
                 {
                     DiceRisk.LastSharedDieSpentBeforeMiracle => "이 행동 후 나무 뿌리 리롤 불가",
