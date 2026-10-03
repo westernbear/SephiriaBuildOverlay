@@ -197,6 +197,7 @@ internal sealed partial class UnityGameGateway
                 // dispatch an inventory move on this screen.
                 if (_ghostTask is not null || _optimizationResult is not null) CancelGhostCalculation();
                 _optimizationInput = input;
+                _boardSignature += "|model:" + OptimizationInvariant(input);
                 return;
             }
             CalculateOptimization(input);

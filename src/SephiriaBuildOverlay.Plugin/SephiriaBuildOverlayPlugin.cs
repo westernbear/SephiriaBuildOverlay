@@ -17,7 +17,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
 {
     public const string PluginGuid = "io.github.sephiria.build-overlay";
     public const string PluginName = "Sephiria Build Overlay";
-    public const string PluginVersion = "0.1.21";
+    public const string PluginVersion = "0.1.22";
 
     private ConfigEntry<KeyCode> _importKey = null!;
     private ConfigEntry<KeyCode> _overlayKey = null!;
@@ -234,7 +234,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
         }
 
         TickStartingPreset();
-        _gateway.TickTabletRewardCalculation();
+        if (_gateway.TickTabletRewardCalculation()) _nextSnapshotAt = 0;
         if (!_importing && _plan is not null && _state is not null && Time.unscaledTime >= _nextSnapshotAt)
         {
             var snapshot = pendingSnapshot ?? _gateway.CaptureOnMainThread();

@@ -14,9 +14,10 @@ internal sealed partial class UnityGameGateway
     private bool _rewardCapturing;
     private float _rewardCaptureStarted;
 
-    internal void TickTabletRewardCalculation()
+    internal bool TickTabletRewardCalculation()
     {
-        if (_disposed || _lastSnapshot is null || !_rewardCapturing && _rewardTask?.IsCompleted != true) return;
+        if (_disposed || _lastSnapshot is null || !_rewardCapturing && _rewardTask?.IsCompleted != true) return false;
+        var completed = _rewardTask?.IsCompleted == true;
         try
         {
             if (_rewardCapturing && _optimizationInput is null && _optimizationUnavailable == "석판 효과 맵 준비 중" &&
@@ -26,12 +27,16 @@ internal sealed partial class UnityGameGateway
                 {
                     _optimizationInput = CaptureOptimizationInput(dimensions.Width, dimensions.Height, dimensions.Storage);
                     _optimizationUnavailable = null;
+                    // The next snapshot must carry the newly prepared model in
+                    // its revision before offering any F8 selection based on it.
+                    return true;
                 }
-                catch (InvalidOperationException ex) when (ex.Message == "석판 효과 맵 준비 중") { return; }
+                catch (InvalidOperationException ex) when (ex.Message == "석판 효과 맵 준비 중") { return false; }
             }
             CaptureTabletRewards(_lastSnapshot.Screen, _lastSnapshot.Candidates.ToList());
         }
         catch (Exception ex) { ClearTabletRewards(); _log.LogWarning("Tablet reward preparation stopped: " + ex.GetBaseException().Message); }
+        return completed;
     }
 
     private void ClearTabletRewards()

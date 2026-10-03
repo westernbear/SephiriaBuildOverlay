@@ -61,6 +61,17 @@ public sealed class BridgeSchedulingTests
     }
 
     [Fact]
+    public void PassiveBoardModelRemainsInSnapshotRevisionAfterSkippingGhostSolve()
+    {
+        using var plugin = Plugin();
+        var gateway = plugin.MainModule.Types.Single(t => t.Name == "UnityGameGateway");
+        var operations = Operations(gateway.Methods.Single(m => m.Name == "CaptureBoard"));
+        Assert.Contains("|model:", operations);
+        Assert.Contains(operations, s => s.Contains("::OptimizationInvariant("));
+        Assert.Equal("System.Boolean", gateway.Methods.Single(m => m.Name == "TickTabletRewardCalculation").ReturnType.FullName);
+    }
+
+    [Fact]
     public void NoticesCannotGateConfirmationOrStartingPresets()
     {
         using var plugin = Plugin();
