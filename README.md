@@ -1,6 +1,6 @@
 <h1 align="center">Sephiria Build Overlay</h1>
 
-<p align="center">Wiki 빌드 안내를 세피리아 게임 화면에 표시하는 모드</p>
+<p align="center">세피리아 Wiki 빌드 안내 모드 · Sephiria build guide overlay for BepInEx 5</p>
 
 <p align="center">
   <a href="https://github.com/westernbear/SephiriaBuildOverlay/releases/latest"><img src="https://img.shields.io/github/v/release/westernbear/SephiriaBuildOverlay?style=flat-square&color=86c9b6" alt="최신 릴리즈"></a>
