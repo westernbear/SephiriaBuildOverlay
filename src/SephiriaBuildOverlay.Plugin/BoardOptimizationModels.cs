@@ -43,8 +43,10 @@ internal sealed class BoardTablet
 internal sealed class BoardArtifact
 {
     public BoardArtifact(string id, string key, GridPoint position, int maximum, int enchant, bool movable,
-        ArtifactCondition condition = ArtifactCondition.None, bool externalActive = true, bool magic = false, bool conditionActive = true)
-    { Id = id; Key = key; Position = position; Maximum = maximum; Enchant = enchant; Movable = movable; Condition = condition; ExternalActive = externalActive; Magic = magic; ConditionActive = conditionActive; }
+        ArtifactCondition condition = ArtifactCondition.None, bool externalActive = true, bool magic = false, bool conditionActive = true,
+        ArtifactPlacementEffect? placementEffect = null)
+    { Id = id; Key = key; Position = position; Maximum = maximum; Enchant = enchant; Movable = movable; Condition = condition; ExternalActive = externalActive; Magic = magic; ConditionActive = conditionActive;
+      PlacementEffect = placementEffect ?? ArtifactPlacementEffect.None; }
     public string Id { get; }
     public string Key { get; }
     public GridPoint Position { get; }
@@ -55,6 +57,7 @@ internal sealed class BoardArtifact
     public bool ExternalActive { get; }
     public bool Magic { get; }
     public bool ConditionActive { get; }
+    public ArtifactPlacementEffect PlacementEffect { get; }
 }
 internal sealed class BoardCell
 {
@@ -70,9 +73,9 @@ internal sealed class BoardOptimizationInput
 {
     public BoardOptimizationInput(int width, int height, int storage, IEnumerable<BoardCell> cells,
         IEnumerable<BoardArtifact> artifacts, IEnumerable<BoardTablet> tablets, IReadOnlyDictionary<string, GridPoint> items,
-        IEnumerable<ArtifactTarget> goals, string? unavailable = null, bool globallyActive = true)
+        IEnumerable<ArtifactTarget> goals, string? unavailable = null, bool globallyActive = true, BoardComboModel? combos = null)
     { Width = width; Height = height; Storage = storage; Cells = cells.ToArray(); Artifacts = artifacts.ToArray(); Tablets = tablets.ToArray();
-      Items = new Dictionary<string, GridPoint>(items); Goals = goals.Where(x => x.Role is TargetRole.Required or TargetRole.Recommended).ToArray(); Unavailable = unavailable; GloballyActive = globallyActive; }
+      Items = new Dictionary<string, GridPoint>(items); Goals = goals.Where(x => x.Role is TargetRole.Required or TargetRole.Recommended).ToArray(); Unavailable = unavailable; GloballyActive = globallyActive; Combos = combos ?? BoardComboModel.Empty; }
     public int Width { get; }
     public int Height { get; }
     public int Storage { get; }
@@ -83,6 +86,7 @@ internal sealed class BoardOptimizationInput
     public IReadOnlyList<ArtifactTarget> Goals { get; }
     public string? Unavailable { get; }
     public bool GloballyActive { get; }
+    public BoardComboModel Combos { get; }
 }
 internal sealed class BoardLayout
 {
@@ -107,9 +111,11 @@ internal sealed class BoardOptimizationResult
 internal readonly struct BoardObjective : IComparable<BoardObjective>
 {
     public BoardObjective(long requiredActive, long requiredLevel, long recommendedActive, long recommendedLevel, int movement, int rotations,
-        long requiredPriority = 0, long recommendedPriority = 0, long negativePenalty = 0)
+        long requiredPriority = 0, long recommendedPriority = 0, long negativePenalty = 0,
+        long requiredEffects = 0, long recommendedEffects = 0, long combo = 0)
     { RequiredActive = requiredActive; RequiredLevel = requiredLevel; RecommendedActive = recommendedActive; RecommendedLevel = recommendedLevel; Movement = movement; Rotations = rotations;
-      RequiredPriority = requiredPriority; RecommendedPriority = recommendedPriority; NegativePenalty = negativePenalty; }
+      RequiredPriority = requiredPriority; RecommendedPriority = recommendedPriority; NegativePenalty = negativePenalty;
+      RequiredEffects = requiredEffects; RecommendedEffects = recommendedEffects; Combo = combo; }
     public long RequiredActive { get; }
     public long RequiredLevel { get; }
     public long RecommendedActive { get; }
@@ -119,17 +125,22 @@ internal readonly struct BoardObjective : IComparable<BoardObjective>
     public long RequiredPriority { get; }
     public long RecommendedPriority { get; }
     public long NegativePenalty { get; }
+    public long RequiredEffects { get; }
+    public long RecommendedEffects { get; }
+    public long Combo { get; }
     public int CompareBenefits(BoardObjective other)
     {
         var c = RequiredActive.CompareTo(other.RequiredActive); if (c != 0) return c;
         c = RequiredLevel.CompareTo(other.RequiredLevel); if (c != 0) return c;
         c = RequiredPriority.CompareTo(other.RequiredPriority); if (c != 0) return c;
+        c = RequiredEffects.CompareTo(other.RequiredEffects); if (c != 0) return c;
         c = RecommendedActive.CompareTo(other.RecommendedActive); if (c != 0) return c;
         c = RecommendedLevel.CompareTo(other.RecommendedLevel); if (c != 0) return c;
         c = RecommendedPriority.CompareTo(other.RecommendedPriority); if (c != 0) return c;
+        c = RecommendedEffects.CompareTo(other.RecommendedEffects); if (c != 0) return c;
         // An inactive/level-zero artifact must not leave a negative slot tied
         // with a harmless zero slot merely because both displayed levels clamp.
-        return other.NegativePenalty.CompareTo(NegativePenalty);
+        c = other.NegativePenalty.CompareTo(NegativePenalty); return c != 0 ? c : Combo.CompareTo(other.Combo);
     }
     public int CompareTo(BoardObjective other)
     { var c = CompareBenefits(other); if (c != 0) return c; c = other.Movement.CompareTo(Movement); return c != 0 ? c : other.Rotations.CompareTo(Rotations); }

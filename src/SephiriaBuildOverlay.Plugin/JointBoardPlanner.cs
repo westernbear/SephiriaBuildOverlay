@@ -21,6 +21,13 @@ internal sealed class JointBoardPlanner
         var start = Current(input);
         if (input.Unavailable is not null || input.Cells.Count > 64 || input.Artifacts.Any(x => x.Condition == ArtifactCondition.Unknown))
             return new BoardOptimizationResult(start, default, default, 0, false, input.Unavailable ?? "지원하지 않는 보드/아티팩트 조건");
+        if (input.Artifacts.Any(a => a.PlacementEffect.DynamicCategory))
+        {
+            var categories = new SpecialArtifactEvaluation(input, start, Cells(input, start).ToDictionary(x => x.Position));
+            categories.ComboCounts();
+            if (!categories.CategoriesReliable || input.Artifacts.Any(a => a.PlacementEffect.Kind == ArtifactPlacementKind.RowCategory && a.PlacementEffect.RowCategories.Count == 0))
+                return new BoardOptimizationResult(start, default, default, 0, false, "예측할 수 없는 특수 아티팩트 분류는 수동 확인 필요");
+        }
         var exact = useExactSearch ? SmallBoardExactSearch.Solve(input, cancellationToken, evaluationBudget) : null;
         if (exact is not null) return exact;
         var baseline = Evaluate(input, start);
@@ -36,6 +43,7 @@ internal sealed class JointBoardPlanner
             cancellationToken.ThrowIfCancellationRequested();
             if (candidate is null || evaluations >= limit) return false;
             evaluations++;
+            if (!SpecialArtifactRules.Allows(input, candidate)) return false;
             var score = Evaluate(input, candidate);
             if (beamOption is not null && tabletId is not null)
             {
@@ -51,7 +59,17 @@ internal sealed class JointBoardPlanner
         }
         for (var pass = 0; pass < 6 && evaluations < limit; pass++)
         {
-            var changed = Try(MatchArtifacts(input, best, cancellationToken));
+            var changed = false;
+            var supportSeed = best;
+            // Reserve work for coupled support/attacker moves before independent
+            // assignment can exhaust the budget. All trials share the same cap.
+            var supportLimit = Math.Min(limit, evaluations + Math.Max(1, evaluationBudget / 4));
+            foreach (var candidate in SpecialArtifactRules.DirectedCandidates(input, supportSeed, cancellationToken))
+            {
+                if (evaluations >= supportLimit) break;
+                changed |= Try(candidate);
+            }
+            changed |= Try(MatchArtifacts(input, best, cancellationToken));
             foreach (var tablet in orderedTablets)
             {
                 var seed = best;
@@ -157,7 +175,7 @@ internal sealed class JointBoardPlanner
         positions[id] = destination;
         if (occupant is not null) positions[occupant] = from;
         var result = new BoardLayout(positions, layout.Rotations);
-        return input.Tablets.All(t => Option(t, result) is not null) ? result : null;
+        return SpecialArtifactRules.PreservesSides(input, result) && input.Tablets.All(t => Option(t, result) is not null) ? result : null;
     }
 
     private static BoardTabletOption? Option(BoardTablet tablet, BoardLayout layout) => tablet.Options.FirstOrDefault(x =>
@@ -224,7 +242,7 @@ internal sealed class JointBoardPlanner
         }
     }
 
-    private static (bool Active, int Level) Value(BoardOptimizationInput input, BoardLayout layout, BoardArtifact artifact, GridPoint position, BoardCell cell)
+    internal static (bool Active, int Level) Value(BoardOptimizationInput input, BoardLayout layout, BoardArtifact artifact, GridPoint position, BoardCell cell)
     {
         var active = cell.Disabled <= 0 && input.GloballyActive && cell.Level >= 0 && artifact.ExternalActive &&
             (cell.Ignore > 0 || Criteria(input, layout, artifact, position));
@@ -234,24 +252,27 @@ internal sealed class JointBoardPlanner
     internal static BoardObjective Evaluate(BoardOptimizationInput input, BoardLayout layout)
     {
         var cells = Cells(input, layout).ToDictionary(x => x.Position);
+        var special = new SpecialArtifactEvaluation(input, layout, cells);
         long requiredActive = 0, requiredLevel = 0, recommendedActive = 0, recommendedLevel = 0, requiredPriority = 0, recommendedPriority = 0;
+        long requiredEffects = 0, recommendedEffects = 0;
         foreach (var goal in input.Goals)
         {
             var values = input.Artifacts.Where(x => x.Key == goal.CatalogKey)
-                .Select(x => Value(input, layout, x, layout.Positions[x.Id], cells[layout.Positions[x.Id]]))
-                .OrderByDescending(x => x.Active).ThenByDescending(x => x.Level).Take(goal.DesiredAcquisitions).ToArray();
+                .Select(special.Value)
+                .OrderByDescending(x => x.Active).ThenByDescending(x => x.Level).ThenByDescending(x => x.Effect).Take(goal.DesiredAcquisitions).ToArray();
             var level = values.Sum(x => (long)x.Level);
             var priority = level * PriorityWeight(input, goal);
-            if (goal.Role == TargetRole.Required) { requiredActive += values.Count(x => x.Active); requiredLevel += level; requiredPriority += priority; }
-            else { recommendedActive += values.Count(x => x.Active); recommendedLevel += level; recommendedPriority += priority; }
+            if (goal.Role == TargetRole.Required) { requiredActive += values.Count(x => x.Active); requiredLevel += level; requiredPriority += priority; requiredEffects += values.Sum(x => x.Effect); }
+            else { recommendedActive += values.Count(x => x.Active); recommendedLevel += level; recommendedPriority += priority; recommendedEffects += values.Sum(x => x.Effect); }
         }
-        // Category combos depend on owned instances, not their slots/rotation;
-        // ownership is constant throughout this solver, so that tier is constant.
+        var comboCounts = input.Combos.Goals.Count > 0 ? special.ComboCounts() : null;
+        var combo = comboCounts is null ? 0L : input.Combos.Goals.Sum(k => (long)SpecialArtifactRules.Count(comboCounts, k));
         var movement = input.Items.Sum(x => x.Value.ManhattanDistance(layout.Positions[x.Key]));
         var rotations = input.Tablets.Sum(x => (layout.Rotations[x.Id] - x.Rotation + 4) % 4);
         var negativePenalty = input.Artifacts.Where(a => a.Movable && input.Goals.Any(g => g.CatalogKey == a.Key))
             .Sum(a => NegativePenalty(a, cells[layout.Positions[a.Id]]));
-        return new BoardObjective(requiredActive, requiredLevel, recommendedActive, recommendedLevel, movement, rotations, requiredPriority, recommendedPriority, negativePenalty);
+        return new BoardObjective(requiredActive, requiredLevel, recommendedActive, recommendedLevel, movement, rotations, requiredPriority, recommendedPriority, negativePenalty,
+            requiredEffects, recommendedEffects, combo);
     }
 
     private static long NegativePenalty(BoardArtifact artifact, BoardCell cell) => Math.Min(int.MaxValue,
@@ -284,6 +305,8 @@ internal sealed class JointBoardPlanner
         for (var j = 0; j < n; j++)
         {
             var artifact = artifacts[i]; var cell = cells[j];
+            if (artifact.PlacementEffect.PreserveSide && (artifact.Position.X <= 2) != (cell.Position.X <= 2))
+            { costs[i, j] = infinity; continue; }
             var goal = input.Goals.FirstOrDefault(x => x.CatalogKey == artifact.Key);
             // Correct the per-instance enchant: the level map includes the
             // occupant's enchant, which must not be carried with the slot.

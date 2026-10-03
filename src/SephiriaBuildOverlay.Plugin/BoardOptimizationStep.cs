@@ -25,7 +25,9 @@ internal sealed class BoardOptimizationStep
             var positions = current.Positions.ToDictionary(x => x.Key, x => x.Value);
             positions[id] = destination;
             if (occupant is not null) positions[occupant] = current.Positions[id];
-            return new BoardOptimizationStep(id, current.Positions[id], destination, occupant, null, new BoardLayout(positions, current.Rotations));
+            var expected = new BoardLayout(positions, current.Rotations);
+            if (!SpecialArtifactRules.PreservesSides(input, expected) || !SpecialArtifactRules.PreservesProtectedCombos(input, expected)) continue;
+            return new BoardOptimizationStep(id, current.Positions[id], destination, occupant, null, expected);
         }
         foreach (var tablet in input.Tablets.Where(x => x.Movable).OrderBy(x => x.Id, StringComparer.Ordinal))
         {

@@ -36,6 +36,11 @@ internal sealed partial class UnityGameGateway
                 title.gameObject.activeInHierarchy && ReadBool(title, "IsOpened"), player != null, _requestPending)) continue;
             var quit = title.GetType().GetMethod("QuitGame", Type.EmptyTypes);
             if (quit is null) continue;
+            if (Environment.GetCommandLineArgs().Contains("--sbo-special-catalog-smoke", StringComparer.Ordinal))
+            {
+                try { VerifySpecialArtifactCatalog(); }
+                catch (Exception ex) { _log.LogWarning("Special artifact catalog FAILED: " + ex.GetBaseException().Message); }
+            }
             if (Environment.GetCommandLineArgs().Contains("--sbo-starting-catalog-smoke", StringComparer.Ordinal))
             {
                 try

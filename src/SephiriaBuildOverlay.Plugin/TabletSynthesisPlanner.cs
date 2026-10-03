@@ -86,6 +86,6 @@ internal static class TabletSynthesisPlanner
         items[id] = a.Position;
         var tablet = new BoardTablet(id, "2101", a.Position, 0, true, options);
         return new BoardOptimizationInput(input.Width, input.Height, input.Storage, input.Cells, input.Artifacts,
-            input.Tablets.Where(x => x.Id != a.Id && x.Id != b.Id).Concat(new[] { tablet }), items, input.Goals, input.Unavailable, input.GloballyActive);
+            input.Tablets.Where(x => x.Id != a.Id && x.Id != b.Id).Concat(new[] { tablet }), items, input.Goals, input.Unavailable, input.GloballyActive, input.Combos);
     }
 }

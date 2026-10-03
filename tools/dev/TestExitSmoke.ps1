@@ -1,9 +1,10 @@
 param(
     [string]$GameDir = 'C:\Program Files (x86)\Steam\steamapps\common\Sephiria',
     [string]$SteamExe = 'C:\Program Files (x86)\Steam\steam.exe',
-    [string]$ExpectedVersion = '0.1.18',
+    [string]$ExpectedVersion = '0.1.20',
     [switch]$NativeUiContract,
     [switch]$StartingCatalogContract,
+    [switch]$SpecialArtifactCatalogContract,
     [ValidateRange(30, 180)][int]$TimeoutSeconds = 120
 )
 $ErrorActionPreference = 'Stop'
@@ -15,6 +16,7 @@ $before = @(Get-ChildItem -LiteralPath $dumpDirectory -Filter 'Sephiria*.dmp' -F
 $launchArgs = @('-applaunch', '2436940', '--sbo-exit-smoke')
 if ($NativeUiContract) { $launchArgs += '--sbo-native-ui-smoke' }
 if ($StartingCatalogContract) { $launchArgs += '--sbo-starting-catalog-smoke' }
+if ($SpecialArtifactCatalogContract) { $launchArgs += '--sbo-special-catalog-smoke' }
 Start-Process -FilePath $SteamExe -ArgumentList $launchArgs -WindowStyle Hidden
 $deadline = $started.AddSeconds($TimeoutSeconds)
 $gameProcess = $null
@@ -43,6 +45,7 @@ if ($NativeUiContract -and [version]$ExpectedVersion -ge [version]'0.1.17' -and 
 if ([version]$ExpectedVersion -ge [version]'0.1.13' -and $combinedLog -notmatch 'Exclusive modal input gates installed: 11 menu callbacks') { throw 'Native menu callback patches were not installed.' }
 if ($StartingCatalogContract -and ($combinedLog -notmatch 'Starting catalog PASS:' -or $combinedLog -match 'Starting catalog unavailable at title:')) { throw 'Native starting catalog validation did not pass. Logs were preserved.' }
 if ($StartingCatalogContract -and [version]$ExpectedVersion -ge [version]'0.1.18' -and $combinedLog -notmatch 'Starting fruit catalog PASS: exact native IDs=') { throw 'Native fruit ID binding did not pass.' }
+if ($SpecialArtifactCatalogContract -and ($combinedLog -notmatch 'Special artifact catalog PASS:' -or $combinedLog -match 'Special artifact catalog FAILED:')) { throw 'Native special artifact prefab validation did not pass. Logs were preserved.' }
 if ($combinedLog -notmatch 'Exit smoke: native title QuitGame') { throw 'Normal native title exit path was not observed.' }
 if ($combinedLog -notmatch 'Overlay shutdown complete; pending work cancelled. Quit=True') { throw 'Managed shutdown did not finish.' }
 if ($gameProcess.ExitCode -ne 0 -or $newDumps.Count -gt 0 -or $playerLog -match 'Crash!!!') {

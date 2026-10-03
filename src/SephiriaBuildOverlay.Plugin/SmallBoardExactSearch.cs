@@ -47,7 +47,9 @@ internal static class SmallBoardExactSearch
             if (depth == variables.Length)
             {
                 var candidate = new BoardLayout(positions, rotations);
-                var value = JointBoardPlanner.Evaluate(input, candidate); count++;
+                count++;
+                if (!SpecialArtifactRules.Allows(input, candidate)) return;
+                var value = JointBoardPlanner.Evaluate(input, candidate);
                 if (value.CompareTo(score) > 0) { best = candidate; score = value; }
                 return;
             }

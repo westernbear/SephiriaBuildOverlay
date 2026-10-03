@@ -91,7 +91,7 @@ internal sealed partial class UnityGameGateway
         _enchantMode = false; _tabletMixMode = false; _enchantRanks.Clear(); _enchantArtifacts.Clear();
         _slotVisuals.Clear(); _itemSprites.Clear(); _slotLevels.Clear(); _disabledSlots.Clear(); _boardItems.Clear();
         _boardVisible = false; _pointerRotation = null; _boardSignature = "";
-        _boardArtifacts.Clear(); _optimizationUnavailable = null; _optimizationAction = null; _optimizationStep = null;
+        _boardArtifacts.Clear(); _observedArtifactCategories.Clear(); _optimizationUnavailable = null; _optimizationAction = null; _optimizationStep = null;
         _boardContext = $"{runId}:{playerId}:{owned}";
         _boardInventory = LocalInventory();
         var manager = ReadStatic("UIManager", "Instance");

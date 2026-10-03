@@ -60,13 +60,10 @@ internal sealed partial class UnityGameGateway
         if (manager is not null && enchantMethod is not null && int.TryParse(id, out var instance))
             int.TryParse(enchantMethod.Invoke(manager, new object[] { instance, "Enchant" })?.ToString(), out enchant);
         var magicType = GameType("Charm_Magic");
-        // Layout-dependent pre-set callbacks cannot be treated as a fixed
-        // residual map. Refuse the whole optimization rather than mispredict.
-        var preSet = charm.GetType().GetMethod("OnPreSetEffectRefreshed");
-        if (preSet?.DeclaringType?.Name != "Charm_Basic") _optimizationUnavailable = "특수 아티팩트의 배치 효과는 수동 확인 필요";
+        var placementEffect = CapturePlacementEffect(item, charm, id);
         return new BoardArtifact(id, key, position, Math.Max(0, ReadNamedNullableInt(charm, "maxLevel") ?? 0), enchant,
             _placementVerified.Contains(key) && _placementPlan?.Artifacts.Any(x => x.CatalogKey == key && x.Role is Core.Models.TargetRole.Required or Core.Models.TargetRole.Recommended) == true &&
-            condition != ArtifactCondition.Unknown, condition, enabled, magicType?.IsInstanceOfType(charm) == true, conditionActive);
+            id != "0" && condition != ArtifactCondition.Unknown, condition, enabled, magicType?.IsInstanceOfType(charm) == true, conditionActive, placementEffect);
     }
 
     private IReadOnlyList<BoardTabletOption> NativeTabletOptions(object tablet, int width, int height, int storage, GridPoint current, int rotation, bool fixedPlacement, int? rewardInstance = null)
@@ -177,14 +174,23 @@ internal sealed partial class UnityGameGateway
         if (nativePrediction.Any(x => !_slotLevels.TryGetValue(x.Position, out var level) || x.Level != level ||
             x.Disabled != (disable.TryGetValue(x.Position, out var d) ? d : 0) || x.Ignore != (ignore.TryGetValue(x.Position, out var i) ? i : 0)))
             throw new InvalidOperationException("현재 보드 효과와 예측이 일치하지 않습니다");
-        return input;
+        var combos = CaptureBoardCombos(input);
+        return new BoardOptimizationInput(input.Width, input.Height, input.Storage, input.Cells, input.Artifacts, input.Tablets,
+            input.Items, input.Goals, input.Unavailable, input.GloballyActive, combos);
     }
 
     private static string OptimizationInvariant(BoardOptimizationInput input)
     {
         var s = new StringBuilder($"{input.Width}:{input.Height}:{input.Storage}:{input.GloballyActive}:{input.Unavailable}");
         foreach (var cell in input.Cells.OrderBy(x => x.Position.Y).ThenBy(x => x.Position.X)) s.Append('|').Append(cell.Position).Append(':').Append(cell.Level).Append(':').Append(cell.Disabled).Append(':').Append(cell.Ignore).Append(':').Append(cell.Multiplier);
-        foreach (var a in input.Artifacts.OrderBy(x => x.Id, StringComparer.Ordinal)) s.Append('|').Append(a.Id).Append(':').Append(a.Key).Append(':').Append(a.Maximum).Append(':').Append(a.Enchant).Append(':').Append(a.Condition).Append(':').Append(a.ExternalActive).Append(':').Append(a.ConditionActive).Append(':').Append(a.Movable);
+        foreach (var a in input.Artifacts.OrderBy(x => x.Id, StringComparer.Ordinal))
+        {
+            s.Append('|').Append(a.Id).Append(':').Append(a.Key).Append(':').Append(a.Maximum).Append(':').Append(a.Enchant).Append(':').Append(a.Condition).Append(':').Append(a.ExternalActive).Append(':').Append(a.ConditionActive).Append(':').Append(a.Movable).Append(':').Append(a.Magic);
+            AppendPlacementInvariant(s, a);
+        }
+        foreach (var c in input.Combos.Offsets.OrderBy(x => x.Key, StringComparer.Ordinal)) s.Append("|combo:").Append(c.Key).Append(':').Append(c.Value);
+        foreach (var c in input.Combos.Goals) s.Append("|comboGoal:").Append(c);
+        foreach (var c in input.Combos.ProtectedCategories) s.Append("|comboProtect:").Append(c);
         foreach (var t in input.Tablets.OrderBy(x => x.Id, StringComparer.Ordinal))
         {
             s.Append('|').Append(t.Id).Append(':').Append(t.Key).Append(':').Append(t.Movable);
@@ -254,6 +260,8 @@ internal sealed partial class UnityGameGateway
         var step = BoardOptimizationStep.Next(_optimizationInput, _optimizationResult.Layout, (from, to) => Visible(from) && Visible(to));
         if (step is null && BoardOptimizationStep.Next(_optimizationInput, _optimizationResult.Layout) is not null)
             _optimizationUnavailable = "다음 배치 슬롯이 화면 밖에 있습니다 · 인벤토리를 스크롤해 주세요";
+        else if (step is null && _ghostAssignments.Count > 0)
+            _optimizationUnavailable = "특수 효과를 유지하는 교환 순서가 없어 수동 배치가 필요합니다";
         if (step is null || !_slotVisuals.TryGetValue(step.From, out var sourceIcon) || !_slotVisuals.TryGetValue(step.To, out var targetIcon)) return;
         _optimizationStep = step;
         var item = _boardItems.FirstOrDefault(x => x.InstanceId == step.Id);

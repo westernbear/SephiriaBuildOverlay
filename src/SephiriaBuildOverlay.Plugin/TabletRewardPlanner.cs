@@ -42,7 +42,7 @@ internal static class TabletRewardPlanner
             var items = input.Items.ToDictionary(x => x.Key, x => x.Value); items[id] = initial.Position;
             var tablet = new BoardTablet(id, offer.Key, initial.Position, initial.Rotation, true, offer.Options);
             var augmented = new BoardOptimizationInput(input.Width, input.Height, input.Storage, input.Cells, input.Artifacts,
-                input.Tablets.Concat(new[] { tablet }), items, input.Goals, input.Unavailable, input.GloballyActive);
+                input.Tablets.Concat(new[] { tablet }), items, input.Goals, input.Unavailable, input.GloballyActive, input.Combos);
             var result = solver.Solve(augmented, token, 1024, useExactSearch: false);
             if (result.Unavailable is not null || result.After.CompareBenefits(baseline.After) <= 0) continue;
             if (best is null || result.After.CompareBenefits(best.After) > 0) best = new TabletRewardSuggestion(offer, baseline.After, result.After);
