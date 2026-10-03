@@ -51,5 +51,9 @@
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\BoardOptimizationModels.cs" Link="BoardOptimizationModels.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\JointBoardPlanner.cs" Link="JointBoardPlanner.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\BoardOptimizationStep.cs" Link="BoardOptimizationStep.cs" />
+    <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\BoardPlanContinuation.cs" Link="BoardPlanContinuation.cs" />
+    <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\TabletSynthesisPlanner.cs" Link="TabletSynthesisPlanner.cs" />
+    <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\SmallBoardExactSearch.cs" Link="SmallBoardExactSearch.cs" />
+    <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\RectangularAssignment.cs" Link="RectangularAssignment.cs" />
   </ItemGroup>
 </Project>

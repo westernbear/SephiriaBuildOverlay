@@ -53,7 +53,7 @@ internal sealed partial class UnityGameGateway
         _placementVerified = new HashSet<string>(bindings?.Where(x => x.Value.AllowsAutomaticAction).Select(x => x.Key) ?? Array.Empty<string>(), StringComparer.Ordinal);
     }
 
-    private void CancelGhostCalculation()
+    private void CancelGhostCalculation(bool preserveContinuation = false)
     {
         var cancellation = _ghostCancellation;
         var task = _ghostTask;
@@ -65,7 +65,9 @@ internal sealed partial class UnityGameGateway
         _ghostCancellation = null;
         _ghostTask = null; _ghostAssignments = Array.Empty<ArtifactAssignment>();
         _ghostResultSignature = ""; _ghostTaskSignature = "";
-        _optimizationInput = null; _optimizationResult = null; _expectedOptimizationStep = null; _optimizationAction = null;
+        _optimizationInput = null; _optimizationResult = null; _optimizationAction = null;
+        if (!preserveContinuation) _boardContinuation.Clear();
+        ClearSynthesis();
     }
 
     private static Dictionary<GridPoint, int> ReadCellMap(object inventory, string name)
@@ -86,7 +88,7 @@ internal sealed partial class UnityGameGateway
 
     private void CaptureBoard(ScreenKind screen, List<ScreenCandidate> candidates, string runId, string playerId, bool owned)
     {
-        _enchantMode = false; _enchantRanks.Clear(); _enchantArtifacts.Clear();
+        _enchantMode = false; _tabletMixMode = false; _enchantRanks.Clear(); _enchantArtifacts.Clear();
         _slotVisuals.Clear(); _itemSprites.Clear(); _slotLevels.Clear(); _disabledSlots.Clear(); _boardItems.Clear();
         _boardVisible = false; _pointerRotation = null; _boardSignature = "";
         _boardArtifacts.Clear(); _optimizationUnavailable = null; _optimizationAction = null;
@@ -96,9 +98,10 @@ internal sealed partial class UnityGameGateway
         var registry = manager is null ? null : ReadNamedObject(manager, "uiElementsByTypename") as IDictionary;
         _boardPanel = registry?["UI_CharacterStatusPanel"] as Component;
         if (_boardPanel == null || !_boardPanel.gameObject.activeInHierarchy || !ReadBool(_boardPanel, "IsOpened") || _boardInventory is null) { CancelGhostCalculation(); return; }
-        if (ReadNamedObject(_boardPanel, "PlayerAvatar") is not Component avatar || !ReferenceEquals(ReadNamedObject(avatar, "Inventory"), _boardInventory)) return;
+        if (ReadNamedObject(_boardPanel, "PlayerAvatar") is not Component avatar || !ReferenceEquals(ReadNamedObject(avatar, "Inventory"), _boardInventory)) { CancelGhostCalculation(); return; }
         _boardVisible = true;
         _enchantMode = owned && screen == ScreenKind.Inventory && ReadNamedObject(_boardPanel, "InventoryMode")?.ToString() == "Enchant";
+        _tabletMixMode = owned && screen == ScreenKind.TabletBoard && ReadNamedString(_boardPanel, "InventoryMode") == "TabletMix";
         if (ReadNamedObject(_boardPanel, "itemIcons") is not IEnumerable icons || ReadNamedObject(_boardInventory, "inventoryMatrix") is not IEnumerable contents) return;
         var width = ReadNamedNullableInt(_boardInventory, "Width") ?? 0;
         var height = ReadNamedNullableInt(_boardInventory, "Height") ?? 0;
@@ -162,9 +165,19 @@ internal sealed partial class UnityGameGateway
             return;
         }
         CapturePointerRotation(screen, candidates);
-        try { CalculateOptimization(CaptureOptimizationInput(width, height, storage)); }
-        catch (Exception ex) { CancelGhostCalculation(); _optimizationUnavailable = ex.GetBaseException().Message; }
-        if (screen != ScreenKind.Inventory || _ghostResultSignature != _boardSignature) return;
+        try
+        {
+            var input = CaptureOptimizationInput(width, height, storage);
+            if (_tabletMixMode)
+            {
+                if (_ghostTask is not null || _optimizationResult is not null) CancelGhostCalculation();
+                CaptureSynthesis(input, candidates, registry); return;
+            }
+            ClearSynthesis();
+            CalculateOptimization(input);
+        }
+        catch (Exception ex) { CancelGhostCalculation(preserveContinuation: true); _optimizationUnavailable = ex.GetBaseException().Message; }
+        if (_requestPending || screen != ScreenKind.Inventory || _ghostResultSignature != _boardSignature) return;
         CaptureOptimizationAction(candidates);
     }
 
@@ -190,6 +203,7 @@ internal sealed partial class UnityGameGateway
 
     public Recommendation RecommendPlacement(RunSnapshot snapshot)
     {
+        if (_tabletMixMode) return new Recommendation(null, _synthesisStatus);
         if (_enchantMode) return new Recommendation(null, "인챈트 우선순위 표시 · 강화는 게임에서 수동 확인");
         if (_pointerRotation is { } rotation && snapshot.IsLocalPlayerOwned && !snapshot.ServerRequestPending)
             return new Recommendation(new RecommendedAction(ActionKind.Rotate, rotation.Token,
@@ -198,14 +212,14 @@ internal sealed partial class UnityGameGateway
                 "포인터 아래 석판 한 번 회전 (Shift)");
         if (_optimizationAction is { } optimized && snapshot.IsLocalPlayerOwned && !snapshot.ServerRequestPending)
             return new Recommendation(new RecommendedAction(optimized.Kind, optimized.TargetToken, optimized.Reason, snapshot.Identity,
-                expectedResult: optimized.ExpectedResult), "석판·아티팩트 통합 배치 개선 (제한 탐색)");
+                expectedResult: optimized.ExpectedResult), _optimizationResult?.ProvenOptimal == true ? "석판·아티팩트 통합 배치 (전체 탐색 완료)" : "석판·아티팩트 통합 배치 개선 (제한 탐색)");
         return new Recommendation(null, _optimizationUnavailable ?? _optimizationResult?.Unavailable ??
             (_ghostTask is not null ? "석판·아티팩트 배치를 계산 중입니다." : "현재 탐색에서 더 나은 배치를 찾지 못했습니다."));
     }
 
     public void DrawPlacementGhosts(float opacity, float scale)
     {
-        if (Event.current.type != EventType.Repaint || _enchantMode || !_boardVisible || _lastSnapshot?.IsLocalPlayerOwned != true || _boardPanel == null || !IsGhostPreview && _ghostResultSignature != _boardSignature) return;
+        if (Event.current.type != EventType.Repaint || _enchantMode || _tabletMixMode || !_boardVisible || _lastSnapshot?.IsLocalPlayerOwned != true || _boardPanel == null || !IsGhostPreview && _ghostResultSignature != _boardSignature) return;
         var zone = ReadNamedObject(_boardPanel, "inventoryZone") as RectTransform;
         if (zone == null) return;
         var clip = ScreenRect(zone);

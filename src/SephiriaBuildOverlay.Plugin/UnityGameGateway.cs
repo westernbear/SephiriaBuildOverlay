@@ -83,7 +83,7 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
         try { CaptureBoard(screen, candidates, runId, playerId, owned); }
         catch (Exception ex)
         {
-            _boardVisible = false; CancelGhostCalculation();
+            _boardVisible = false; CancelGhostCalculation(preserveContinuation: true);
             if (Time.unscaledTime >= _nextBridgeWarning) { _nextBridgeWarning = Time.unscaledTime + 30; _log.LogWarning("Board preview unavailable: " + ex.Message); }
         }
         var money = ReadPlayerInt(localPlayer, "Money", "currentMoney", "money");
@@ -109,6 +109,7 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
         if (_confirmation.Task.IsCompleted || outcome != ObservedActionOutcome.Pending)
         {
             _requestPending = false;
+            if (outcome != ObservedActionOutcome.Succeeded) CancelGhostCalculation();
             _confirmation.TrySetResult(outcome == ObservedActionOutcome.Succeeded);
             _confirmation = null;
             _outcomeObserver = null;
@@ -147,6 +148,7 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
         catch (Exception ex)
         {
             _requestPending = false;
+            CancelGhostCalculation();
             _confirmation = null;
             _outcomeObserver = null;
             _log.LogWarning(ex);

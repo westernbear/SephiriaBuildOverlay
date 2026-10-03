@@ -208,4 +208,40 @@ public sealed class BoardOptimizationTests
         Assert.True(CandidateFramePolicy.Thickness(CandidateFrameKind.Required, 1) >= 3);
         Assert.True(CandidateFramePolicy.Thickness(CandidateFrameKind.NextAction, 1) > CandidateFramePolicy.Thickness(CandidateFrameKind.Required, 1));
     }
+
+    [Fact]
+    public void TwoTabletLookaheadFindsConditionalSynergyAcrossNeutralMoves()
+    {
+        var a = new BoardArtifact("a", "ice", P(2), 5, 0, false);
+        var first = new BoardTablet("first", "tablet", P(0), 0, true, new[] {
+            Option(P(0), 0, P(2), 0), Option(P(0), 1, P(2), 5, new BoardCondition(P(4), BoardConditionKind.AnyItem)) });
+        var second = new BoardTablet("second", "tablet", P(1), 0, true, new[] { Option(P(1), 0, P(2), 0), Option(P(4), 0, P(2), 0) });
+        var input = Board(5, 1, new[] { a }, new[] { first, second }, new[] { Goal("ice") });
+        var result = new JointBoardPlanner().Solve(input, useExactSearch: false);
+        Assert.Equal(0, new LegacyBoardPlanner().Solve(input).After.RequiredLevel);
+        Assert.True(result.Improved); Assert.Equal(5, result.After.RequiredLevel);
+        Assert.Equal(P(4), result.Layout.Positions["second"]); Assert.Equal(1, result.Layout.Rotations["first"]);
+        Assert.InRange(result.Evaluations, 1, 6000);
+    }
+
+    [Fact]
+    public void EqualTotalLevelsFavorHigherBuildPriorityWithoutSacrificingActivation()
+    {
+        var input = Board(3, 1, new[] { new BoardArtifact("a", "low", P(0), 5, 0, true), new BoardArtifact("b", "high", P(1), 5, 0, true) },
+            Array.Empty<BoardTablet>(), new[] { new ArtifactTarget("low", 1, TargetRole.Required, 5), new ArtifactTarget("high", 1, TargetRole.Required, 0) },
+            new[] { new BoardCell(P(0), 0), new BoardCell(P(1), 2), new BoardCell(P(2), 3) });
+        var result = new JointBoardPlanner().Solve(input);
+        Assert.Equal(P(2), result.Layout.Positions["b"]); Assert.Equal(5, result.After.RequiredLevel); Assert.Equal(2, result.After.RequiredActive);
+    }
+
+    [Fact]
+    public void HiddenFirstMoveDoesNotBlockOtherVisibleStepsAndDoesNotMutateTarget()
+    {
+        var artifacts = new[] { new BoardArtifact("a", "a", P(0), 3, 0, true), new BoardArtifact("b", "b", P(1), 3, 0, true) };
+        var input = Board(4, 1, artifacts, Array.Empty<BoardTablet>(), Array.Empty<ArtifactTarget>());
+        var target = new BoardLayout(new Dictionary<string, GridPoint> { ["a"] = P(3), ["b"] = P(2) }, new Dictionary<string, int>());
+        var step = Assert.IsType<BoardOptimizationStep>(BoardOptimizationStep.Next(input, target, (_, to) => to.X < 3));
+        Assert.Equal("b", step.Id); Assert.Equal(P(3), target.Positions["a"]);
+        Assert.Null(BoardOptimizationStep.Next(input, target, (_, _) => false));
+    }
 }

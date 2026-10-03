@@ -17,7 +17,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
 {
     public const string PluginGuid = "io.github.sephiria.build-overlay";
     public const string PluginName = "Sephiria Build Overlay";
-    public const string PluginVersion = "0.1.13";
+    public const string PluginVersion = "0.1.14";
 
     private ConfigEntry<KeyCode> _importKey = null!;
     private ConfigEntry<KeyCode> _overlayKey = null!;
@@ -246,7 +246,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
                 _state = ActiveBuildState.Activate(_plan, snapshot);
                 _status = "새 런을 감지해 진행 상태를 분리했습니다.";
             }
-            _recommendation = snapshot.Screen == ScreenKind.Inventory ? _gateway.RecommendPlacement(snapshot) : _recommendationEngine!.Recommend(_plan, _state, snapshot);
+            _recommendation = snapshot.Screen is ScreenKind.Inventory or ScreenKind.TabletBoard ? _gateway.RecommendPlacement(snapshot) : _recommendationEngine!.Recommend(_plan, _state, snapshot);
             if (!string.IsNullOrEmpty(_plan.MiracleTarget) && snapshot.MiracleKeys.Contains(_plan.MiracleTarget!))
                 _state.MarkMiracleAcquired();
             _gateway.SetHighlight(_recommendation.Action?.TargetToken);

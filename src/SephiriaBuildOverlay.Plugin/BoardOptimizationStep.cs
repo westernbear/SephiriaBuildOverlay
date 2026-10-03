@@ -12,13 +12,14 @@ internal sealed class BoardOptimizationStep
     public string? SwappedId { get; }
     public int? Rotation { get; }
     public BoardLayout Expected { get; }
-    public static BoardOptimizationStep? Next(BoardOptimizationInput input, BoardLayout target)
+    public static BoardOptimizationStep? Next(BoardOptimizationInput input, BoardLayout target, Func<GridPoint, GridPoint, bool>? visible = null)
     {
         var current = JointBoardPlanner.Current(input);
         var movable = new HashSet<string>(input.Tablets.Where(x => x.Movable).Select(x => x.Id).Concat(input.Artifacts.Where(x => x.Movable).Select(x => x.Id)));
         foreach (var id in movable.OrderBy(x => input.Tablets.Any(t => t.Id == x) ? 0 : 1).ThenBy(x => x, StringComparer.Ordinal))
         {
             if (!target.Positions.TryGetValue(id, out var destination) || destination.Equals(current.Positions[id])) continue;
+            if (visible is not null && !visible(current.Positions[id], destination)) continue;
             var occupant = input.Items.Keys.FirstOrDefault(x => x != id && current.Positions[x].Equals(destination));
             if (occupant is not null && !movable.Contains(occupant)) continue;
             var positions = current.Positions.ToDictionary(x => x.Key, x => x.Value);
@@ -29,6 +30,7 @@ internal sealed class BoardOptimizationStep
         foreach (var tablet in input.Tablets.Where(x => x.Movable).OrderBy(x => x.Id, StringComparer.Ordinal))
         {
             if (!target.Rotations.TryGetValue(tablet.Id, out var angle) || angle == tablet.Rotation) continue;
+            if (visible is not null && !visible(tablet.Position, tablet.Position)) continue;
             // Native rotates forward only: never pretend an inverse turn costs
             // one request or send several turns for one F8 press.
             var rotations = current.Rotations.ToDictionary(x => x.Key, x => x.Value);

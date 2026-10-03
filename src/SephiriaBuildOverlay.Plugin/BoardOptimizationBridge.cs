@@ -13,8 +13,7 @@ internal sealed partial class UnityGameGateway
     private readonly Dictionary<string, IReadOnlyList<BoardTabletOption>> _tabletOptionCache = new(StringComparer.Ordinal);
     private BoardOptimizationInput? _optimizationInput;
     private BoardOptimizationResult? _optimizationResult;
-    private BoardLayout? _expectedOptimizationStep;
-    private string _optimizationInvariant = "";
+    private readonly BoardPlanContinuation _boardContinuation = new();
     private RecommendedAction? _optimizationAction;
     private string? _optimizationUnavailable;
     private long _optionCaptureStarted;
@@ -189,20 +188,25 @@ internal sealed partial class UnityGameGateway
             s.Append(':').Append(System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(t.Options));
         }
         foreach (var id in input.Items.Keys.OrderBy(x => x, StringComparer.Ordinal)) s.Append('|').Append(id);
+        foreach (var g in input.Goals.OrderBy(x => x.CatalogKey, StringComparer.Ordinal)) s.Append('|').Append(g.CatalogKey).Append(':').Append(g.Role).Append(':').Append(g.Priority).Append(':').Append(g.DesiredAcquisitions);
         return s.ToString();
     }
-
-    private static bool SameLayout(BoardLayout a, BoardLayout b) => a.Positions.Count == b.Positions.Count && a.Rotations.Count == b.Rotations.Count &&
-        a.Positions.All(x => b.Positions.TryGetValue(x.Key, out var p) && p.Equals(x.Value)) && a.Rotations.All(x => b.Rotations.TryGetValue(x.Key, out var r) && r == x.Value);
 
     private void CalculateOptimization(BoardOptimizationInput input)
     {
         var invariant = _boardContext + "|" + OptimizationInvariant(input) + "|" + string.Join(";", _boardItems.OrderBy(x => x.InstanceId, StringComparer.Ordinal)
             .Select(x => $"{x.InstanceId}:{x.Key}:{x.MaxLevel}:{x.CanRelocate}"));
         _boardSignature += "|model:" + invariant;
-        if (_expectedOptimizationStep is not null && invariant == _optimizationInvariant && SameLayout(JointBoardPlanner.Current(input), _expectedOptimizationStep))
+        // The native request can update coordinates before its effect maps.
+        // Do not replace a multi-step goal with a solve of this intermediate
+        // board while awaiting the outcome of the one confirmed action.
+        if (_requestPending) return;
+        var current = JointBoardPlanner.Current(input);
+        var resumed = _boardContinuation.Resume(invariant, current);
+        if (resumed is not null)
         {
-            _ghostResultSignature = _boardSignature; _ghostTaskSignature = _boardSignature; _expectedOptimizationStep = null;
+            _optimizationResult = resumed;
+            _ghostResultSignature = _boardSignature; _ghostTaskSignature = _boardSignature;
         }
         else if (_ghostTaskSignature != _boardSignature)
         {
@@ -210,11 +214,14 @@ internal sealed partial class UnityGameGateway
             _ghostCancellation = new CancellationTokenSource(); var token = _ghostCancellation.Token;
             _ghostTask = Task.Run(() => new JointBoardPlanner().Solve(input, token), token);
         }
-        _optimizationInput = input; _optimizationInvariant = invariant;
+        _optimizationInput = input;
         if (_ghostTask is { IsCompleted: true })
         {
             if (_ghostTask.Status == TaskStatus.RanToCompletion && _ghostTaskSignature == _boardSignature)
-            { _optimizationResult = _ghostTask.Result; _ghostResultSignature = _ghostTaskSignature; }
+            {
+                _optimizationResult = _ghostTask.Result; _ghostResultSignature = _ghostTaskSignature;
+                _boardContinuation.Hold(invariant, current, _optimizationResult);
+            }
             else if (_ghostTask.IsFaulted)
             {
                 var message = "배치 계산 중단: " + _ghostTask.Exception?.GetBaseException().Message;
@@ -233,7 +240,14 @@ internal sealed partial class UnityGameGateway
     private void CaptureOptimizationAction(List<ScreenCandidate> candidates)
     {
         if (_optimizationResult?.Improved != true || _optimizationInput is null || _boardInventory is null || _boardPanel == null) return;
-        var step = BoardOptimizationStep.Next(_optimizationInput, _optimizationResult.Layout);
+        var zone = ReadNamedObject(_boardPanel, "inventoryZone") as RectTransform;
+        if (zone == null) return;
+        var clip = ScreenRect(zone);
+        bool Visible(GridPoint p) => _slotVisuals.TryGetValue(p, out var icon) && icon.gameObject.activeInHierarchy &&
+            clip.Contains(ScreenRect((RectTransform)icon.transform).center);
+        var step = BoardOptimizationStep.Next(_optimizationInput, _optimizationResult.Layout, (from, to) => Visible(from) && Visible(to));
+        if (step is null && BoardOptimizationStep.Next(_optimizationInput, _optimizationResult.Layout) is not null)
+            _optimizationUnavailable = "다음 배치 슬롯이 화면 밖에 있습니다 · 인벤토리를 스크롤해 주세요";
         if (step is null || !_slotVisuals.TryGetValue(step.From, out var sourceIcon) || !_slotVisuals.TryGetValue(step.To, out var targetIcon)) return;
         var item = _boardItems.FirstOrDefault(x => x.InstanceId == step.Id);
         if (item is null) return;
@@ -249,7 +263,7 @@ internal sealed partial class UnityGameGateway
             _actions[token] = () =>
             {
                 if (!ReferenceEquals(panel, _boardPanel) || !RotationMatches(target, sourceIcon, true, requirePointer: false)) throw new InvalidOperationException("석판 상태/회전 권한 변경");
-                _expectedOptimizationStep = step.Expected;
+                _boardContinuation.Expect(step.Expected);
                 _nativeRotateRequest.Invoke(panel, new object[] { sourceIcon });
             };
             _actionOutcomes[token] = _ => RotationMatches(target, sourceIcon, false);
@@ -267,7 +281,7 @@ internal sealed partial class UnityGameGateway
         _actions[moveToken] = () =>
         {
             if (!ReferenceEquals(inventory, _boardInventory) || !OptimizationMoveMatches(step)) throw new InvalidOperationException("이동 대상/점유 상태 변경");
-            _expectedOptimizationStep = step.Expected;
+            _boardContinuation.Expect(step.Expected);
             swap.Invoke(inventory, new object[] { checked((sbyte)step.From.X), checked((sbyte)step.From.Y), checked((sbyte)step.To.X), checked((sbyte)step.To.Y) });
         };
         _actionOutcomes[moveToken] = _ => _boardItems.Any(x => x.InstanceId == step.Id && x.Position.Equals(step.To)) &&

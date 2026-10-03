@@ -124,6 +124,7 @@ internal sealed partial class UnityGameGateway
             }
         }
         finally { GUI.color = oldColor; GUI.depth = oldDepth; }
+        DrawTabletSynthesisOverlay(scale, mouse, focused);
     }
 
     private GameObject? NativeFocusedObject()

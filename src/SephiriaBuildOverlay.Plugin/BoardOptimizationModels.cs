@@ -93,32 +93,39 @@ internal sealed class BoardLayout
 }
 internal sealed class BoardOptimizationResult
 {
-    public BoardOptimizationResult(BoardLayout layout, BoardObjective before, BoardObjective after, int evaluations, bool budgetReached, string? unavailable = null)
-    { Layout = layout; Before = before; After = after; Evaluations = evaluations; BudgetReached = budgetReached; Unavailable = unavailable; }
+    public BoardOptimizationResult(BoardLayout layout, BoardObjective before, BoardObjective after, int evaluations, bool budgetReached, string? unavailable = null, bool provenOptimal = false)
+    { Layout = layout; Before = before; After = after; Evaluations = evaluations; BudgetReached = budgetReached; Unavailable = unavailable; ProvenOptimal = provenOptimal; }
     public BoardLayout Layout { get; }
     public BoardObjective Before { get; }
     public BoardObjective After { get; }
     public int Evaluations { get; }
     public bool BudgetReached { get; }
     public string? Unavailable { get; }
+    public bool ProvenOptimal { get; }
     public bool Improved => Unavailable is null && After.CompareBenefits(Before) > 0;
 }
 internal readonly struct BoardObjective : IComparable<BoardObjective>
 {
-    public BoardObjective(long requiredActive, long requiredLevel, long recommendedActive, long recommendedLevel, int movement, int rotations)
-    { RequiredActive = requiredActive; RequiredLevel = requiredLevel; RecommendedActive = recommendedActive; RecommendedLevel = recommendedLevel; Movement = movement; Rotations = rotations; }
+    public BoardObjective(long requiredActive, long requiredLevel, long recommendedActive, long recommendedLevel, int movement, int rotations,
+        long requiredPriority = 0, long recommendedPriority = 0)
+    { RequiredActive = requiredActive; RequiredLevel = requiredLevel; RecommendedActive = recommendedActive; RecommendedLevel = recommendedLevel; Movement = movement; Rotations = rotations;
+      RequiredPriority = requiredPriority; RecommendedPriority = recommendedPriority; }
     public long RequiredActive { get; }
     public long RequiredLevel { get; }
     public long RecommendedActive { get; }
     public long RecommendedLevel { get; }
     public int Movement { get; }
     public int Rotations { get; }
+    public long RequiredPriority { get; }
+    public long RecommendedPriority { get; }
     public int CompareBenefits(BoardObjective other)
     {
         var c = RequiredActive.CompareTo(other.RequiredActive); if (c != 0) return c;
         c = RequiredLevel.CompareTo(other.RequiredLevel); if (c != 0) return c;
+        c = RequiredPriority.CompareTo(other.RequiredPriority); if (c != 0) return c;
         c = RecommendedActive.CompareTo(other.RecommendedActive); if (c != 0) return c;
-        return RecommendedLevel.CompareTo(other.RecommendedLevel);
+        c = RecommendedLevel.CompareTo(other.RecommendedLevel); if (c != 0) return c;
+        return RecommendedPriority.CompareTo(other.RecommendedPriority);
     }
     public int CompareTo(BoardObjective other)
     { var c = CompareBenefits(other); if (c != 0) return c; c = other.Movement.CompareTo(Movement); return c != 0 ? c : other.Rotations.CompareTo(Rotations); }

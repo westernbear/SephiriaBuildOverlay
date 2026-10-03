@@ -20,7 +20,7 @@ try {
     if (!$UpstreamArchivePath) { $UpstreamArchivePath = Join-Path $PSScriptRoot ('..\.local\BepInEx\' + $manifest.archive.name) }
     if ((Get-FileHash -LiteralPath $UpstreamArchivePath -Algorithm SHA256).Hash.ToLowerInvariant() -ne $manifest.archive.sha256) { throw 'Original BepInEx archive hash differs.' }
     $upstream = [IO.Compression.ZipFile]::OpenRead((Resolve-Path -LiteralPath $UpstreamArchivePath).Path)
-    $allowed = @('README.md', 'docs/DEBUGGING.md', 'docs/FAST_TESTING.md', 'docs/VERIFICATION.md', 'docs/AUTO_UPDATE.md',
+    $allowed = @('README.md', 'docs/DEBUGGING.md', 'docs/FAST_TESTING.md', 'docs/VERIFICATION.md', 'docs/AUTO_UPDATE.md', 'docs/ALGORITHMS.md',
         'licenses/THIRD_PARTY_NOTICES.md', 'licenses/dependency-manifest.json',
         'BepInEx/plugins/SephiriaBuildOverlay/SephiriaBuildOverlay.Core.dll',
         'BepInEx/plugins/SephiriaBuildOverlay/SephiriaBuildOverlay.Plugin.dll')

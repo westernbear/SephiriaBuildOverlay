@@ -63,6 +63,7 @@ Copy-Item -LiteralPath (Join-Path $repositoryRoot 'docs\DEBUGGING.md') -Destinat
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'docs\FAST_TESTING.md') -Destination $packageDocsDirectory -Force
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'docs\VERIFICATION.md') -Destination $packageDocsDirectory -Force
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'docs\AUTO_UPDATE.md') -Destination $packageDocsDirectory -Force
+Copy-Item -LiteralPath (Join-Path $repositoryRoot 'docs\ALGORITHMS.md') -Destination $packageDocsDirectory -Force
 
 & (Join-Path $PSScriptRoot 'packaging\BundleBepInEx.ps1') -PackageDirectory $packageDirectory
 # Compress-Archive silently omits hidden entries such as .doorstop_version.

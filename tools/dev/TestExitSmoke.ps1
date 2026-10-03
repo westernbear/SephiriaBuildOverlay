@@ -1,7 +1,7 @@
 param(
     [string]$GameDir = 'C:\Program Files (x86)\Steam\steamapps\common\Sephiria',
     [string]$SteamExe = 'C:\Program Files (x86)\Steam\steam.exe',
-    [string]$ExpectedVersion = '0.1.13',
+    [string]$ExpectedVersion = '0.1.14',
     [switch]$NativeUiContract,
     [switch]$StartingCatalogContract,
     [ValidateRange(30, 180)][int]$TimeoutSeconds = 120
@@ -39,7 +39,7 @@ $playerLog = Get-Content -LiteralPath $playerLogPath -Raw -Encoding UTF8
 if ($log -notmatch "PID=$($gameProcess.Id)\b" -or (Get-Item -LiteralPath $playerLogPath).LastWriteTimeUtc -lt $started) { throw 'Logs do not belong to this process/launch.' }
 $combinedLog = $log + "`n" + $playerLog
 if ($NativeUiContract -and ($combinedLog -notmatch 'Native UI construction PASS:' -or $combinedLog -match 'Native UI construction FAILED:')) { throw 'Inactive native UI construction did not pass. Logs were preserved.' }
-if ($ExpectedVersion -eq '0.1.13' -and $combinedLog -notmatch 'Exclusive modal input gates installed: 11 menu callbacks') { throw 'Native menu callback patches were not installed.' }
+if ([version]$ExpectedVersion -ge [version]'0.1.13' -and $combinedLog -notmatch 'Exclusive modal input gates installed: 11 menu callbacks') { throw 'Native menu callback patches were not installed.' }
 if ($StartingCatalogContract -and ($combinedLog -notmatch 'Starting catalog PASS:' -or $combinedLog -match 'Starting catalog unavailable at title:')) { throw 'Native starting catalog validation did not pass. Logs were preserved.' }
 if ($combinedLog -notmatch 'Exit smoke: native title QuitGame') { throw 'Normal native title exit path was not observed.' }
 if ($combinedLog -notmatch 'Overlay shutdown complete; pending work cancelled. Quit=True') { throw 'Managed shutdown did not finish.' }

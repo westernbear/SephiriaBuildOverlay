@@ -4,9 +4,11 @@ using SephiriaBuildOverlay.Core.Solvers;
 
 namespace SephiriaBuildOverlay.Plugin;
 
+// v0.1.13 solver, kept only in tests as a reproducible comparison baseline.
+
 // Bounded deterministic coordinate search, not an exhaustive/global optimum.
 // Native query parsing happens before this class: no Unity objects/delegates.
-internal sealed class JointBoardPlanner
+internal sealed class LegacyBoardPlanner
 {
     public static BoardLayout Current(BoardOptimizationInput input)
     {
@@ -15,41 +17,27 @@ internal sealed class JointBoardPlanner
         return new BoardLayout(positions, input.Tablets.ToDictionary(x => x.Id, x => x.Rotation, StringComparer.Ordinal));
     }
 
-    public BoardOptimizationResult Solve(BoardOptimizationInput input, CancellationToken cancellationToken = default, int evaluationBudget = 6000, bool useExactSearch = true)
+    public BoardOptimizationResult Solve(BoardOptimizationInput input, CancellationToken cancellationToken = default, int evaluationBudget = 6000)
     {
-        cancellationToken.ThrowIfCancellationRequested();
         var start = Current(input);
         if (input.Unavailable is not null || input.Cells.Count > 64 || input.Artifacts.Any(x => x.Condition == ArtifactCondition.Unknown))
             return new BoardOptimizationResult(start, default, default, 0, false, input.Unavailable ?? "지원하지 않는 보드/아티팩트 조건");
-        var exact = useExactSearch ? SmallBoardExactSearch.Solve(input, cancellationToken, evaluationBudget) : null;
-        if (exact is not null) return exact;
         var baseline = Evaluate(input, start);
         var best = start; var bestScore = baseline; var evaluations = 0;
         var movable = new HashSet<string>(input.Artifacts.Where(x => x.Movable).Select(x => x.Id)
             .Concat(input.Tablets.Where(x => x.Movable).Select(x => x.Id)), StringComparer.Ordinal);
         var orderedTablets = input.Tablets.Where(x => x.Movable).OrderBy(x => x.Id, StringComparer.Ordinal).ToArray();
         var orderedArtifacts = input.Artifacts.Where(x => x.Movable).OrderBy(x => x.Id, StringComparer.Ordinal).ToArray();
-        var limit = orderedTablets.Length >= 2 && evaluationBudget >= 32 ? evaluationBudget - evaluationBudget / 4 : evaluationBudget;
-        var beams = orderedTablets.ToDictionary(x => x.Id, _ => new List<(BoardTabletOption Option, BoardObjective Score)>());
-        bool Try(BoardLayout? candidate, BoardTabletOption? beamOption = null, string? tabletId = null)
+        bool Try(BoardLayout? candidate)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (candidate is null || evaluations >= limit) return false;
+            if (candidate is null || evaluations >= evaluationBudget) return false;
             evaluations++;
             var score = Evaluate(input, candidate);
-            if (beamOption is not null && tabletId is not null)
-            {
-                var beam = beams[tabletId];
-                if (!beam.Any(x => ReferenceEquals(x.Option, beamOption))) beam.Add((beamOption, score));
-                beam.Sort((a, b) => { var c = b.Score.CompareTo(a.Score); if (c != 0) return c;
-                    c = a.Option.Position.Y.CompareTo(b.Option.Position.Y); if (c != 0) return c;
-                    c = a.Option.Position.X.CompareTo(b.Option.Position.X); return c != 0 ? c : a.Option.Rotation.CompareTo(b.Option.Rotation); });
-                if (beam.Count > 4) beam.RemoveAt(beam.Count - 1);
-            }
             if (score.CompareTo(bestScore) <= 0) return false;
             best = candidate; bestScore = score; return true;
         }
-        for (var pass = 0; pass < 6 && evaluations < limit; pass++)
+        for (var pass = 0; pass < 6 && evaluations < evaluationBudget; pass++)
         {
             var changed = Try(MatchArtifacts(input, best, cancellationToken));
             foreach (var tablet in orderedTablets)
@@ -58,19 +46,17 @@ internal sealed class JointBoardPlanner
                 foreach (var option in tablet.Options.OrderBy(x => seed.Positions[tablet.Id].ManhattanDistance(x.Position))
                     .ThenBy(x => (x.Rotation - seed.Rotations[tablet.Id] + 4) % 4).ThenBy(x => x.Position.Y).ThenBy(x => x.Position.X))
                 {
-                    if (evaluations >= limit) break;
+                    if (evaluations >= evaluationBudget) break;
                     var moved = Relocate(input, seed, tablet.Id, option.Position, movable);
                     if (moved is null) continue;
                     var rotations = moved.Rotations.ToDictionary(x => x.Key, x => x.Value);
                     rotations[tablet.Id] = option.Rotation;
                     var candidate = new BoardLayout(moved.Positions, rotations);
-                    // Remember promising options even when they are neutral
-                    // alone: a second tablet can satisfy their conditions.
-                    changed |= Try(candidate, option, tablet.Id);
+                    changed |= Try(candidate);
                     // A tablet may create a useful slot that is empty in the
                     // current layout. Score the joint assignment as well, even
                     // when moving/rotating the tablet alone gives no benefit.
-                    if (evaluations < limit) changed |= Try(MatchArtifacts(input, candidate, cancellationToken));
+                    if (evaluations < evaluationBudget) changed |= Try(MatchArtifacts(input, candidate, cancellationToken));
                 }
             }
             changed |= Try(MatchArtifacts(input, best, cancellationToken));
@@ -81,34 +67,11 @@ internal sealed class JointBoardPlanner
                 var seed = best;
                 foreach (var cell in input.Cells.OrderBy(x => x.Position.Y).ThenBy(x => x.Position.X))
                 {
-                    if (evaluations >= limit) break;
+                    if (evaluations >= evaluationBudget) break;
                     changed |= Try(Relocate(input, seed, artifact.Id, cell.Position, movable));
                 }
             }
             if (!changed) break;
-        }
-        // Reserve a bounded two-tablet lookahead so conditional synergies do
-        // not disappear at a coordinate-descent plateau. No exhaustive search.
-        limit = evaluationBudget;
-        for (var i = 0; i < orderedTablets.Length && evaluations < limit; i++)
-        for (var j = i + 1; j < orderedTablets.Length && evaluations < limit; j++)
-        {
-            var first = orderedTablets[i]; var second = orderedTablets[j]; var seed = best;
-            foreach (var a in beams[first.Id])
-            foreach (var b in beams[second.Id])
-            {
-                if (evaluations >= limit) break;
-                var one = Relocate(input, seed, first.Id, a.Option.Position, movable);
-                if (one is null) continue;
-                var two = Relocate(input, one, second.Id, b.Option.Position, movable);
-                if (two is null || !two.Positions[first.Id].Equals(a.Option.Position)) continue;
-                var rotations = two.Rotations.ToDictionary(x => x.Key, x => x.Value);
-                rotations[first.Id] = a.Option.Rotation; rotations[second.Id] = b.Option.Rotation;
-                var candidate = new BoardLayout(two.Positions, rotations);
-                if (input.Tablets.Any(t => Option(t, candidate) is null)) continue;
-                Try(candidate);
-                if (evaluations < limit) Try(MatchArtifacts(input, candidate, cancellationToken));
-            }
         }
         return new BoardOptimizationResult(best, baseline, bestScore, evaluations, evaluations >= evaluationBudget);
     }
@@ -199,25 +162,21 @@ internal sealed class JointBoardPlanner
     internal static BoardObjective Evaluate(BoardOptimizationInput input, BoardLayout layout)
     {
         var cells = Cells(input, layout).ToDictionary(x => x.Position);
-        long requiredActive = 0, requiredLevel = 0, recommendedActive = 0, recommendedLevel = 0, requiredPriority = 0, recommendedPriority = 0;
+        long requiredActive = 0, requiredLevel = 0, recommendedActive = 0, recommendedLevel = 0;
         foreach (var goal in input.Goals)
         {
             var values = input.Artifacts.Where(x => x.Key == goal.CatalogKey)
                 .Select(x => Value(input, layout, x, layout.Positions[x.Id], cells[layout.Positions[x.Id]]))
                 .OrderByDescending(x => x.Active).ThenByDescending(x => x.Level).Take(goal.DesiredAcquisitions).ToArray();
-            var level = values.Sum(x => (long)x.Level);
-            var priority = level * PriorityWeight(input, goal);
-            if (goal.Role == TargetRole.Required) { requiredActive += values.Count(x => x.Active); requiredLevel += level; requiredPriority += priority; }
-            else { recommendedActive += values.Count(x => x.Active); recommendedLevel += level; recommendedPriority += priority; }
+            if (goal.Role == TargetRole.Required) { requiredActive += values.Count(x => x.Active); requiredLevel += values.Sum(x => (long)x.Level); }
+            else { recommendedActive += values.Count(x => x.Active); recommendedLevel += values.Sum(x => (long)x.Level); }
         }
         // Category combos depend on owned instances, not their slots/rotation;
         // ownership is constant throughout this solver, so that tier is constant.
         var movement = input.Items.Sum(x => x.Value.ManhattanDistance(layout.Positions[x.Key]));
         var rotations = input.Tablets.Sum(x => (layout.Rotations[x.Id] - x.Rotation + 4) % 4);
-        return new BoardObjective(requiredActive, requiredLevel, recommendedActive, recommendedLevel, movement, rotations, requiredPriority, recommendedPriority);
+        return new BoardObjective(requiredActive, requiredLevel, recommendedActive, recommendedLevel, movement, rotations);
     }
-
-    private static int PriorityWeight(BoardOptimizationInput input, ArtifactTarget goal) => 1 + input.Goals.Count(x => x.Role == goal.Role && x.Priority > goal.Priority);
 
     private static BoardLayout MatchArtifacts(BoardOptimizationInput input, BoardLayout layout, CancellationToken cancellationToken)
     {
@@ -230,15 +189,11 @@ internal sealed class JointBoardPlanner
         var n = cells.Length;
         var levelBound = artifacts.Sum(x => (long)x.Maximum) + 1;
         var movementBound = (long)n * (input.Width + input.Height) + 1;
-        var priorityBound = levelBound * (input.Goals.Count + 1);
-        BigInteger recommendedPriorityWeight = movementBound;
-        var recommendedLevelWeight = priorityBound * recommendedPriorityWeight;
+        BigInteger recommendedLevelWeight = movementBound;
         var recommendedActiveWeight = levelBound * recommendedLevelWeight;
-        var requiredPriorityWeight = (n + 1) * recommendedActiveWeight;
-        var requiredLevelWeight = priorityBound * requiredPriorityWeight;
+        var requiredLevelWeight = (n + 1) * recommendedActiveWeight;
         var requiredActiveWeight = levelBound * requiredLevelWeight;
-        // Rectangular matching avoids solving dummy rows for every empty slot.
-        var costs = new BigInteger[artifacts.Length, n]; var infinity = requiredActiveWeight * (n + 2) * 4;
+        var costs = new BigInteger[n, n]; var infinity = requiredActiveWeight * (n + 2) * 4;
         for (var i = 0; i < artifacts.Length; i++)
         for (var j = 0; j < n; j++)
         {
@@ -250,16 +205,41 @@ internal sealed class JointBoardPlanner
             var multiplier = cell.Multiplier == 0 ? 1 : cell.Multiplier;
             var projected = new BoardCell(cell.Position, checked(cell.Level + (artifact.Enchant - (resident?.Enchant ?? 0)) * multiplier), cell.Disabled, cell.Ignore, cell.Multiplier);
             var value = Value(input, layout, artifact, cell.Position, projected);
-            var priority = goal is null ? 0 : PriorityWeight(input, goal);
-            var benefit = goal is null ? BigInteger.Zero : goal.Role == TargetRole.Required
-                ? (value.Active ? requiredActiveWeight : 0) + value.Level * (requiredLevelWeight + priority * requiredPriorityWeight)
-                : (value.Active ? recommendedActiveWeight : 0) + value.Level * (recommendedLevelWeight + priority * recommendedPriorityWeight);
+            var benefit = goal?.Role == TargetRole.Required
+                ? (value.Active ? requiredActiveWeight : 0) + value.Level * requiredLevelWeight
+                : (value.Active ? recommendedActiveWeight : 0) + value.Level * recommendedLevelWeight;
             costs[i, j] = artifact.Position.ManhattanDistance(cell.Position) - benefit;
         }
-        var assignment = RectangularAssignment.Match(costs, infinity, cancellationToken);
+        var assignment = MinimumCostMatching(costs, infinity, cancellationToken);
         var positions = layout.Positions.ToDictionary(x => x.Key, x => x.Value);
         for (var i = 0; i < artifacts.Length; i++) positions[artifacts[i].Id] = cells[assignment[i]].Position;
         return new BoardLayout(positions, layout.Rotations);
     }
 
+    // Hungarian O(n^3), all rows share the SAME destination columns. Thus
+    // different keys and duplicate instances cannot claim the same cell.
+    private static int[] MinimumCostMatching(BigInteger[,] costs, BigInteger infinity, CancellationToken token)
+    {
+        var n = costs.GetLength(0); var u = new BigInteger[n + 1]; var v = new BigInteger[n + 1]; var p = new int[n + 1]; var way = new int[n + 1];
+        for (var i = 1; i <= n; i++)
+        {
+            token.ThrowIfCancellationRequested(); p[0] = i;
+            var j0 = 0; var min = Enumerable.Repeat(infinity, n + 1).ToArray(); var used = new bool[n + 1];
+            do
+            {
+                used[j0] = true; var i0 = p[j0]; var delta = infinity; var j1 = 0;
+                for (var j = 1; j <= n; j++) if (!used[j])
+                {
+                    var current = costs[i0 - 1, j - 1] - u[i0] - v[j];
+                    if (current < min[j]) { min[j] = current; way[j] = j0; }
+                    if (min[j] < delta) { delta = min[j]; j1 = j; }
+                }
+                for (var j = 0; j <= n; j++) if (used[j]) { u[p[j]] += delta; v[j] -= delta; } else min[j] -= delta;
+                j0 = j1;
+            } while (p[j0] != 0);
+            do { var j1 = way[j0]; p[j0] = p[j1]; j0 = j1; } while (j0 != 0);
+        }
+        var result = new int[n]; for (var j = 1; j <= n; j++) result[p[j] - 1] = j - 1;
+        return result;
+    }
 }

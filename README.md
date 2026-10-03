@@ -1,168 +1,41 @@
-# Sephiria Build Overlay
+<h1 align="center">Sephiria Build Overlay</h1>
 
-[![CI](https://github.com/westernbear/SephiriaBuildOverlay/actions/workflows/ci.yml/badge.svg)](https://github.com/westernbear/SephiriaBuildOverlay/actions/workflows/ci.yml)
-[다운로드](https://github.com/westernbear/SephiriaBuildOverlay/releases/latest) · [검증 기록](docs/VERIFICATION.md) · [빠른 테스트](docs/FAST_TESTING.md)
+<p align="center">Wiki 빌드 안내를 세피리아 게임 화면에 표시하는 모드</p>
 
-Sephiria Wiki 빌드를 게임 안으로 가져오는 Windows 모드입니다. 목표 아이템에는 프레임을 씌우고, 인벤토리 슬롯에는 반투명 고스트로 배치를 보여줍니다. 던전에서는 확인 입력 한 번에 한 동작만 실행합니다.
+<p align="center">
+  <a href="https://github.com/westernbear/SephiriaBuildOverlay/releases/latest"><img src="https://img.shields.io/github/v/release/westernbear/SephiriaBuildOverlay?style=flat-square&color=86c9b6" alt="최신 릴리즈"></a>
+  <a href="https://github.com/westernbear/SephiriaBuildOverlay/actions/workflows/ci.yml"><img src="https://github.com/westernbear/SephiriaBuildOverlay/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+</p>
 
-Windows x64, Sephiria 1.0.33, 한국어 UI를 지원합니다. BepInEx 5.4.23.5가 릴리즈에 포함되어 별도 설치가 필요 없습니다. SephPlanner 코드나 프리셋 체계에는 의존하지 않습니다.
+<p align="center"><a href="https://github.com/westernbear/SephiriaBuildOverlay/releases/latest">다운로드</a> · <a href="#설치">설치</a> · <a href="#조작키">조작키</a></p>
 
 ## 설치
 
-1. 게임을 종료하고 [최신 릴리즈](https://github.com/westernbear/SephiriaBuildOverlay/releases/latest)의 `SephiriaBuildOverlay-{버전}.zip`을 받습니다. GitHub의 `Source code` ZIP은 설치용이 아닙니다.
-2. ZIP의 **내용물**을 `Sephiria.exe`가 있는 게임 루트에 붙여넣습니다. 기본 Steam 경로는 `C:\Program Files (x86)\Steam\steamapps\common\Sephiria`입니다.
-3. 게임을 실행합니다. 가져오기 창은 `F9`입니다.
+1. 게임을 종료하고 [최신 릴리즈](https://github.com/westernbear/SephiriaBuildOverlay/releases/latest)에서 `SephiriaBuildOverlay-{버전}.zip`을 받으세요. `Source code`는 설치 파일이 아닙니다.
+2. ZIP을 풀고 내용물을 `Sephiria.exe`가 있는 폴더에 붙여넣으세요. BepInEx 5 x64가 포함되어 있어 별도로 설치하지 않아도 됩니다.
+3. 게임을 실행한 뒤 `F9`를 눌러 Wiki 빌드 링크를 붙여넣고 **불러오기**를 누르세요.
 
-```text
-Sephiria/
-├─ Sephiria.exe                         ← 기존 게임
-├─ winhttp.dll                          ← 포함된 x64 로더
-├─ doorstop_config.ini
-├─ .doorstop_version
-├─ BepInEx/
-│  ├─ core/                             ← BepInEx / Harmony 등
-│  ├─ patchers/SephiriaBuildOverlay.Updater.dll
-│  └─ plugins/SephiriaBuildOverlay/
-│     ├─ SephiriaBuildOverlay.Core.dll
-│     └─ SephiriaBuildOverlay.Plugin.dll
-├─ docs/
-└─ licenses/                            ← 의존성 고지 및 Doorstop 소스
-```
+기본 Steam 설치 경로는 `C:\Program Files (x86)\Steam\steamapps\common\Sephiria`입니다.
 
-> [!IMPORTANT]
-> BepInEx가 이미 설치되어 있다면 기존 `doorstop_config.ini`와 `BepInEx/config`를 먼저 백업하세요. 로더 설정을 유지하려면 `doorstop_config.ini`를 덮어쓰지 마세요. 호환되는 BepInEx 5가 있다면 자체 `plugins/SephiriaBuildOverlay` 폴더와 `patchers/SephiriaBuildOverlay.Updater.dll`만 설치할 수 있습니다. BepInEx 6/다른 아키텍처의 설치와 섞지 마세요.
+BepInEx가 이미 설치되어 있다면 `doorstop_config.ini`와 `BepInEx/config`를 먼저 백업하세요. 기존 로더 설정을 유지하려면 `doorstop_config.ini`는 덮어쓰지 마세요. BepInEx 6이나 다른 아키텍처의 로더와 섞어 설치하지 마세요.
 
-패키지는 사용자 설정, 세이브, 다른 모드, 게임 DLL·에셋을 포함하지 않습니다. 삭제하려면 게임 종료 후 자체 플러그인 폴더와 `BepInEx/patchers/SephiriaBuildOverlay.Updater.dll`을 제거하세요. 다른 모드가 사용하는 로더는 지우지 마세요.
+## 조작키
 
-### 자동 업데이트
-
-자동 업데이트는 v0.1.11부터 기본으로 켜져 있습니다. 게임을 시작하면 GitHub의 최신 정식 릴리즈를 백그라운드에서 한 번 확인합니다. 새 버전을 다운로드하고 해시를 검사한 뒤, 다음 게임 실행 때 적용합니다. 다운로드 준비와 적용 완료는 하단 버블로 알립니다. 게임을 강제로 재시작하거나 실행 중인 DLL을 교체하지 않습니다.
-
-Core·Plugin DLL 두 개만 자동 교체합니다. 설정, 빌드 기록, 세이브, 다른 모드와 BepInEx는 그대로 둡니다. 교체에 실패하면 두 DLL을 함께 복구합니다. 인터넷 연결이나 다운로드에 문제가 있어도 현재 버전으로 플레이할 수 있습니다. 0.1.10 이하를 쓰고 있다면 이번 패키지를 한 번 수동 설치하세요.
-
-끄려면 `BepInEx/config/io.github.sephiria.build-overlay.cfg`에서 다음 값을 바꾸세요. 준비된 업데이트도 적용하지 않습니다. 다만 교체가 중단된 상태라면 복구는 수행합니다.
-
-```ini
-[Updates]
-Enabled = false
-```
-
-쓰기 권한이 없거나 업데이트 형식이 호환되지 않으면 수동 설치가 필요합니다. 업데이트 모듈 자체와 로더·의존성 변경은 자동 교체하지 않습니다. 검사 기준과 복구 방법은 [자동 업데이트 문서](docs/AUTO_UPDATE.md)에 있습니다.
-
-## 빠른 시작
-
-1. `F9` → Wiki 빌드 링크 붙여넣기 → **불러오기**. Enter로도 불러올 수 있습니다.
-2. 모든 항목이 **추천**으로 적용됩니다. 중복 횟수도 그대로 유지합니다. F9 또는 닫기 버튼으로 창을 닫으면 됩니다.
-3. 아이템 선택창·상점·무기 강화·나무 뿌리·인벤토리에서 프레임과 다음 행동을 확인합니다.
-4. `F8`을 한 번 눌러 제안된 **한 동작**만 실행합니다. 빌드 불러오기가 던전 내 행동을 자동 실행하지는 않습니다.
-
-기본 창은 420×144이며 링크 입력칸, 불러오기 버튼과 현재 빌드 이름이 있습니다. 오른쪽 아래 모서리를 드래그하면 패널·글자·버튼 크기가 함께 바뀌고 `UI.PanelScale`에 저장됩니다(75~175%, 게임 창에 맞게 제한). 아이템 오버레이 크기는 바뀌지 않습니다.
-
-게임의 TMP 폰트, 패널 스프라이트와 `UI_HorayButton`·`TMP_InputField` 컴포넌트를 실행 중에 재사용합니다. 작은 창에 맞춰 글자 크기와 테두리 두께를 조절하고 입력칸·버튼 색은 따로 지정합니다. 게임 메뉴의 콜백은 복사하지 않습니다. 설정 창은 760×560이며 같은 색상 계열의 IMGUI입니다. 전체 배율은 `UI.Scale`에서 조절할 수 있습니다.
-
-결과와 오류는 왼쪽 하단 버블로 표시합니다. 일반 알림은 5초, 경고·오류는 8초 동안 하나씩 표시하며 게임이 포커스를 잃으면 시간이 멈춥니다. 버블은 클릭이나 패드 포커스를 받지 않습니다. 비용과 마지막 주사위 경고는 확인할 아이템 옆에 계속 표시합니다.
-
-미해금 시작 옵션이 있으면 의상·스킨·무기·특성·아티팩트 이름을 경고 버블로 알립니다. 같은 항목은 한 번만 표시하고, 많으면 대표 3개와 나머지 개수를 보여줍니다. 들여쓰기·색상 같은 게임 서식 코드는 표시하지 않습니다. 가져오기 창에서 Ctrl+V는 모드 입력칸에만 전달되며 뒤의 게임 메뉴 단축키는 차단합니다. 창을 닫고 키를 놓으면 게임 입력을 복원합니다.
-
-무기 강화창에서는 목표 경로의 다음 무기를 프레임과 `선택 · F8`로 표시합니다. 후보에 없고 리롤할 수 있으면 리롤 버튼에 `리롤 · F8`과 주사위 비용·위험을 표시합니다. 리롤이나 선택은 확인 입력 없이는 실행하지 않습니다.
-
-패드에서는 링크를 복사한 뒤 **클립보드 불러오기**를 선택하세요. 역할·우선순위·횟수·매핑 편집, 획득 보정과 체크리스트는 **설정**에 있습니다. 수정한 값은 `검토 완료 · 활성화`로 적용합니다. 재시작하면 저장된 분류를 복원하고, 새 링크를 불러오면 모두 추천으로 시작합니다.
-
-알 수 없는 추천 목표는 체크리스트에 남기고 자동 선택하지 않습니다. 버전 불일치나 설정의 미분류·미해결 필수 목표는 적용을 막으며 오류 알림을 표시합니다.
-
-허용 입력: `https://sephiria.wiki/builds/{UUID}`, `https://www.sephiria.wiki/builds/{UUID}`, 원시 UUID. 빌드 목록 URL은 사용할 수 없습니다.
-
-### 던전 입장 전 시작 프리셋
-
-빌드를 불러오면 **싱글플레이 로비에서 시작 세팅도 자동 적용**합니다. 타이틀에서 불러온 빌드는 로비가 준비되면 적용하고, 저장된 활성 빌드를 로비에서 복원할 때도 한 번 적용합니다. 별도 F8은 필요하지 않으며 던전 내 행동과는 구분합니다.
-
-- 시작 무기, 의상과 스킨
-- 아티팩트 즐겨찾기, 차원 주머니의 시작 아티팩트
-- 이미 보유한 특성 포인트의 배분
-- 현재 용량에서 사용할 수 있는 과일꼬치 설정
-
-> [!WARNING]
-> 현재 시작 설정은 바뀝니다. **이미 해금된 옵션만** 사용하며 미해금 옵션 구매, 영구 특성 포인트 구매·소비, 프리셋 슬롯 구매는 하지 않습니다. 기존 저장 프리셋 슬롯은 덮어쓰지 않습니다.
-
-전체 `preset_code`가 있으면 그 코드를 사용합니다. 코드가 없으면 빌드의 무기 부모 경로에서 시작 무기를 찾고, 의상·일곱 특성·과일꼬치·아티팩트를 직접 구성해 게임의 정상 프리셋 경로로 적용합니다. [Wiki 재능](https://www.sephiria.wiki/talent)의 `base`는 ‘기지’입니다. 시작 아티팩트 구역이 있으면 주머니에 우선 사용하고, 없으면 빌드 순서대로 해금된 적합한 아티팩트를 용량만큼 채웁니다. 빌드에 없는 설정은 유지합니다.
-
-미해금 무기·의상은 네이티브 기본값으로 교정됩니다. 미해금 아티팩트·특성, 부족한 포인트·용량과 미검증 매핑은 제외하고 버블로 알립니다. 무기 연동 주머니 아티팩트는 실제 시작 무기의 계열과 일치해야 합니다. 의상 고정 무기는 게임 규칙을 따릅니다. 콤보와 나무 뿌리는 런 목표이며 시작 설정으로 구매하지 않습니다.
-
-손상된 프리셋 코드는 시작 설정을 변경하지 않습니다. 게임/빌드가 정확히 1.0.33이어야 하며 클라이언트·멀티플레이, 네이티브 프리셋 편집 중, 던전 안에서는 적용하지 않습니다. 대기 중 던전에 들어가거나 로비·플레이어·세이브가 바뀌면 취소합니다. 적용에 실패하면 같은 로비에서 기존 설정 복원을 시도합니다.
-
-## 키보드와 패드
-
-게임이 실제로 사용하는 입력 모드를 따라갑니다. 패드가 연결되었다는 이유만으로 전환하지 않습니다.
-
-| 동작 | 키보드 | 패드 기본 조합 |
+| 기능 | 키보드·마우스 | 패드 |
 | --- | --- | --- |
-| 빌드 가져오기/검토 | F9 | View/Back 누른 채 방향키 ↑ |
-| 인게임 안내 표시 전환 | F7 | View/Back 누른 채 방향키 ← |
-| 추천 동작 하나 확인 | F8 | View/Back 누른 채 방향키 → |
-| 검토 창 버튼 탐색 | 마우스 | 방향키 |
-| 검토 창 버튼 실행 / 닫기 | 클릭 / F9 | 남쪽 버튼(A/크로스) / 동쪽 버튼(B/서클) |
+| 빌드 창 열기·닫기 | `F9` | View/Back 누른 채 방향키 ↑ |
+| 오버레이 켜기·끄기 | `F7` | View/Back 누른 채 방향키 ← |
+| 추천 선택·구매·리롤 한 번 실행 | `F8` | View/Back 누른 채 방향키 → |
+| 인벤토리 자동배치 다음 단계 | `F8` | View/Back 누른 채 방향키 → |
+| 석판 수동 회전 | 석판을 가리키고 `Shift` + `F8` | 게임 기본 회전 조작 |
+| 패널 버튼 이동 | 마우스 | 방향키 |
+| 패널 버튼 누르기 | 클릭 | A / × |
+| 패널 닫기 | `Esc` | B / ○ |
+| 빌드 링크 붙여넣기 | 입력칸에서 `Ctrl` + `V` | 링크 복사 후 **클립보드 불러오기** |
+| 패널 크기 조절 | 오른쪽 아래 모서리 드래그 | — |
 
-SephPlanner의 F6과 겹치지 않도록 기본 가져오기 키는 F9입니다. 기존 기본 F6은 한 번만 이전하고 사용자 지정 키는 보존합니다.
+자동배치는 빌드를 불러온 뒤 빌드 창을 닫고 인벤토리를 연 상태에서 사용하세요. 오버레이가 켜져 있어야 합니다. 확인 한 번에 이동·교환 또는 90° 회전 하나만 실행하므로 배치가 끝날 때까지 반복해서 눌러주세요.
 
-설정 파일: `BepInEx/config/io.github.sephiria.build-overlay.cfg`. `[Keys]`에서 키를, `[Gamepad] Modifier`에서 `selectButton`(기본), `leftStickButton`, `rightStickButton` 중 보조 버튼을 바꿀 수 있습니다. 실제 버튼 이름은 연결 장치에 맞춰 표시합니다. Steam Input이 Xbox 장치로 노출하면 Xbox 이름을 사용합니다.
+패드 조작은 게임이 패드 입력 모드일 때 작동합니다. View/Back을 누른 채 방향키를 한 번씩 눌러주세요.
 
-가져오기 창은 뒤쪽 게임 클릭·스크롤·확인·취소·캐릭터 입력을 차단합니다. 패널 밖 클릭도 소비하고 닫는 입력을 놓은 뒤 두 프레임까지 관통을 보호합니다. 마우스 모드에서 패널을 열면 **게임의 실제 커서 이미지를 최상위 캔버스에 표시**합니다. 입력을 받지 않는 표시 전용 레이어이며 기본 창과 설정 창 위에 보입니다. 리소스가 없으면 시스템 커서로 대체합니다. 원래 커서는 잠시 숨기고 닫으면 복원하며 패드 모드에서는 표시하지 않습니다. 입력 분리 훅이 실패하면 창을 열지 않습니다. 다른 모드의 자체 원시 입력까지 통제하지는 않습니다.
-
-## 안내와 최적화
-
-- **금색 프레임:** 필수. **하늘색:** 추천. **민트색 이중 프레임:** 다음 확인 동작. 호버/패드 포커스에서 목표 횟수와 이유를 봅니다. 비용·공유 주사위 위험은 확인 전에 표시합니다.
-- **인벤토리 고스트:** 석판 위치·허용 회전과 아티팩트 배치를 함께 탐색합니다. 각 F8은 이동/교환 또는 정방향 90° 회전 한 번이며 최종 배치까지 여러 입력이 필요합니다.
-- **수동 석판 회전:** 키보드 모드에서 Shift를 누른 채 석판을 가리키고 수동 회전 프레임이 뜨면 F8을 누릅니다. 네이티브 회전 입력도 사용할 수 있습니다.
-- **인챈트:** 목표 인스턴스마다 `강화 1`, `강화 2` 순위를 표시하고 1순위를 보라색으로 강조합니다. 필수 → 빌드 우선순위 → 레벨 개선 가능 → 낮은 강화 횟수 순이며 DPS 시뮬레이션은 아닙니다. 강화 소비는 네이티브 확인창에서 수동으로 합니다. 이 화면에서는 F8 이동·회전을 중단합니다.
-
-조건부 ITEM/CHARM/PLACED, 고정 각인, 레벨·활성화·배율과 인스턴스별 강화 값을 반영합니다. Unity는 메인 스레드에서만 읽고 순수 탐색은 취소 가능한 백그라운드 작업으로 실행합니다. 상태가 달라지면 오래된 결과를 버립니다.
-
-> [!NOTE]
-> 최대 6개 패스/6,000개 평가의 제한 탐색입니다. 전역 최적해를 보장하지 않으며 현재보다 나은 결과만 제안합니다. 네이티브 효과를 재현하지 못하거나 미지원 특수 효과·64칸 초과 보드는 자동 배치를 중단합니다.
-
-## 안전과 획득 기록
-
-던전 내 선택·구매·리롤·이동·교환·회전에는 매번 새 확인 입력이 필요합니다. 직전에 로컬 소유권, 런, 후보, 인벤토리, 돈과 주사위를 재검증하고 정상 게임 요청 경로를 사용합니다. 결과 관찰 전에는 다음 요청을 보내지 않으며 상태 변경·거절·5초 타임아웃에서 중단합니다. 확인은 관찰 기반이며 명시적 서버 ACK 훅은 아닙니다.
-
-목표 밖 아티팩트를 임의로 선택하지 않습니다. 나무 뿌리 목표 획득 전에 다른 화면에서 공유 주사위를 소비하면 전후 값을 경고합니다. 마지막 주사위는 `이 행동 후 나무 뿌리 리롤 불가`를 빨간색으로 표시합니다. 무료 아이템 리롤은 제외하고 목표 획득 후 경고를 해제합니다. 네이티브 버튼을 강제로 막지는 않습니다.
-
-중복 목표는 Wiki의 `content[].items[]`에서 보존합니다. 보상 획득 성공마다 횟수가 증가하고 제단 강화는 세지 않습니다. 중간 런에 활성화하면 현재 인스턴스를 최소 획득치로 표시하며 병합된 과거 중복은 복원할 수 없습니다. F9 → 설정 → `획득`에서 조정하세요.
-
-재시작 시 게임이 과거 체크포인트로 돌아가도 모드 기록은 자동으로 되감지 않습니다. 저장된 검토 결과는 복원 후 게임 바인딩을 다시 검증합니다. 바인딩이 모호하거나 메타데이터가 다르면 해당 자동 행동을 비활성화합니다.
-
-## 데이터와 문제 해결
-
-최초 가져오기에 인터넷이 필요합니다. 고정 Wiki API만 호출하며 로그인·쿠키는 사용하지 않습니다. 제한은 10초/2 MiB이며 성공 응답은 `%LOCALAPPDATA%/SephiriaBuildOverlay`에 원자적으로 캐시합니다. 오프라인 복구 시 캐시와 나이를 표시합니다.
-
-창이 열리지 않으면 `BepInEx/LogOutput.log`에서 `Sephiria Build Overlay ... loaded`와 모달 훅 오류를 확인하세요. 실제 런 상태 로그는 게임에 진입한 뒤 생성됩니다. 모드 중복 설치(`plugins`와 `scripts` 동시 배치)도 확인하세요. `AcceptVersionMismatch`는 시작 프리셋의 정확한 버전 검사를 우회하지 않습니다.
-
-인게임 표시에는 게임의 PIXEL_SMALL 폰트, 기본 창과 알림에는 Galmuri TMP 폰트를 참조합니다. IMGUI 설정 창은 설치된 Galmuri 글꼴이 있으면 사용하고, 없으면 맑은 고딕으로 대체합니다. 게임 폰트의 TMP 원본 Font를 IMGUI에 그대로 넣거나 설치되지 않은 글꼴을 반복 요청하지 않습니다. 게임 폰트·버튼 이미지·에셋은 배포하지 않습니다.
-
-## 소스 빌드와 자동 릴리즈
-
-.NET 8 SDK와 PowerShell이 필요합니다. 공개 참조 패키지를 사용하므로 **게임 설치 경로나 게임 DLL 없이** 빌드할 수 있습니다. BepInEx 패키지와 고지는 공식 고정 URL에서 받고 SHA-256을 검증합니다.
-
-```powershell
-dotnet restore SephiriaBuildOverlay.sln
-dotnet test SephiriaBuildOverlay.sln -c Release
-.\tools\BuildRelease.ps1
-```
-
-출력은 붙여넣기용 `dist/SephiriaBuildOverlay-{버전}` 폴더, 같은 내용의 ZIP, SHA-256입니다. `InstallDir`은 빌드에 필요하지 않습니다. 개발용 배치/진단 스크립트의 `GameDir`만 설치 위치를 지정합니다.
-
-main push/PR에서 테스트·전체 패키지 검증을 실행합니다. 버전 메타데이터를 맞춘 SemVer 태그를 push하면 ZIP과 체크섬이 GitHub Release에 자동 첨부됩니다.
-
-```powershell
-git tag v0.1.13
-git push origin v0.1.13
-```
-
-Core/Plugin/독립 업데이트 모듈은 netstandard2.1, 테스트는 net8.0입니다. 의존성 고정값은 `tools/packaging/bepinex.json`에 있습니다. [빠른 테스트 문서](docs/FAST_TESTING.md)는 ScriptEngine 재로딩과 코드 기반 읽기 전용 진단을 설명합니다.
-
-## 검증 현황
-
-Release 빌드와 322개 자동 테스트가 통과했습니다. 미해금 경고, 알림 서식 제거, 모달 입력 정책과 무기 안내를 검사했습니다. 설치 게임의 메뉴 콜백 11개, 무기 후보 필드와 해금 API 계약도 읽기 전용으로 확인했습니다. 실제 Ctrl+V 조작과 무기 강화창의 픽셀 표시는 아직 미검증입니다. 이전 검증 범위는 [검증 기록](docs/VERIFICATION.md)을 참고하세요.
-
-배포 패키지의 로더·숨김 파일, 원본 바이너리와의 동일성, 고지·소스 해시도 검사하고 손상 파일을 거부합니다. v0.1.10에서는 Windows Computer Use로 패널 글자·입력·버블·커서·드래그 크기 저장·뒤쪽 클릭 차단을 확인했습니다. 이전 버전의 싱글플레이 검증에는 F8 유료 리롤·아티팩트 선택·빈 슬롯 이동·석판 회전·통합 최적화가 포함됩니다.
-
-이번 검증은 타이틀 화면에서 진행했고 던전 자원을 소비하지 않았습니다. 시작 프리셋 로비 상호작용, 실제 패드·Steam Input, 금전 구매, 지혜 10 병합의 실게임 관찰은 미검증이며 멀티플레이 실게임은 검증 범위에서 제외했습니다. 업데이트 완료 버블의 실제 픽셀 표시는 이번에 재검사하지 않았습니다. 상세 결과와 제한은 [검증 기록](docs/VERIFICATION.md)에 있습니다.
+단축키는 `BepInEx/config/io.github.sephiria.build-overlay.cfg`의 `[Keys]`에서 바꿉니다. 패드 보조 버튼은 `[Gamepad]`의 `Modifier`에서 `selectButton`(기본), `leftStickButton`, `rightStickButton` 중 하나로 설정하세요.
