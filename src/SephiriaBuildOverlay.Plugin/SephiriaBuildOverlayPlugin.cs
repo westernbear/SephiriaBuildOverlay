@@ -17,7 +17,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
 {
     public const string PluginGuid = "io.github.sephiria.build-overlay";
     public const string PluginName = "Sephiria Build Overlay";
-    public const string PluginVersion = "0.1.16";
+    public const string PluginVersion = "0.1.17";
 
     private ConfigEntry<KeyCode> _importKey = null!;
     private ConfigEntry<KeyCode> _overlayKey = null!;
@@ -248,7 +248,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
             }
             _recommendation = snapshot.Screen is ScreenKind.Inventory or ScreenKind.TabletBoard || _placementBatch.Active
                 ? _gateway.RecommendPlacement(snapshot) : _recommendationEngine!.Recommend(_plan, _state, snapshot);
-            if (snapshot.Screen == ScreenKind.ArtifactReward && !_placementBatch.Active) _recommendation = _gateway.RecommendReward(_recommendation, snapshot);
+            if (snapshot.Screen is ScreenKind.ArtifactReward or ScreenKind.Shop && !_placementBatch.Active) _recommendation = _gateway.RecommendReward(_recommendation, snapshot);
             if (!string.IsNullOrEmpty(_plan.MiracleTarget) && snapshot.MiracleKeys.Contains(_plan.MiracleTarget!))
                 _state.MarkMiracleAcquired();
             _gateway.SetHighlight(_recommendation.Action?.TargetToken);
@@ -622,8 +622,6 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
             }
         }
         UpdateModalCursor();
-        if (_showImport && _advancedReview && !_controller.GamepadMode && Application.isFocused)
-            _gateway.DrawImmediateModalCursor();
     }
 
 

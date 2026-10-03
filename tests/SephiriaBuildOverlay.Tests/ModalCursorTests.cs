@@ -53,4 +53,30 @@ public sealed class ModalCursorTests
         Assert.False(state.Resolve(true, false, true, true, nativeOverlay: true));
         Assert.False(state.Resolve(false, false, true, false));
     }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void CompactSettingsCompactTransitionPreservesOriginalVisibility(bool previous)
+    {
+        var state = new ModalCursorVisibility();
+        Assert.False(state.Resolve(true, false, true, previous, nativeOverlay: true));
+        // A successful native sprite lookup must not suppress the settings OS pointer.
+        for (var frame = 0; frame < 5; frame++)
+            Assert.True(state.Resolve(true, false, true, false, nativeOverlay: false));
+        Assert.False(state.Resolve(true, false, true, true, nativeOverlay: true));
+        Assert.Equal(previous, state.Resolve(false, false, true, false));
+        Assert.Null(state.Resolve(false, false, true, previous));
+    }
+
+    [Fact]
+    public void SettingsFocusLossAndGamepadTransitionNeverLeaveAnOsCursorOverGamepadUi()
+    {
+        var state = new ModalCursorVisibility();
+        Assert.True(state.Resolve(true, false, true, false));
+        Assert.Null(state.Resolve(true, false, false, true));
+        Assert.True(state.Resolve(true, false, true, false));
+        Assert.False(state.Resolve(true, true, true, true));
+        Assert.Null(state.Resolve(false, true, true, false));
+    }
 }

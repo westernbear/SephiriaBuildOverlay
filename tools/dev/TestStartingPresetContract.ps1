@@ -37,11 +37,27 @@ try {
     foreach ($expected in @('CostumeDatabase::IsUnlocked','SwitchManager::GetDestinySwitch','UI_PresetPanel::IsCharmDiscovered')) {
         if (!($calls | Where-Object { $_.Contains($expected) })) { throw "Unlock validation absent: $expected" }
     }
+    $skinType = $game.MainModule.Types | Where-Object Name -EQ 'CostumeSkinEntity'
+    $skinEnum = $skinType.NestedTypes | Where-Object Name -EQ 'ECostumeUnlockType'
+    foreach ($entry in @(@('Default',0), @('Purchase',1), @('Locked',2))) {
+        $field = $skinEnum.Fields | Where-Object Name -EQ $entry[0]
+        if (!$field -or $field.Constant -ne $entry[1]) { throw 'Native skin ownership metadata changed.' }
+    }
+    $equipSkin = ($game.MainModule.Types | Where-Object Name -EQ 'UI_CostumePanel').Methods | Where-Object Name -EQ 'EquipSkin'
+    $skinGate = @($equipSkin.Body.Instructions | Where-Object { $_.Offset -le 0x0054 } | ForEach-Object ToString)
+    foreach ($expected in @('SkinPurchased_', 'SaveData::GetBool', 'CostumeSkinEntity::unlockType', 'ceq', 'or')) {
+        if (!($skinGate | Where-Object { $_.Contains($expected) })) { throw "Native skin Default-or-purchased contract changed: $expected" }
+    }
+    $discovery = $panel.Methods | Where-Object Name -EQ 'IsCharmDiscovered'
+    $discoveryIl = @($discovery.Body.Instructions | ForEach-Object ToString)
+    foreach ($expected in @('WitchHat_Item_{0}_Found', 'SaveData::GetBool', 'PlayerSpawner::unlockedCharms')) {
+        if (!($discoveryIl | Where-Object { $_.Contains($expected) })) { throw "Native journal discovery contract changed: $expected" }
+    }
     $server = $mirror.MainModule.Types | Where-Object FullName -EQ 'Mirror.NetworkServer'
     $connections = $server.Fields | Where-Object Name -EQ 'connections'
     if (!$connections.IsPublic -or !$connections.IsStatic) { throw 'Native connection count binding differs.' }
     $local = $mirror.MainModule.Types | Where-Object FullName -EQ 'Mirror.LocalConnectionToServer'
     $send = $local.Methods | Where-Object Name -EQ 'Send'
     if (!($send.Body.Instructions | Where-Object { $_.Operand -and $_.Operand.ToString() -match '::Enqueue' })) { throw 'Recheck local host command timing; queue contract changed.' }
-    Write-Output 'PASS: 15 native method signatures, preset fields, unlock gates, local connection count and deferred command contract. Game code was not executed.'
+    Write-Output 'PASS: 15 native method signatures, preset fields, Default-or-purchased skin ownership, distinct WitchHat discovery/unlockedCharms gates, local connection count and deferred command contract. Game code was not executed.'
 } finally { $game.Dispose(); $mirror.Dispose() }

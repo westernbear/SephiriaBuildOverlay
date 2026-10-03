@@ -52,13 +52,15 @@ internal static class TabletRewardPlanner
 
     public static Recommendation Choose(Recommendation artifact, RunSnapshot snapshot, bool hasTablets, bool calculating, TabletRewardSuggestion? suggestion)
     {
-        if (artifact.Action?.Kind == ActionKind.Select || !hasTablets || !snapshot.IsLocalPlayerOwned || snapshot.ServerRequestPending) return artifact;
+        if (snapshot.Screen is not (ScreenKind.ArtifactReward or ScreenKind.Shop) || artifact.Action?.Kind is ActionKind.Select or ActionKind.Buy ||
+            !hasTablets || !snapshot.IsLocalPlayerOwned || snapshot.ServerRequestPending) return artifact;
         if (calculating) return new Recommendation(null, "석판 효과를 비교 중입니다.");
         if (suggestion is null) return artifact;
         var candidate = snapshot.Candidates.FirstOrDefault(x => x.Token == suggestion.Offer.Token && x.Kind == CandidateKind.Tablet && x.CatalogKey == suggestion.Offer.Key && x.IsSelectable);
         if (candidate is null) return artifact;
-        var action = new RecommendedAction(ActionKind.Select, candidate.Token, suggestion.Reason, snapshot.Identity,
-            candidate.MoneyCost, candidate.DiceCost, expectedResult: suggestion.Reason, automaticBindingAllowed: candidate.AutomaticActionAllowed);
-        return new Recommendation(action, suggestion.Reason);
+        var cost = string.IsNullOrWhiteSpace(candidate.AdditionalCostDescription) ? "" : " · " + candidate.AdditionalCostDescription;
+        var action = new RecommendedAction(snapshot.Screen == ScreenKind.Shop ? ActionKind.Buy : ActionKind.Select, candidate.Token, suggestion.Reason, snapshot.Identity,
+            candidate.MoneyCost, candidate.DiceCost, expectedResult: suggestion.Reason + cost, automaticBindingAllowed: candidate.AutomaticActionAllowed);
+        return new Recommendation(action, suggestion.Reason + cost);
     }
 }

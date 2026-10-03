@@ -38,11 +38,12 @@ public sealed class StartingPresetAndCursorPolicyTests
     }
 
     [Fact]
-    public void DetailPanelUsesImmediateCursorInFrontOfImguiWindow()
+    public void SettingsPanelUsesSystemCursorIndependentlyOfNativeSpriteOrImguiDepth()
     {
         Assert.Equal(ModalCursorSurface.NativeCanvas, ModalCursorPresentation.Choose(true, false, false, true, true));
-        Assert.Equal(ModalCursorSurface.Immediate, ModalCursorPresentation.Choose(true, true, false, true, true));
-        Assert.True(OverlayUiTokens.CursorDepth < OverlayUiTokens.WindowDepth);
+        Assert.Equal(ModalCursorSurface.System, ModalCursorPresentation.Choose(true, true, false, true, true));
+        Assert.Equal(ModalCursorSurface.System, ModalCursorPresentation.Choose(true, true, false, true, false));
+        Assert.Equal(ModalCursorSurface.System, ModalCursorPresentation.Choose(true, false, false, true, false));
         Assert.True(OverlayUiTokens.CursorSortingOrder > OverlayUiTokens.OverlaySortingOrder);
     }
 
@@ -51,6 +52,7 @@ public sealed class StartingPresetAndCursorPolicyTests
     [InlineData(true, true, true, true, 0)]
     [InlineData(true, false, false, true, 0)]
     [InlineData(true, false, true, false, 1)]
+    [InlineData(true, false, true, true, 1)]
     public void CursorRestoresOnCloseGamepadFocusLossAndUsesOsFallback(bool panel, bool gamepad, bool focused, bool sprite, int expected) =>
         Assert.Equal((ModalCursorSurface)expected, ModalCursorPresentation.Choose(panel, true, gamepad, focused, sprite));
 }

@@ -25,10 +25,10 @@ internal sealed partial class UnityGameGateway
 
     private void CaptureTabletRewards(ScreenKind screen, List<ScreenCandidate> candidates)
     {
-        if (screen != ScreenKind.ArtifactReward || _rewardTabletSpecs.Count == 0 || _placementPlan is null)
+        if (screen is not (ScreenKind.ArtifactReward or ScreenKind.Shop) || _rewardTabletSpecs.Count == 0 || _placementPlan is null)
         { ClearTabletRewards(); return; }
-        var signature = _boardContext + "|" + _boardSignature + "|" + string.Join(";", _rewardTabletSpecs.Select(x => x.Token + ":" + x.Instance + ":" + ReadNamedString(x.Entity, "id"))) +
-            "|" + string.Join(";", candidates.Select(x => x.Token + ":" + x.Kind + ":" + x.CatalogKey + ":" + x.IsSelectable));
+        var signature = screen + "|" + _boardContext + "|" + _boardSignature + "|" + string.Join(";", _rewardTabletSpecs.Select(x => x.Token + ":" + x.Instance + ":" + ReadNamedString(x.Entity, "id"))) +
+            "|" + string.Join(";", candidates.Select(x => x.Token + ":" + x.Kind + ":" + x.CatalogKey + ":" + x.IsSelectable + ":" + x.MoneyCost + ":" + x.AutomaticActionAllowed + ":" + x.AdditionalCostDescription));
         if (_rewardSignature != signature) { ClearTabletRewards(); _rewardSignature = signature; _rewardCapturing = true; _rewardCaptureStarted = Time.unscaledTime; }
         if (_optimizationInput is null || _optimizationInput.Unavailable is not null)
         { if (Time.unscaledTime - _rewardCaptureStarted > 3) _rewardCapturing = false; return; }

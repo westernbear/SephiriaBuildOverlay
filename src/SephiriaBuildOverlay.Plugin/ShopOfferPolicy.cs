@@ -1,7 +1,11 @@
+using SephiriaBuildOverlay.Core.Runtime;
+
 namespace SephiriaBuildOverlay.Plugin;
 
 internal static class ShopOfferPolicy
 {
+    public static CandidateKind? ItemKind(int? nativeType) => nativeType switch
+    { 5 => CandidateKind.Artifact, 6 => CandidateKind.Tablet, _ => null };
     public static int ReplenishmentCost(int tries) => 1 << (Math.Max(0, Math.Min(4, tries)) + 1);
     public static bool CanReplenish(bool nativeButtonActive, int stockCount, int unpurchasedCount) =>
         nativeButtonActive && (stockCount == 0 || unpurchasedCount > 0);

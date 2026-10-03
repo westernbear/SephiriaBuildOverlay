@@ -23,6 +23,8 @@
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\NotificationQueue.cs" Link="NotificationQueue.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\NotificationText.cs" Link="NotificationText.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\StartingPresetWarnings.cs" Link="StartingPresetWarnings.cs" />
+    <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\StartingOptionEligibility.cs" Link="StartingOptionEligibility.cs" />
+    <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\StartingPresetComparison.cs" Link="StartingPresetComparison.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\NativeMenuInputPolicy.cs" Link="NativeMenuInputPolicy.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\OwnedUiInputScope.cs" Link="OwnedUiInputScope.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\OverlayUiTokens.cs" Link="OverlayUiTokens.cs" />
@@ -58,6 +60,7 @@
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\NativePanelVisibility.cs" Link="NativePanelVisibility.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\InventoryPlacementBatch.cs" Link="InventoryPlacementBatch.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\ShopOfferPolicy.cs" Link="ShopOfferPolicy.cs" />
+    <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\ShopPriceBinding.cs" Link="ShopPriceBinding.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\TabletRewardPlanner.cs" Link="TabletRewardPlanner.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\SynthesisFeedbackPolicy.cs" Link="SynthesisFeedbackPolicy.cs" />
   </ItemGroup>

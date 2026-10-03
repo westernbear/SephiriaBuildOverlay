@@ -81,4 +81,48 @@ public sealed class TabletRewardTests
         using var cancelled = new CancellationTokenSource(); cancelled.Cancel();
         Assert.ThrowsAny<OperationCanceledException>(() => TabletRewardPlanner.Recommend(Board(), new[] { Offer() }, cancelled.Token));
     }
+
+    [Theory]
+    [InlineData(true, null)]
+    [InlineData(false, "사파이어 10 · 영구 재화 · 수동 확인")]
+    [InlineData(false, "돈 20 · 게임 구매 창에서 확인")]
+    public void HelpfulShopTabletIsBuyInsteadOfSelectAndPreservesNativeCurrencyAndConfirmation(bool automatic, string? cost)
+    {
+        var suggestion = TabletRewardPlanner.Recommend(Board(), new[] { Offer() });
+        var shop = Snapshot(screen: ScreenKind.Shop, money: 0, candidates: new[] {
+            new ScreenCandidate("tablet", CandidateKind.Tablet, "2100", moneyCost: automatic ? 20 : 0,
+                automaticActionAllowed: automatic, additionalCostDescription: cost) });
+        var recommended = TabletRewardPlanner.Choose(new(null, ""), shop, true, false, suggestion);
+        Assert.Equal(ActionKind.Buy, recommended.Action!.Kind);
+        Assert.Equal(automatic, recommended.Action.AutomaticBindingAllowed);
+        Assert.Equal(automatic ? 20 : 0, recommended.Action.MoneyCost);
+        Assert.Equal(0, recommended.Action.DiceCost); Assert.Equal(DiceRisk.None, recommended.Action.DiceRisk);
+        if (cost is not null) Assert.Contains(cost, recommended.Message);
+    }
+
+    [Fact]
+    public void MixedMerchantKeepsNeededArtifactBeforeTabletAndImprovingTabletBeforeReplenishment()
+    {
+        var suggestion = TabletRewardPlanner.Recommend(Board(), new[] { Offer() });
+        var shop = Snapshot(screen: ScreenKind.Shop, candidates: new[] { new ScreenCandidate("tablet", CandidateKind.Tablet, "2100") });
+        var artifact = new Recommendation(new(ActionKind.Buy, "artifact", "", shop.Identity), "");
+        Assert.Same(artifact, TabletRewardPlanner.Choose(artifact, shop, true, false, suggestion));
+        var reroll = new Recommendation(new(ActionKind.Reroll, "refill", "", shop.Identity, automaticBindingAllowed: false), "");
+        Assert.Equal("tablet", TabletRewardPlanner.Choose(reroll, shop, true, false, suggestion).Action!.TargetToken);
+        Assert.Null(TabletRewardPlanner.Choose(reroll, shop, true, true, suggestion).Action);
+        Assert.Same(reroll, TabletRewardPlanner.Choose(reroll, shop, true, false, null));
+    }
+
+    [Fact]
+    public void TabletShopDoesNotUseStaleDifferentMerchantNonLocalOrClosedScreenOffer()
+    {
+        var suggestion = TabletRewardPlanner.Recommend(Board(), new[] { Offer() });
+        var different = Snapshot(screen: ScreenKind.Shop, candidates: new[] { new ScreenCandidate("other", CandidateKind.Tablet, "2100") });
+        var fallback = new Recommendation(null, "");
+        Assert.Same(fallback, TabletRewardPlanner.Choose(fallback, different, true, false, suggestion));
+        Assert.Same(fallback, TabletRewardPlanner.Choose(fallback, Snapshot(screen: ScreenKind.Inventory,
+            candidates: new[] { new ScreenCandidate("tablet", CandidateKind.Tablet, "2100") }), true, false, suggestion));
+        Assert.Same(fallback, TabletRewardPlanner.Choose(fallback, Snapshot(screen: ScreenKind.Shop, owned: false,
+            candidates: new[] { new ScreenCandidate("tablet", CandidateKind.Tablet, "2100") }), true, false, suggestion));
+    }
 }

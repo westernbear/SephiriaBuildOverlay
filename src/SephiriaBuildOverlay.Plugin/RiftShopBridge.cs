@@ -35,16 +35,18 @@ internal sealed partial class UnityGameGateway
                 var costType = ReadNamedObject(arm, "costType");
                 var visual = ReadNamedObject(arm, "itemRenderer") as SpriteRenderer;
                 var interaction = ReadNamedObject(arm, "interactable") as Behaviour;
-                var key = entity is null ? null : EntityKey(entity, CatalogKind.Artifact);
+                var kind = ShopOfferPolicy.ItemKind(entity is null ? null : ReadNamedNullableInt(entity, "type"));
+                var key = ShopItemKey(entity, kind);
                 var priceMethod = arm.GetType().GetMethod("GetPrice", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
                 if (entity is null || data is null || ReadBool(data, "isPaid") || key is null || costType is null ||
-                    Convert.ToInt32(costType) is not (0 or 1) || visual == null || visual.sprite == null || !visual.enabled || interaction == null || !interaction.enabled || priceMethod is null) continue;
+                    kind is null || Convert.ToInt32(costType) is not (0 or 1) || visual == null || visual.sprite == null || !visual.enabled || interaction == null || !interaction.enabled || priceMethod is null) continue;
                 var price = Convert.ToInt32(priceMethod.Invoke(arm, new[] { costType, entity }));
                 if (price < 0) continue;
                 var token = "rift:" + arm.GetInstanceID();
-                candidates.Add(new ScreenCandidate(token, CandidateKind.Artifact, key, automaticActionAllowed: false,
+                candidates.Add(new ScreenCandidate(token, kind.Value, key, automaticActionAllowed: false,
                     additionalCostDescription: ShopOfferPolicy.SapphireCost(price)));
                 _worldCandidateVisuals[token] = visual;
+                if (kind == CandidateKind.Tablet) _rewardTabletSpecs.Add((token, entity, 0));
             }
         }
         return candidates.Count > 0;

@@ -7,6 +7,15 @@ namespace SephiriaBuildOverlay.Tests;
 public sealed class ShopOfferTests
 {
     [Theory]
+    [InlineData(5, CandidateKind.Artifact)]
+    [InlineData(6, CandidateKind.Tablet)]
+    [InlineData(null, null)]
+    [InlineData(0, null)]
+    [InlineData(7, null)]
+    public void MerchantGoodsAreClassifiedByActualEntityNotNpcType(int? native, CandidateKind? expected) =>
+        Assert.Equal(expected, ShopOfferPolicy.ItemKind(native));
+
+    [Theory]
     [InlineData(-1, 2)] [InlineData(0, 2)] [InlineData(1, 4)] [InlineData(2, 8)] [InlineData(3, 16)] [InlineData(4, 32)] [InlineData(8, 32)]
     public void ReplenishmentUsesNativeBoundedSapphireCost(int tries, int expected) => Assert.Equal(expected, ShopOfferPolicy.ReplenishmentCost(tries));
 

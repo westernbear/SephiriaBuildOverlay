@@ -55,9 +55,13 @@ internal sealed partial class UnityGameGateway
                         ?? throw new InvalidOperationException("Native UI template unavailable.");
                     window.Render(false, true, "", 1, new ControllerMenu());
                     _log.LogInfo("Native UI construction PASS: " + Newtonsoft.Json.JsonConvert.SerializeObject(window.Diagnostics()));
-                    var immediateCursor = DrawModalCursor(immediate: true);
-                    _log.LogInfo("Modal cursor contract: detailSurface=Immediate, depth=" + OverlayUiTokens.CursorDepth +
-                        ", nativeSpriteAvailable=" + immediateCursor + ", systemFallback=" + !immediateCursor);
+                    var settingsSurface = ModalCursorPresentation.Choose(true, true, false, true, true);
+                    if (settingsSurface != ModalCursorSurface.System) throw new InvalidOperationException("Settings cursor must use the system surface.");
+                    var cursor = ReadStatic("UI_Cursor", "Current");
+                    var cursorImage = cursor is null ? null : ReadNamedObject(cursor, "image") as Component;
+                    var nativeCursor = cursorImage != null && ReadNamedObject(cursorImage, "sprite") is Sprite;
+                    _log.LogInfo("Modal cursor contract PASS: settingsSurface=" + settingsSurface +
+                        ", nativeSpriteAvailable=" + nativeCursor + ", settingsUsesImguiCursor=False");
                     RestoreNativeModalCursor(false);
                 }
                 catch (Exception ex) { _log.LogWarning("Native UI construction FAILED: " + ex); }

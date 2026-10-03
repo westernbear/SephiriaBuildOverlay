@@ -107,13 +107,15 @@ internal sealed partial class UnityGameGateway
             {
                 var requestedSkin = StaticCall("CostumeDatabase", "GetCostumeSkinByID", preset.Skin);
                 var unlockType = requestedSkin is null ? null : ReadNamedString(requestedSkin, "unlockType");
+                var skinMatches = requestedSkin is not null && ReadNamedString(requestedSkin, "relatedCostumeID") == costume;
+                var saveData = ReadStatic("SaveManager", "Current");
+                bool? purchased = saveData is null ? null : NativeCall(saveData, "GetBool", "SkinPurchased_" + preset.Skin, false) as bool?;
+                var selectable = StartingOptionEligibility.SkinSelectable(requestedSkin is not null, skinMatches, unlockType, purchased);
                 locked.Record("스킨", preset.Skin, requestedSkin is null ? null : ReadNamedString(requestedSkin, "aName"), requestedSkin is not null,
-                    unlockType != "Locked" && (unlockType != "Purchase" || skinId == preset.Skin));
-            }
-            if (skinId.Length > 0)
-            {
-                var skin = StaticCall("CostumeDatabase", "GetCostumeSkinByID", skinId);
-                if (skin is null || ReadNamedString(skin, "relatedCostumeID") != costume || ReadNamedString(skin, "unlockType") == "Locked") skinId = "";
+                    selectable);
+                // Keep an owned Locked skin, but never purchase or manufacture
+                // ownership for an unavailable/unknown/mismatched skin.
+                skinId = selectable is true ? preset.Skin : "";
             }
             preset.SetValidatedCostume(costume, skinId);
             var passiveEntities = StaticCall("PassiveDatabase", "GetAll") as IEnumerable ?? throw new InvalidOperationException("특성 목록이 없습니다.");
@@ -127,14 +129,20 @@ internal sealed partial class UnityGameGateway
                     locked.Record("특성", passiveId.ToString(), ReadNamedString(entity, "aName"), true, unlocked);
                 if (unlocked) passiveLimits.Add(passiveId, ReadNamedNullableInt(entity, "maxLevel") ?? 0);
             }
-            // Read-only native discovery check; unknown/disabled entities are
-            // mapping/eligibility problems, not evidence of a locked option.
-            foreach (var artifactId in preset.Favorites.Concat(preset.Pocket.Select(x => x.Entity)).Distinct())
+            // A shared preset's F list contains the author's journal favorites,
+            // not just this build's artifacts or its starting pocket loadout.
+            // IsCharmDiscovered uses a separate WitchHat_*_Found flag for some
+            // items. It is NOT a general unlock/ownership predicate.
+            foreach (var artifactId in preset.Favorites.ToArray())
             {
                 var entity = StaticCall("ItemDatabase", "FindItemById", artifactId);
                 if (entity is null || ReadNamedString(entity, "type") != "Charm" || ReadNamedString(entity, "activeType") is "Disabled" or "Hidden" or "TestOnly") continue;
-                locked.Record("아티팩트", artifactId.ToString(), ReadNamedString(entity, "Name"), true,
-                    Convert.ToBoolean(NativeCall(panel, "IsCharmDiscovered", artifactId)));
+                var discovered = NativeCall(panel, "IsCharmDiscovered", artifactId) as bool?;
+                if (discovered is false)
+                {
+                    preset.Favorites.Remove(artifactId);
+                    locked.RecordUnavailableFavorite(artifactId.ToString(), ReadNamedString(entity, "Name"), discovered);
+                }
             }
             preset.LimitPassives(passiveLimits, ReadNamedNullableInt(avatar, "maxPassivePoint") ?? 0);
             // Resolve every required method before the first mutation.
@@ -164,10 +172,12 @@ internal sealed partial class UnityGameGateway
                 ?? throw new InvalidOperationException("과일 카테고리 목록이 없습니다.");
             int? PocketCost(int entityId)
             {
-                if (!unlockedCharms.Contains(entityId)) return null;
                 var entity = StaticCall("ItemDatabase", "FindItemById", entityId);
                 if (entity is null || ReadNamedString(entity, "type") != "Charm" || ReadNamedString(entity, "rarity") == "Eternal" ||
                     ReadBool(entity, "cannotBeReward") || ReadBool(entity, "isDual") || ReadNamedString(entity, "activeType") is "Disabled" or "Hidden" or "TestOnly") return null;
+                var unlocked = unlockedCharms.Contains(entityId);
+                locked.Record("시작 아티팩트", entityId.ToString(), ReadNamedString(entity, "Name"), true, unlocked);
+                if (!unlocked) return null;
                 var prefab = ReadNamedObject(entity, "resourcePrefab") as GameObject;
                 var charmType = GameType("Charm_Basic");
                 var charm = prefab != null && charmType is not null ? prefab.GetComponent(charmType) : null;
@@ -192,13 +202,18 @@ internal sealed partial class UnityGameGateway
             var message = ApplyCompact(panel, preset.Compact());
             NativeCall(panel, "UpdateCurrentPlayer", null, false);
             await WaitForStartingStats(avatar!, preset, passiveEntities, importContext, cancellationToken);
+            var applied = NativePreset.ParseCompact((string)NativeCall(panel, "BuildCompactPresetData", "")!);
+            locked.RemoveAppliedOptions(applied);
             save.Invoke(null, new object[] { true, false });
             _log.LogInfo("Starting preset applied through native import/update; source=" + (string.IsNullOrWhiteSpace(build.NativePresetCode) ? "wiki-fields" : "preset-code") + "; permanent purchases excluded.");
             foreach (var warning in fallbackWarnings) _log.LogWarning("Starting preset: " + warning);
             foreach (var item in locked.Items) _log.LogWarning("Starting preset locked option excluded: " + item);
-            var limited = requested != preset.Compact() ? " 해금/포인트/용량 제한으로 일부 목표를 제외했습니다." : "";
+            foreach (var item in locked.FavoriteItems) _log.LogWarning("Starting preset favorite unavailable in journal (build target retained): " + item);
+            var adjusted = StartingPresetComparison.ChangedSections(NativePreset.ParseCompact(requested), applied);
+            var limited = adjusted.Count > 0 ? " 조정된 항목: " + string.Join(" · ", adjusted) + "." : "";
             return new StartingPresetResult("시작 프리셋 적용 완료 (현재 설정만 변경, 저장 슬롯 유지)." + limited + "\n" + message,
-                applied: true, warning: locked.Bubble ?? (limited.Length > 0 || message.Length > 0 || fallbackWarnings.Count > 0 ? "일부 시작 세팅은 해금·매핑·포인트·용량에 맞춰 조정했습니다." + (message.Length > 0 ? "\n" + message : "") : null));
+                applied: true, warning: locked.Bubble ?? (adjusted.Count > 0 ? "현재 포인트·용량·선택 조건에 맞춰 조정했습니다.\n" + string.Join(" · ", adjusted) :
+                    fallbackWarnings.Count > 0 ? "일부 시작 옵션을 매핑하지 못했습니다. 현재 설정을 확인하세요." : null));
         }
         catch (Exception ex)
         {

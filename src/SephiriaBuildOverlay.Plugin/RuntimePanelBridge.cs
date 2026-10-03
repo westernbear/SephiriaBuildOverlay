@@ -21,7 +21,16 @@ internal sealed partial class UnityGameGateway
             _ => string.Empty
         });
         if (panel is null || player is null) return;
-        foreach (var element in panel.GetComponentsInChildren<Component>(false).Where(x => x != null))
+        var elements = panel.GetComponentsInChildren<Component>(false).Where(x => x != null).AsEnumerable();
+        if (screen == ScreenKind.Shop)
+        {
+            // The panel owns these pools; never depend on merchant-specific
+            // hierarchy/scroll content placement or inspect the buyer's pool.
+            foreach (var name in new[] { "shopInventoryIconList", "replenishmentIcons" })
+                if (ReadNamedObject(panel, name) is IEnumerable pool)
+                    elements = elements.Concat(pool.OfType<Component>().Where(x => x != null && x.gameObject.activeInHierarchy).Take(128));
+        }
+        foreach (var element in elements.Distinct())
         {
             if (screen == ScreenKind.ArtifactReward && element.GetType().Name == "UI_SephiriteRewardElement")
             {
@@ -115,12 +124,13 @@ internal sealed partial class UnityGameGateway
             !ReferenceEquals(ReadNamedObject(icon, "Inventory"), shopInventory)) return;
         var item = ReadNamedObject(icon, "Item");
         var entity = item is null ? null : ReadNamedObject(item, "Entity");
-        var key = entity is null ? null : EntityKey(entity, CatalogKind.Artifact);
+        var kind = ShopOfferPolicy.ItemKind(entity is null ? null : ReadNamedNullableInt(entity, "type"));
+        var key = ShopItemKey(entity, kind);
         var buyer = ReadNamedObject(panel, "BuyerCharacter");
         var shop = ReadNamedObject(panel, "ShopCharacter");
         var x = ReadNamedNullableInt(icon, "X");
         var y = ReadNamedNullableInt(icon, "Y");
-        if (key is null || buyer is null || shop is null || !x.HasValue || !y.HasValue) return;
+        if (kind is null || key is null || buyer is null || shop is null || !x.HasValue || !y.HasValue) return;
         // Keep guidance when a voucher is present; do not silently consume it.
         var voucherCheck = buyerInventory.GetType().GetMethod("TryGetTradeVoucher", BindingFlags.Instance | BindingFlags.Public);
         var voucher = voucherCheck is null ? (bool?)null : Convert.ToBoolean(voucherCheck.Invoke(buyerInventory, new object?[] { null }));
@@ -128,23 +138,34 @@ internal sealed partial class UnityGameGateway
         var request = buyer.GetType().GetMethod("BuyFromShop", BindingFlags.Instance | BindingFlags.Public);
         if (!price.HasValue || price < 0 || request is null || !ReadBool(panel, "canSell")) return;
         var button = ReadNamedObject(icon, "button") as Component;
-        AddCandidate(icon, CandidateKind.Artifact, key, candidates,
+        AddCandidate(icon, kind.Value, key, candidates,
             () => request.Invoke(buyer, new object[] { shop, shopInventory, checked((sbyte)x.Value), checked((sbyte)y.Value), (sbyte)-1, (sbyte)-1 }),
             money: voucher == true ? 0 : price.Value, selectable: button is null || IsSelectable(button),
             automatic: voucher == false, additionalCost: voucher == true ? "거래권 1장 · 수동 확인" : voucher is null ? $"돈 {price} · 거래권 상태 확인 필요 · 수동 확인" : null);
+        if (kind == CandidateKind.Tablet) _rewardTabletSpecs.Add((icon.GetInstanceID().ToString(System.Globalization.CultureInfo.InvariantCulture), entity!,
+            ReadNamedNullableInt(item!, "InstanceID") ?? ReadNamedNullableInt(item!, "instanceID") ?? 0));
     }
 
     private int? ShopPrice(object entity, object buyer, object shop)
     {
         // Native pure pricing function, not a rendered/localized price string.
-        var statMethod = buyer.GetType().GetMethod("GetCustomStat", BindingFlags.Instance | BindingFlags.Public);
+        // UnitAvatar has BOTH GetCustomStat(string) and GetCustomStat(ECustomStat).
+        // Name-only reflection throws AmbiguousMatchException and wipes every
+        // merchant candidate in this snapshot. Bind the shared base signature.
+        var statType = GameType("ECustomStat");
+        var statMethod = ShopPriceBinding.NegotiationMethod(GameType("UnitAvatar"), statType);
         if (statMethod is null) return null;
         var stat = Enum.Parse(statMethod.GetParameters()[0].ParameterType, "Negotiation");
         var buyerNegotiation = statMethod.Invoke(buyer, new[] { stat });
         var shopNegotiation = statMethod.Invoke(shop, new[] { stat });
-        var priceMethod = HarmonyLib.AccessTools.TypeByName("ItemDatabase")?.GetMethod("GetItemBuyPrice", BindingFlags.Static | BindingFlags.Public);
+        var entityType = GameType("ItemEntity");
+        var priceMethod = entityType is null ? null : GameType("ItemDatabase")?.GetMethod("GetItemBuyPrice", BindingFlags.Static | BindingFlags.Public,
+            null, new[] { entityType, typeof(int), typeof(int) }, null);
         return priceMethod is null ? null : Convert.ToInt32(priceMethod.Invoke(null, new[] { entity, shopNegotiation, buyerNegotiation }));
     }
+
+    private string? ShopItemKey(object? entity, CandidateKind? kind) => entity is null || kind is null ? null :
+        kind == CandidateKind.Tablet ? ReadNamedString(entity, "id") : EntityKey(entity, CatalogKind.Artifact);
 
     private Component? LocalShopNpc(Component panel)
     {
@@ -161,17 +182,20 @@ internal sealed partial class UnityGameGateway
         var index = ReadNamedNullableInt(icon, "ReplenishmentIdx");
         var stock = ReadNamedObject(npc, "replenishments") as IList;
         var entity = ReadNamedObject(icon, "Entity");
-        var key = entity is null ? null : EntityKey(entity, CatalogKind.Artifact);
+        var kind = ShopOfferPolicy.ItemKind(entity is null ? null : ReadNamedNullableInt(entity, "type"));
+        var key = ShopItemKey(entity, kind);
         if (!index.HasValue || stock is null || index < 0 || index >= stock.Count || stock[index.Value] is not object entry ||
-            ReadBool(entry, "purchased") || key is null || ReadNamedString(entry, "entityID") != key) return;
+            ReadBool(entry, "purchased") || kind is null || key is null || ReadNamedString(entry, "entityID") != key) return;
         var buyer = ReadNamedObject(panel, "BuyerCharacter"); var shop = ReadNamedObject(panel, "ShopCharacter");
         var button = ReadNamedObject(icon, "button") as Component;
         var price = buyer is null || shop is null ? null : ShopPrice(entity!, buyer, shop);
         if (!price.HasValue || price < 0 || button is null) return;
         // Native new-stock purchases open a second confirmation dialog. Keep
         // this flow manual rather than authorizing that dialog's YES implicitly.
-        AddCandidate(icon, CandidateKind.Artifact, key, candidates, null, money: price.Value,
+        AddCandidate(icon, kind.Value, key, candidates, null, money: price.Value,
             selectable: IsSelectable(button), automatic: false, additionalCost: $"돈 {price} · 게임 구매 창에서 확인");
+        if (kind == CandidateKind.Tablet) _rewardTabletSpecs.Add((icon.GetInstanceID().ToString(System.Globalization.CultureInfo.InvariantCulture), entity!,
+            ReadNamedNullableInt(entry, "instanceID") ?? 0));
     }
 
     private void CaptureShopReplenishment(Component panel, List<ScreenCandidate> candidates)

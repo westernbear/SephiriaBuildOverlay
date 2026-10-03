@@ -97,7 +97,7 @@ internal sealed partial class UnityGameGateway
         var manager = ReadStatic("UIManager", "Instance");
         var registry = manager is null ? null : ReadNamedObject(manager, "uiElementsByTypename") as IDictionary;
         _boardPanel = registry?["UI_CharacterStatusPanel"] as Component;
-        var readOnlyReward = screen == ScreenKind.ArtifactReward && _rewardTabletSpecs.Count > 0 && _placementPlan is not null;
+        var readOnlyReward = screen is ScreenKind.ArtifactReward or ScreenKind.Shop && _rewardTabletSpecs.Count > 0 && _placementPlan is not null;
         if (_boardPanel == null || _boardInventory is null) { CancelGhostCalculation(); return; }
         _boardVisible = _boardPanel.gameObject.activeInHierarchy && ReadBool(_boardPanel, "IsOpened");
         if (!_boardVisible && !readOnlyReward) { CancelGhostCalculation(); return; }

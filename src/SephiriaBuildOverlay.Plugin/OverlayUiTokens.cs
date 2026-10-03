@@ -23,7 +23,6 @@ internal static class OverlayUiTokens
     public const float AdvancedHeight = 560;
     public const int WindowId = 761331;
     public const int WindowDepth = -20;
-    public const int CursorDepth = -1000;
     public const int OverlaySortingOrder = 32000;
     public const int NotificationSortingOrder = 32001;
     public const int CursorSortingOrder = 32760;
