@@ -8,7 +8,7 @@ public sealed partial class SephiriaBuildOverlayPlugin
     private readonly InventoryPlacementBatch _placementBatch = new();
     private bool _postRewardPlacement;
     private Guid _postRewardBuild;
-    private string _postRewardRun = "", _postRewardPlayer = "";
+    private RunScope _postRewardScope;
     private float _postRewardDeadline;
     private long _placementAuthorizationEpoch;
 
@@ -34,7 +34,7 @@ public sealed partial class SephiriaBuildOverlayPlugin
     {
         if (_plan is null) return;
         _postRewardPlacement = true; _postRewardBuild = _plan.SourceBuildId;
-        _postRewardRun = before.RunId; _postRewardPlayer = before.LocalPlayerId;
+        _postRewardScope = before.Scope;
         _postRewardDeadline = Time.unscaledTime + 10;
         _nextSnapshotAt = 0;
     }
@@ -47,7 +47,7 @@ public sealed partial class SephiriaBuildOverlayPlugin
         if (!allowed) { StopPlacement("자동배치 중단: 화면 또는 입력 상태가 바뀌었습니다."); return; }
         if (_postRewardPlacement && !_executing)
         {
-            if (_plan!.SourceBuildId != _postRewardBuild || snapshot!.RunId != _postRewardRun || snapshot.LocalPlayerId != _postRewardPlayer || Time.unscaledTime >= _postRewardDeadline)
+            if (_plan!.SourceBuildId != _postRewardBuild || !snapshot!.Scope.Equals(_postRewardScope) || Time.unscaledTime >= _postRewardDeadline)
             { StopPlacement("획득 후 자동배치 중단: 상태가 바뀌었습니다."); return; }
             if (snapshot.ServerRequestPending) return;
             try

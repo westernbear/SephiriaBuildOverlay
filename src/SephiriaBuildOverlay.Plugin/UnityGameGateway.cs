@@ -18,8 +18,10 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
     private RunSnapshot? _lastSnapshot;
     private string? _highlightToken;
     private TaskCompletionSource<bool>? _confirmation;
+    private string? _confirmationRequestId;
     private ActionOutcomeObserver? _outcomeObserver;
     private bool _requestPending;
+    private bool _actionRequestPending;
     private float _nextConfirmationPoll;
     private readonly bool _exportRuntimeCatalog;
     private float _nextBridgeWarning;
@@ -56,6 +58,7 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
         var started = RuntimePerformance.Start();
         if (freshDiscovery || Time.unscaledTime >= _nextDiscoveryAt) DiscoverSceneReferences();
         var playerId = FindLocalPlayerId(out var owned, out var localPlayer);
+        var network = RefreshNetworkContext(playerId, owned);
         PreparePlayerComponents(localPlayer, freshDiscovery);
         var screen = FindActiveScreen(out var panel);
         _actions.Clear(); _rectangles.Clear(); _actionOutcomes.Clear(); _worldCandidateVisuals.Clear();
@@ -101,7 +104,7 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
         }
         var revision = StableRevision(runId, playerId, screen, candidates, inventory, currentWeapon, string.Join(",", miracleKeys.OrderBy(x => x, StringComparer.Ordinal)), money, dice, _boardSignature);
         _lastSnapshot = new RunSnapshot(runId, playerId, revision, screen, candidates, inventory,
-            currentWeapon, currentMiracle, money, dice, owned, _requestPending, miracleKeys);
+            currentWeapon, currentMiracle, money, dice, owned, _requestPending, miracleKeys, network);
         Performance.SnapshotCompleted(started);
         return _lastSnapshot;
     }
@@ -109,17 +112,22 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
     public RunSnapshot? Tick()
     {
         if (_disposed) return null;
-        if (_confirmation is null || Time.unscaledTime < _nextConfirmationPoll) return null;
+        var playerId = FindLocalPlayerId(out var owned, out _);
+        RefreshNetworkContext(playerId, owned);
+        if (_confirmation is null || !_actionRequestPending || Time.unscaledTime < _nextConfirmationPoll) return null;
         _nextConfirmationPoll = Time.unscaledTime + .1f;
         var snapshot = CaptureOnMainThread();
         var outcome = _outcomeObserver?.Observe(snapshot) ?? ObservedActionOutcome.Pending;
         if (outcome == ObservedActionOutcome.Pending && _pendingActionOutcome?.Invoke(snapshot) == true) outcome = ObservedActionOutcome.Succeeded;
         if (_confirmation.Task.IsCompleted || outcome != ObservedActionOutcome.Pending)
         {
+            TraceRequest(_confirmation.Task.IsCanceled ? "CancelledOrTimedOut" : outcome.ToString(), snapshot: snapshot);
             _requestPending = false;
+            _actionRequestPending = false;
             if (outcome != ObservedActionOutcome.Succeeded) CancelGhostCalculation();
             _confirmation.TrySetResult(outcome == ObservedActionOutcome.Succeeded);
-            _confirmation = null;
+            // Keep the completed receipt until Wait consumes it. A synchronous
+            // native response/context loss can occur before Wait is registered.
             _outcomeObserver = null;
             _pendingActionOutcome = null;
         }
@@ -140,26 +148,33 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
         if (_disposed) throw new ObjectDisposedException(nameof(UnityGameGateway));
         if (!_actions.TryGetValue(action.TargetToken, out var invoke))
             return Task.FromResult(new GameActionReceipt(Guid.NewGuid().ToString("N"), false, "게임 대상이 사라졌습니다."));
-        if (_lastSnapshot is null || _requestPending)
+        if (_lastSnapshot is null || !_lastSnapshot.IsLocalPlayerOwned || !_lastSnapshot.Network.Connected ||
+            !action.BasedOn.Equals(_lastSnapshot.Identity) || _requestPending)
             return Task.FromResult(new GameActionReceipt(Guid.NewGuid().ToString("N"), false, "요청 상태를 확인할 수 없습니다."));
         _outcomeObserver = new ActionOutcomeObserver(_lastSnapshot, action);
         _actionOutcomes.TryGetValue(action.TargetToken, out _pendingActionOutcome);
         _confirmation = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _confirmationRequestId = Guid.NewGuid().ToString("N");
         _requestPending = true;
+        _actionRequestPending = true;
+        TraceRequest("Sent", action);
         try
         {
             // Button.onClick is the game's normal UI/request route; no inventory or network state is mutated directly.
             invoke();
             _log.LogInfo($"Confirmed request sent: kind={action.Kind}, target={action.TargetToken}, money={action.MoneyCost}, dice={action.DiceCost}");
-            return Task.FromResult(new GameActionReceipt(Guid.NewGuid().ToString("N"), true));
+            return Task.FromResult(new GameActionReceipt(_confirmationRequestId, true));
         }
         catch (Exception ex)
         {
             _requestPending = false;
+            _actionRequestPending = false;
             CancelGhostCalculation();
             _confirmation = null;
             _outcomeObserver = null;
+            _pendingActionOutcome = null;
             _log.LogWarning(ex);
+            TraceRequest("InvocationRejected", action);
             return Task.FromResult(new GameActionReceipt(Guid.NewGuid().ToString("N"), false, ex.Message));
         }
     }
@@ -167,12 +182,19 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
     public async Task<bool> WaitForServerConfirmationAsync(GameActionReceipt receipt, CancellationToken cancellationToken)
     {
         var completion = _confirmation ?? throw new InvalidOperationException("요청 대기 상태가 없습니다.");
+        if (receipt.RequestId != _confirmationRequestId) return false;
         // Cancellation only completes this request; Unity state is cleaned up in Tick.
         using var registration = cancellationToken.Register(() => completion.TrySetCanceled());
-        return await completion.Task;
+        try { return await completion.Task; }
+        finally
+        {
+            // A late response from a timed out receipt cannot complete a newer
+            // one. Unity-side cleanup is done by Tick before another dispatch.
+            if (ReferenceEquals(_confirmation, completion) && completion.Task.IsCompleted) _nextConfirmationPoll = 0;
+        }
     }
 
-    public void RecordReward(string catalogKey) => _outcomeObserver?.RecordReward(catalogKey);
+    public void RecordReward(string catalogKey, string instanceId) => _outcomeObserver?.RecordReward(catalogKey, instanceId);
 
     public IReadOnlyList<GameEntityDescriptor> DiscoverCatalogEntities()
     {
@@ -273,8 +295,8 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
 
     public bool IsLocalInventory(object inventory)
     {
-        FindLocalPlayerId(out _, out var player);
-        if (player is null) return false;
+        FindLocalPlayerId(out var owned, out var player);
+        if (!owned || player is null) return false;
         PreparePlayerComponents(player);
         return _playerComponents.Any(component =>
         {
@@ -503,7 +525,8 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
     private static Component? FindIdentity(Component avatar) => avatar.GetComponentsInParent<Component>(true)
         .FirstOrDefault(x => x != null && x.GetType().Name == "NetworkIdentity");
 
-    private static bool Owns(Component identity) => ReadBool(identity, "isLocalPlayer") || ReadBool(identity, "isOwned") || ReadBool(identity, "hasAuthority");
+    private static bool Owns(Component identity) => FindMember(identity.GetType(), "isOwned") is not null
+        ? ReadBool(identity, "isOwned") : ReadBool(identity, "hasAuthority");
 
     private string FindLocalPlayerId(out bool owned, out GameObject? playerObject)
     {
@@ -609,7 +632,7 @@ internal sealed partial class UnityGameGateway : IGameActionGateway, IDisposable
             void Add(string? value) { foreach (var c in value ?? string.Empty) { hash ^= c; hash *= 1099511628211L; } }
             Add(runId); Add(playerId); Add(screen.ToString()); Add(weapon); Add(miracle); Add(money.ToString()); Add(dice.ToString());
             Add(boardSignature);
-            foreach (var candidate in candidates.OrderBy(x => x.Token)) { Add(candidate.Token); Add(candidate.CatalogKey); Add(candidate.Kind.ToString()); Add(candidate.MoneyCost.ToString()); Add(candidate.DiceCost.ToString()); Add(candidate.IsSelectable.ToString()); Add(candidate.IsFreeReroll.ToString()); Add(candidate.AutomaticActionAllowed.ToString()); Add(candidate.AdditionalCostDescription); Add(candidate.Admission.ToString()); }
+            foreach (var candidate in candidates.OrderBy(x => x.Token)) { Add(candidate.Token); Add(candidate.CatalogKey); Add(candidate.SourceInstanceId); Add(candidate.Kind.ToString()); Add(candidate.MoneyCost.ToString()); Add(candidate.DiceCost.ToString()); Add(candidate.IsSelectable.ToString()); Add(candidate.IsFreeReroll.ToString()); Add(candidate.AutomaticActionAllowed.ToString()); Add(candidate.AdditionalCostDescription); Add(candidate.Admission.ToString()); }
             foreach (var item in inventory.OrderBy(x => x.InstanceId)) { Add(item.InstanceId); Add(item.CatalogKey); Add(item.X.ToString()); Add(item.Y.ToString()); }
             return hash;
         }

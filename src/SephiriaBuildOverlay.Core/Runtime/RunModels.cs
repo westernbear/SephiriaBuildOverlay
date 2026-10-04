@@ -36,7 +36,8 @@ public sealed class ScreenCandidate
         bool isSelectable = true,
         bool automaticActionAllowed = true,
         string? additionalCostDescription = null,
-        InventoryAdmission admission = InventoryAdmission.Available)
+        InventoryAdmission admission = InventoryAdmission.Available,
+        string? sourceInstanceId = null)
     {
         Token = token;
         Kind = kind;
@@ -48,6 +49,7 @@ public sealed class ScreenCandidate
         AutomaticActionAllowed = automaticActionAllowed;
         AdditionalCostDescription = additionalCostDescription;
         Admission = admission;
+        SourceInstanceId = sourceInstanceId;
     }
 
     public string Token { get; }
@@ -60,6 +62,7 @@ public sealed class ScreenCandidate
     public bool AutomaticActionAllowed { get; }
     public string? AdditionalCostDescription { get; }
     public InventoryAdmission Admission { get; }
+    public string? SourceInstanceId { get; }
 }
 
 public sealed class InventoryArtifact
@@ -93,7 +96,8 @@ public sealed class RunSnapshot
         int sharedDice,
         bool isLocalPlayerOwned = true,
         bool serverRequestPending = false,
-        IReadOnlyList<string>? miracleKeys = null)
+        IReadOnlyList<string>? miracleKeys = null,
+        NetworkContext? network = null)
     {
         RunId = runId;
         LocalPlayerId = localPlayerId;
@@ -108,6 +112,7 @@ public sealed class RunSnapshot
         SharedDice = sharedDice;
         IsLocalPlayerOwned = isLocalPlayerOwned;
         ServerRequestPending = serverRequestPending;
+        Network = network ?? NetworkContext.Offline;
     }
 
     public string RunId { get; }
@@ -123,24 +128,28 @@ public sealed class RunSnapshot
     public int SharedDice { get; }
     public bool IsLocalPlayerOwned { get; }
     public bool ServerRequestPending { get; }
-    public SnapshotIdentity Identity => new(RunId, LocalPlayerId, Revision);
+    public NetworkContext Network { get; }
+    public RunScope Scope => new(RunId, LocalPlayerId, Network.SessionId);
+    public SnapshotIdentity Identity => new(RunId, LocalPlayerId, Revision, Network.SessionId);
 }
 
 public readonly struct SnapshotIdentity : IEquatable<SnapshotIdentity>
 {
-    public SnapshotIdentity(string runId, string playerId, long revision)
+    public SnapshotIdentity(string runId, string playerId, long revision, string sessionId = "offline")
     {
         RunId = runId;
         PlayerId = playerId;
         Revision = revision;
+        SessionId = sessionId;
     }
 
     public string RunId { get; }
     public string PlayerId { get; }
     public long Revision { get; }
-    public bool Equals(SnapshotIdentity other) => RunId == other.RunId && PlayerId == other.PlayerId && Revision == other.Revision;
+    public string SessionId { get; }
+    public bool Equals(SnapshotIdentity other) => RunId == other.RunId && PlayerId == other.PlayerId && SessionId == other.SessionId && Revision == other.Revision;
     public override bool Equals(object? obj) => obj is SnapshotIdentity other && Equals(other);
-    public override int GetHashCode() => ((RunId?.GetHashCode() ?? 0) * 397) ^ (PlayerId?.GetHashCode() ?? 0) ^ Revision.GetHashCode();
+    public override int GetHashCode() => ((RunId?.GetHashCode() ?? 0) * 397) ^ (PlayerId?.GetHashCode() ?? 0) ^ Revision.GetHashCode() ^ (SessionId?.GetHashCode() ?? 0);
 }
 
 public enum ActionKind

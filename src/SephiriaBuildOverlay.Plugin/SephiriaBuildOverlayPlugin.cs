@@ -17,7 +17,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
 {
     public const string PluginGuid = "io.github.sephiria.build-overlay";
     public const string PluginName = "Sephiria Build Overlay";
-    public const string PluginVersion = "0.1.22";
+    public const string PluginVersion = "0.1.23";
 
     private ConfigEntry<KeyCode> _importKey = null!;
     private ConfigEntry<KeyCode> _overlayKey = null!;
@@ -84,7 +84,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
     private bool _executing;
     private Harmony? _harmony;
     private static SephiriaBuildOverlayPlugin? _instance;
-    private readonly HashSet<string> _seenRewardInstances = new(StringComparer.Ordinal);
+    private readonly AcquisitionTracker _acquisitions = new();
     private float _nextSnapshotAt;
     private RunSnapshot? _lastSnapshot;
     private bool _updateObserved;
@@ -124,6 +124,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
         _ghostOpacity = Config.Bind("UI", "GhostOpacity", .4f, new ConfigDescription("인벤토리 목표 배치 고스트 불투명도", new AcceptableValueRange<float>(.15f, .7f)));
         _catalog = VersionedCatalog.LoadEmbedded("1.0.33");
         _gateway = new UnityGameGateway(_catalog, Logger, _exportRuntimeCatalog.Value);
+        _gateway.LocalContextChanged += OnLocalContextChanged;
         _gateway.Performance.Enabled = _measurePerformance.Value;
         _nextPerformanceLog = Time.unscaledTime + 10f;
         _executor = new ConfirmedActionExecutor(_gateway);
@@ -183,7 +184,7 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
         _gateway.Performance.Enabled = _measurePerformance.Value;
         var pendingSnapshot = _gateway.Tick();
         if (_runtimeDiagnostics.Value) _diagnostics.Tick(Time.unscaledTime, _gateway,
-            () => new { activeBuild = _plan?.SourceBuildId, importVisible = _showImport, overlayVisible = _showOverlay, recommendation = _recommendation, status = _status, checkpointPath = _reviewStore.CheckpointPath, ghosts = _gateway.GhostCount,
+            () => new { activeBuild = _plan?.SourceBuildId, progress = _state, placement = new { active = _placementBatch.Active, completed = _placementBatch.CompletedSteps, reason = _placementBatch.EndReason }, importVisible = _showImport, overlayVisible = _showOverlay, recommendation = _recommendation, status = _status, checkpointPath = _reviewStore.CheckpointPath, ghosts = _gateway.GhostCount,
                 input = new { scheme = _controller.Scheme, pairedDevice = _controller.DeviceId, pairedGamepads = _controller.PairedGamepads, modalGateReady = _controllerModalGateReady, modalCapturing = _modalInput.Capturing, confirm = ConfirmPrompt, import = ImportPrompt, overlay = OverlayPrompt } }, PreviewControllerReview);
         if (_measurePerformance.Value)
         {
@@ -242,10 +243,11 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
             // need ten expensive observations a second. F8 always reads afresh.
             _nextSnapshotAt = Time.unscaledTime + (snapshot.Screen == ScreenKind.None || !_showOverlay || _showImport ? .5f : .1f);
             _lastSnapshot = snapshot;
-            if (_state.RunId != snapshot.RunId)
+            if (!_state.Matches(snapshot))
             {
                 _state = ActiveBuildState.Activate(_plan, snapshot);
-                _status = "새 런을 감지해 진행 상태를 분리했습니다.";
+                _acquisitions.Bind(snapshot);
+                _status = "세션 또는 로컬 플레이어 변경으로 진행 상태를 분리했습니다.";
             }
             _recommendation = snapshot.Screen is ScreenKind.Inventory or ScreenKind.TabletBoard || _placementBatch.Active
                 ? _gateway.RecommendPlacement(snapshot) : _recommendationEngine!.Recommend(_plan, _state, snapshot);
@@ -403,11 +405,12 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
             var snapshot = _gateway.CaptureOnMainThread();
             var store = new ActiveStateStore();
             ActiveBuildState? existing = null;
-            try { existing = store.Load(plan.SourceBuildId, snapshot.RunId); }
+            try { existing = store.Load(plan.SourceBuildId, snapshot); }
             catch (Exception ex) { Logger.LogWarning("Saved progress unavailable; using uncertain inventory minimum: " + ex.Message); }
             var state = ActiveBuildState.Activate(plan, snapshot, existing);
             var bindings = BindingsByGameKey();
             _plan = plan; _state = state;
+            _acquisitions.Bind(snapshot);
             _recommendationEngine = new RecommendationEngine(bindings);
             _gateway.SetPlacementPlan(plan, bindings);
             try { store.Save(state); } catch (Exception ex) { Logger.LogWarning("Progress cache save failed: " + ex.Message); }
@@ -444,14 +447,34 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
             // while the modal review owns it. No native input is intercepted
             // outside that modal (including warnings about shared dice).
             InstallControllerModalPatches();
+            foreach (var name in new[] { "Disconnect", "OnTransportDisconnected", "Shutdown" })
+            {
+                var boundary = AccessTools.Method(AccessTools.TypeByName("Mirror.NetworkClient"), name);
+                if (boundary is not null) _harmony.Patch(boundary, postfix: new HarmonyMethod(typeof(SephiriaBuildOverlayPlugin), nameof(OnNetworkDisconnected)));
+            }
+            // A host can leave/recreate a lobby without disconnecting its own
+            // Mirror connection. Invalidate even when rejoining the same lobby ID.
+            foreach (var route in new[] { ("SteamInvitation", "HandleLeave"), ("EOSLobbyManager", "ClearLobbyState") })
+            {
+                var type = AccessTools.TypeByName(route.Item1);
+                var boundary = type is null ? null : AccessTools.Method(type, route.Item2);
+                if (boundary is not null) _harmony.Patch(boundary, postfix: new HarmonyMethod(typeof(SephiriaBuildOverlayPlugin), nameof(OnNetworkDisconnected)));
+            }
             var gridType = AccessTools.TypeByName("GridInventory");
             if (gridType is null) throw new TypeLoadException("GridInventory");
             var postfix = new HarmonyMethod(typeof(SephiriaBuildOverlayPlugin), nameof(OnLocalArtifactAdded));
+            var prefix = new HarmonyMethod(typeof(SephiriaBuildOverlayPlugin), nameof(OnLocalArtifactAdding));
             foreach (var methodName in new[] { "LocalAddItem", "LocalAddItemAtPosition", "AddItemToSubBagWithNotify" })
             {
                 var methods = gridType.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
                     .Where(x => x.Name == methodName && x.GetParameters().Any(p => p.Name == "isReward"));
-                foreach (var method in methods) _harmony.Patch(method, postfix: postfix);
+                foreach (var method in methods) _harmony.Patch(method, prefix: prefix, postfix: postfix);
+            }
+            foreach (var route in new[] { ("UserCode_RpcNotifyAddItem__NewItemOwnInstance", nameof(OnClientArtifactAdded)),
+                ("UserCode_RpcUniquePairEnchanted__ItemPosition", nameof(OnClientArtifactMerged)) })
+            {
+                var method = AccessTools.Method(gridType, route.Item1) ?? throw new MissingMethodException(gridType.Name, route.Item1);
+                _harmony.Patch(method, postfix: new HarmonyMethod(typeof(SephiriaBuildOverlayPlugin), route.Item2));
             }
         }
         catch (Exception ex)
@@ -460,18 +483,52 @@ public sealed partial class SephiriaBuildOverlayPlugin : BaseUnityPlugin
         }
     }
 
-    private static void OnLocalArtifactAdded(object __instance, int instanceID, int entityID, bool isReward, object __result)
+    private void OnLocalContextChanged()
+    {
+        StopPlacement("자동배치 중단: 연결 또는 로컬 플레이어가 바뀌었습니다.");
+        _acquisitions.Reset(); _recommendation = null; _lastSnapshot = null; _nextSnapshotAt = 0;
+        if (_pendingStartingGate?.Context is not null) { _pendingStartingBuild = null; _pendingStartingGate = null; }
+        _confirmRequested = false;
+    }
+
+    private static void OnNetworkDisconnected() { if (_instance is { _quitting: false } plugin) plugin._gateway.NetworkDisconnected(); }
+
+    private static void OnLocalArtifactAdding(object __instance, out int __state) =>
+        __state = _instance is { _quitting: false } ? UnityGameGateway.MergeEvidenceCount(__instance) : -1;
+
+    private static void OnLocalArtifactAdded(object __instance, int instanceID, int entityID, bool isReward, object __result, int __state)
     {
         var plugin = _instance;
-        if (plugin?._state is null || plugin._quitting || !isReward || !WasAdditionSuccessful(__result) || !plugin._gateway.IsLocalInventory(__instance)) return;
-        var catalogKey = plugin._catalog.Entries.FirstOrDefault(x => x.Kind == CatalogKind.Artifact && x.GameKey == entityID.ToString())?.GameKey;
-        if (catalogKey is null) return;
-        var eventKey = plugin._state.RunId + ":" + Time.frameCount + ":" + instanceID;
-        if (plugin._seenRewardInstances.Count > 2048) plugin._seenRewardInstances.Clear();
-        if (!plugin._seenRewardInstances.Add(eventKey)) return; // overlapping add methods report the same reward once
-        plugin._state.RecordArtifact(catalogKey, ArtifactProgressEvent.RewardAcquired);
-        plugin._gateway.RecordReward(catalogKey);
-        try { new ActiveStateStore().Save(plugin._state); } catch (Exception ex) { plugin.Logger.LogWarning(ex); }
+        if (plugin is null || plugin._quitting || !isReward || (!WasAdditionSuccessful(__result) && !UnityGameGateway.HasMergeSource(__instance, __state, instanceID, entityID))) return;
+        plugin.RecordAcquisition(__instance, instanceID.ToString(), entityID.ToString(), AcquisitionEvidence.ServerAddition);
+    }
+
+    private static void OnClientArtifactAdded(object __instance, object item)
+    {
+        var values = UnityGameGateway.ClientAddition(item);
+        if (values.Instance is not null && values.Entity is not null)
+            _instance?.RecordAcquisition(__instance, values.Instance, values.Entity, AcquisitionEvidence.ClientAddition);
+    }
+
+    private static void OnClientArtifactMerged(object __instance, object __0)
+    {
+        var item = UnityGameGateway.ClientMergedItem(__instance, __0);
+        if (item is null) return;
+        var values = UnityGameGateway.ClientAddition(item);
+        if (values.Instance is not null && values.Entity is not null)
+            _instance?.RecordAcquisition(__instance, values.Instance, values.Entity, AcquisitionEvidence.ClientMergeUnproven);
+    }
+
+    private void RecordAcquisition(object inventory, string instanceId, string key, AcquisitionEvidence evidence)
+    {
+        if (_state is null || _quitting || !_gateway.IsLocalInventory(inventory)) return;
+        var snapshot = _gateway.ProgressSnapshot();
+        if (snapshot is null || !_catalog.Entries.Any(x => x.Kind == CatalogKind.Artifact && x.GameKey == key)) return;
+        var observed = _acquisitions.Observe(_state, snapshot, instanceId, key, evidence);
+        if (observed == AcquisitionObservation.Ignored) return;
+        if (observed == AcquisitionObservation.Confirmed) _gateway.RecordReward(key, instanceId);
+        Logger.LogInfo($"Acquisition observed: scope={snapshot.Network.SessionId}, instance={instanceId}, entity={key}, evidence={evidence}, result={observed}");
+        try { new ActiveStateStore().Save(_state); } catch (Exception ex) { Logger.LogWarning(ex); }
     }
 
     private static bool WasAdditionSuccessful(object result)

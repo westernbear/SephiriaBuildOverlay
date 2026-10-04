@@ -10,6 +10,17 @@ public sealed class BackgroundPlanner<TResult> : IDisposable
     public event Action<TResult>? ResultReady;
     public event Action<Exception>? CalculationFailed;
 
+    public void Cancel()
+    {
+        lock (_gate)
+        {
+            ++_generation;
+            _currentCancellation?.Cancel();
+            _currentCancellation?.Dispose();
+            _currentCancellation = null;
+        }
+    }
+
     public long Submit<TSnapshot>(TSnapshot immutableSnapshot, Func<TSnapshot, CancellationToken, TResult> calculate)
     {
         CancellationTokenSource cancellation;

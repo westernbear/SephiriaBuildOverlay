@@ -29,7 +29,7 @@ internal sealed class RuntimeDiagnostics
             if (command == "snapshot")
             {
                 var snapshot = gateway.CaptureOnMainThread(freshDiscovery: true);
-                result = new { snapshot, overlay = overlayState(), board = gateway.ReadBoardDiagnostics() };
+                result = new { snapshot, overlay = overlayState(), board = gateway.ReadBoardDiagnostics(), multiplayer = gateway.ReadMultiplayerDiagnostics() };
             }
             else if (command == "catalog")
                 result = new { entities = gateway.DiscoverCatalogEntities() };

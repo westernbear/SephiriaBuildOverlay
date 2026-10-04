@@ -143,8 +143,6 @@ public sealed class NativePresetTests
     [InlineData(null, "a", "1.0.33", "1.0.33", true, true, false, false, false)]
     [InlineData("a", "b", "1.0.33", "1.0.33", true, true, false, false, false)]
     [InlineData("a", "a", "1.0.33", "1.0.33", false, true, false, false, false)]
-    [InlineData("a", "a", "1.0.33", "1.0.33", true, false, false, false, false)]
-    [InlineData("a", "a", "1.0.33", "1.0.33", true, true, true, false, false)]
     [InlineData("a", "a", "1.0.33", "1.0.33", true, true, false, true, false)]
     [InlineData("a", "a", "1.0.33", "1.0.33", true, true, false, false, true)]
     public void UnsafeContextsNeverApply(string? imported, string? current, string source, string game, bool owner, bool server, bool remote, bool pending, bool editing) =>
@@ -171,7 +169,7 @@ public sealed class NativePresetTests
         Assert.Contains("런", StartingPresetPolicy.RejectionReason("a", "b", true, true, false, false, false)!);
         Assert.Contains("편집", StartingPresetPolicy.RejectionReason("a", "a", true, true, false, false, true)!);
         Assert.Contains("응답", StartingPresetPolicy.RejectionReason("a", "a", true, true, false, true, false)!);
-        Assert.Contains("싱글플레이", StartingPresetPolicy.RejectionReason("a", "a", true, true, true, false, false)!);
+        Assert.Null(StartingPresetPolicy.RejectionReason("a", "a", true, true, true, false, false));
     }
 
     [Fact]

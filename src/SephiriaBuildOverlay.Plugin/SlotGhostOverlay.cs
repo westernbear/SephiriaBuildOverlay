@@ -94,13 +94,13 @@ internal sealed partial class UnityGameGateway
         _boardVisible = false; _pointerRotation = null; _boardSignature = "";
         _rewardBoardDimensions = null;
         _boardArtifacts.Clear(); _observedArtifactCategories.Clear(); _optimizationUnavailable = null; _optimizationAction = null; _optimizationStep = null;
-        _boardContext = $"{runId}:{playerId}:{owned}";
+        _boardContext = $"{_network.SessionId}:{runId}:{playerId}:{owned}";
         _boardInventory = LocalInventory();
         var manager = ReadStatic("UIManager", "Instance");
         var registry = manager is null ? null : ReadNamedObject(manager, "uiElementsByTypename") as IDictionary;
         _boardPanel = registry?["UI_CharacterStatusPanel"] as Component;
         var readOnlyReward = screen is ScreenKind.ArtifactReward or ScreenKind.Shop && _rewardTabletSpecs.Count > 0 && _placementPlan is not null;
-        if (_boardPanel == null || _boardInventory is null) { CancelGhostCalculation(); return; }
+        if (!owned || _boardPanel == null || _boardInventory is null) { CancelGhostCalculation(); return; }
         _boardVisible = _boardPanel.gameObject.activeInHierarchy && ReadBool(_boardPanel, "IsOpened");
         if (!_boardVisible && !readOnlyReward) { CancelGhostCalculation(); return; }
         if (_boardVisible && (ReadNamedObject(_boardPanel, "PlayerAvatar") is not Component avatar || !ReferenceEquals(ReadNamedObject(avatar, "Inventory"), _boardInventory))) { CancelGhostCalculation(); return; }

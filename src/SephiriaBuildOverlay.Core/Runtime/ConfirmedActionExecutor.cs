@@ -70,7 +70,7 @@ public sealed class ConfirmedActionExecutor
                 return new ActionExecutionResult(ActionExecutionStatus.UnsafeBinding, "자동 실행이 허용되지 않는 추천입니다. 게임에서 수동으로 확인하세요.");
 
             var current = await _gateway.CaptureSnapshotAsync(cancellationToken).ConfigureAwait(false);
-            if (!current.IsLocalPlayerOwned)
+            if (!current.IsLocalPlayerOwned || !current.Network.Connected)
                 return new ActionExecutionResult(ActionExecutionStatus.Rejected, "로컬 소유 플레이어가 아닙니다.");
             if (!current.Identity.Equals(recommendation.BasedOn))
                 return new ActionExecutionResult(ActionExecutionStatus.Stale, "화면 또는 상태가 바뀌어 오래된 추천을 폐기했습니다.");

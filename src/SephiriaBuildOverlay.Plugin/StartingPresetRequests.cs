@@ -16,7 +16,7 @@ public sealed partial class SephiriaBuildOverlayPlugin
     {
         _pendingStartingBuild = null; _pendingStartingGate = null;
         if (context is null && !fromTitle)
-            return new StartingPresetResult("시작 세팅: 싱글플레이 로비에서만 적용합니다.");
+            return new StartingPresetResult("시작 세팅: 로컬 플레이어의 입장 전 로비에서만 적용합니다.");
         _pendingStartingBuild = build;
         _pendingStartingGate = new DeferredStartingPreset(context);
         _startingLobbyWaitUntil = context is null ? 0 : Time.unscaledTime + 10f;
@@ -100,9 +100,7 @@ internal sealed partial class UnityGameGateway
             foreach (var pair in environment)
                 if (pair is not null && ReadNamedString(pair, "Key") == "IsInDungeon" && ReadNamedNullableInt(pair, "Value") != 0) return true;
         if (player == null) return false;
-        var connections = GameType("Mirror.NetworkServer")?.GetField("connections", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
-        return !owned || !Convert.ToBoolean(ReadStatic("Mirror.NetworkServer", "active") ?? false) ||
-            connections is null || ReadNamedNullableInt(connections, "Count") != 1;
+        return !owned || StartingPresetContext() is null;
     }
 
     internal bool StartingPresetReady()
@@ -110,12 +108,13 @@ internal sealed partial class UnityGameGateway
         FindLocalPlayerId(out var owned, out var player);
         var type = GameType("UI_PresetPanel");
         var avatarType = GameType("PlayerAvatar");
-        if (_disposed || _requestPending || !owned || player == null || type is null || avatarType is null) return false;
+        if (_disposed || _requestPending || !owned || player == null || type is null || avatarType is null || StartingPresetContext() is null) return false;
         var avatar = player.GetComponent(avatarType);
         var matches = Resources.FindObjectsOfTypeAll(type).OfType<Component>().Where(x => x != null &&
             x.gameObject.scene.IsValid() && ReferenceEquals(ReadNamedObject(x, "playerAvatar"), avatar)).ToArray();
-        return matches.Length == 1 && ReadNamedObject(matches[0], "playerLocalDataStorage") is not null &&
-            ReadNamedObject(matches[0], "playerSpawner") is not null &&
+        return matches.Length == 1 && ReadNamedObject(matches[0], "playerLocalDataStorage") is object storage &&
+            ReferenceEquals(ReadNamedObject(storage, "avatar"), avatar) && ReadBool(storage, "isOwned") &&
+            ReadNamedObject(matches[0], "playerSpawner") is object spawner && ReferenceEquals(ReadNamedObject(spawner, "LocalDataStorage"), storage) &&
             !ReadBool(matches[0], "isEditingCurrentPreset") && !ReadBool(matches[0], "IsOpened") &&
             ReadNamedObject(matches[0], "baseWeaponDatas") is IEnumerable weapons && weapons.Cast<object>().Any();
     }

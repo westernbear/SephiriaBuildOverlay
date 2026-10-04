@@ -15,6 +15,7 @@ public sealed class RecommendationEngine
     public Recommendation Recommend(BuildPlan plan, ActiveBuildState state, RunSnapshot snapshot)
     {
         if (!snapshot.IsLocalPlayerOwned) return new Recommendation(null, "로컬 소유 플레이어가 아니므로 행동하지 않습니다.");
+        if (!snapshot.Network.Connected || !state.Matches(snapshot)) return new Recommendation(null, "세션 또는 플레이어 상태를 다시 확인합니다.");
         if (snapshot.ServerRequestPending) return new Recommendation(null, "이전 서버 응답을 기다리는 중입니다.");
 
         return snapshot.Screen switch

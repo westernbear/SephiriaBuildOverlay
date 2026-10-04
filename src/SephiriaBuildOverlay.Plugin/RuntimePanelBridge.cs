@@ -20,7 +20,7 @@ internal sealed partial class UnityGameGateway
             ScreenKind.MiracleChoice => "UI_MiraclePanel",
             _ => string.Empty
         });
-        if (panel is null || player is null) return;
+        if (panel is null || player is null || !IsLocalPanel(panel)) return;
         var elements = panel.GetComponentsInChildren<Component>(false).Where(x => x != null).AsEnumerable();
         if (screen == ScreenKind.Shop)
         {
@@ -48,7 +48,8 @@ internal sealed partial class UnityGameGateway
                     var avatar = ReadNamedObject(panel, "openedAvatar");
                     var inventory = avatar is null ? null : ReadNamedObject(avatar, "Inventory");
                     AddCandidate(element, tablet ? CandidateKind.Tablet : CandidateKind.Artifact, key, candidates, () => method.Invoke(panel, new object[] { element }),
-                        selectable: group.interactable, admission: ReadInventoryAdmission(inventory, entity, allowWisdomMerge: true));
+                        selectable: group.interactable, admission: ReadInventoryAdmission(inventory, entity, allowWisdomMerge: true),
+                        sourceInstanceId: ReadNamedString(reward!, "instanceID"));
                     if (tablet && entity is not null && reward is not null) _rewardTabletSpecs.Add((element.GetInstanceID().ToString(System.Globalization.CultureInfo.InvariantCulture), entity, ReadNamedNullableInt(reward, "instanceID") ?? 0));
                 }
             }
@@ -111,12 +112,12 @@ internal sealed partial class UnityGameGateway
         var button = group.GetComponentsInChildren<Component>(false).FirstOrDefault(x => x != null && IsType(x.GetType(), "UnityEngine.UI.Button"));
         AddCandidate(group.transform, CandidateKind.AbandonOrConvert, null, candidates, () => method.Invoke(panel, null),
             selectable: button is null || IsSelectable(button), additionalCost: "주사위 +1 · 게임 확인 창에서 변환");
-        _actionOutcomes[group.transform.GetInstanceID().ToString(System.Globalization.CultureInfo.InvariantCulture)] = _ =>
-        {
-            var manager = ReadStatic("UIManager", "Instance");
-            var registry = manager is null ? null : ReadNamedObject(manager, "uiElementsByTypename") as IDictionary;
-            return registry?["UI_MessageBoxHolder"] is object holder && ReadBool(holder, "HasOpenedBox");
-        };
+        // F8 only opens the native confirmation. Dialog visibility is not a
+        // server acknowledgement; the user confirms conversion in the game.
+        var source = ReadNamedObject(panel, "sephirite");
+        var diceBefore = ReadPlayerInt(avatar.gameObject, "rerollDice");
+        _actionOutcomes[group.transform.GetInstanceID().ToString(System.Globalization.CultureInfo.InvariantCulture)] = after =>
+            source is UnityEngine.Object native && native != null && ReadNamedObject(source, "isAcquired") is true && after.SharedDice == diceBefore + 1;
     }
 
     private void CaptureShopItem(Component panel, Component icon, List<ScreenCandidate> candidates)
@@ -145,7 +146,7 @@ internal sealed partial class UnityGameGateway
             () => request.Invoke(buyer, new object[] { shop, shopInventory, checked((sbyte)x.Value), checked((sbyte)y.Value), (sbyte)-1, (sbyte)-1 }),
             money: voucher == true ? 0 : price.Value, selectable: button is null || IsSelectable(button),
             automatic: voucher == false, additionalCost: voucher == true ? "거래권 1장 · 수동 확인" : voucher is null ? $"돈 {price} · 거래권 상태 확인 필요 · 수동 확인" : null,
-            admission: ReadInventoryAdmission(buyerInventory, entity, allowWisdomMerge: true));
+            admission: ReadInventoryAdmission(buyerInventory, entity, allowWisdomMerge: true), sourceInstanceId: ReadNamedString(item!, "InstanceID"));
         if (kind == CandidateKind.Tablet) _rewardTabletSpecs.Add((icon.GetInstanceID().ToString(System.Globalization.CultureInfo.InvariantCulture), entity!,
             ReadNamedNullableInt(item!, "InstanceID") ?? ReadNamedNullableInt(item!, "instanceID") ?? 0));
     }
@@ -222,11 +223,11 @@ internal sealed partial class UnityGameGateway
 
     private void AddCandidate(Component visual, CandidateKind kind, string? key, List<ScreenCandidate> candidates, Action? request,
         int money = 0, int dice = 0, bool free = false, bool selectable = true, bool automatic = true, string? additionalCost = null,
-        InventoryAdmission admission = InventoryAdmission.Available)
+        InventoryAdmission admission = InventoryAdmission.Available, string? sourceInstanceId = null)
     {
         var token = visual.GetInstanceID().ToString(System.Globalization.CultureInfo.InvariantCulture);
         if (candidates.Any(x => x.Token == token)) return;
-        candidates.Add(new ScreenCandidate(token, kind, key, money, dice, free, selectable && visual.gameObject.activeInHierarchy, automatic, additionalCost, admission));
+        candidates.Add(new ScreenCandidate(token, kind, key, money, dice, free, selectable && visual.gameObject.activeInHierarchy, automatic, additionalCost, admission, sourceInstanceId));
         if (automatic && request is not null && InventoryAdmissionPolicy.BlockReason(admission) is null) _actions[token] = request;
         if (visual.transform is RectTransform rect) _rectangles[token] = rect;
     }

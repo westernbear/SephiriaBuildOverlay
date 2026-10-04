@@ -9,6 +9,8 @@ namespace SephiriaBuildOverlay.Plugin;
 
 internal sealed partial class UnityGameGateway
 {
+    private object? _applyingPresetPanel, _applyingPresetAvatar, _applyingPresetStorage, _applyingPresetSpawner;
+    private string? _applyingPresetContext;
     internal string? StartingPresetContext()
     {
         try { return ReadStartingPresetContext(); }
@@ -19,10 +21,10 @@ internal sealed partial class UnityGameGateway
     {
         if (_disposed) return null;
         var id = FindLocalPlayerId(out var owned, out var player);
+        var network = RefreshNetworkContext(id, owned);
         var dungeon = ReadStatic("DungeonManager", "Instance") as Component;
         var profile = ReadStatic("SaveManager", "Binded");
-        var connections = GameType("Mirror.NetworkServer")?.GetField("connections", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
-        if (!Convert.ToBoolean(ReadStatic("Mirror.NetworkServer", "active") ?? false) || connections is null || ReadNamedNullableInt(connections, "Count") != 1) return null;
+        if (!network.Connected) return null;
         if (!owned || player == null || dungeon == null || string.IsNullOrWhiteSpace(profile?.ToString())) return null;
         var environment = ReadNamedObject(dungeon, "dungeonEnvironment") as IEnumerable;
         if (environment is null) return null;
@@ -33,8 +35,15 @@ internal sealed partial class UnityGameGateway
                 inDungeon = ReadNamedNullableInt(pair, "Value");
                 if (!inDungeon.HasValue) return null;
             }
-        return StartingPresetPolicy.IsLobby(inDungeon, ReadNamedObject(dungeon, "isRunStarted") as bool?)
-            ? id + ":" + dungeon.GetInstanceID() + ":" + profile + ":" + FindRunId(id) : null;
+        if (!StartingPresetPolicy.IsLobby(inDungeon, ReadNamedObject(dungeon, "isRunStarted") as bool?)) return null;
+        var context = network.SessionId + ":" + id + ":" + dungeon.GetInstanceID() + ":" + profile + ":" + FindRunId(id);
+        if (_applyingPresetContext == context && (_applyingPresetPanel is not Component bound || bound == null ||
+            !bound.gameObject.scene.IsValid() || !ReferenceEquals(ReadNamedObject(bound, "playerAvatar"), _applyingPresetAvatar) ||
+            !ReferenceEquals(ReadNamedObject(bound, "playerLocalDataStorage"), _applyingPresetStorage) ||
+            !ReferenceEquals(ReadNamedObject(bound, "playerSpawner"), _applyingPresetSpawner) ||
+            !ReferenceEquals(ReadNamedObject(_applyingPresetStorage!, "avatar"), _applyingPresetAvatar) ||
+            !ReadBool(_applyingPresetStorage!, "isOwned") || ReadBool(bound, "IsOpened") || ReadBool(bound, "isEditingCurrentPreset"))) return null;
+        return context;
     }
 
     internal async Task<StartingPresetResult> ApplyStartingPresetAsync(ImportedBuild build, string? importContext, CancellationToken cancellationToken)
@@ -49,10 +58,6 @@ internal sealed partial class UnityGameGateway
             // Version metadata does not gate presets. Revalidate the actual
             // native API, local lobby context and unlocked options instead.
             var id = FindLocalPlayerId(out var owned, out var player);
-            var server = Convert.ToBoolean(ReadStatic("Mirror.NetworkServer", "active") ?? false);
-            var connections = GameType("Mirror.NetworkServer")?.GetField("connections", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
-            // An unknown connection count is not evidence of single-player.
-            var remotePlayers = connections is null || (ReadNamedNullableInt(connections, "Count") ?? int.MaxValue) != 1;
             var type = GameType("UI_PresetPanel") ?? throw new InvalidOperationException("네이티브 프리셋 패널을 찾을 수 없습니다.");
             if (player == null) throw new InvalidOperationException("로컬 플레이어가 없습니다.");
             var avatar = player.GetComponent(GameType("PlayerAvatar")!);
@@ -61,7 +66,7 @@ internal sealed partial class UnityGameGateway
             if (matches.Length != 1) throw new InvalidOperationException("연결된 프리셋 패널이 없거나 모호합니다.");
             panel = matches[0];
             var rejection = StartingPresetPolicy.RejectionReason(importContext, StartingPresetContext(),
-                owned, server, remotePlayers, _requestPending, ReadBool(panel, "isEditingCurrentPreset") || ReadBool(panel, "IsOpened"));
+                owned, false, false, _requestPending, ReadBool(panel, "isEditingCurrentPreset") || ReadBool(panel, "IsOpened"));
             if (rejection is not null)
             {
                 _log.LogWarning("Starting preset refused: " + rejection);
@@ -69,6 +74,8 @@ internal sealed partial class UnityGameGateway
             }
             var storage = ReadNamedObject(panel, "playerLocalDataStorage") ?? throw new InvalidOperationException("플레이어 저장소가 없습니다.");
             var spawner = ReadNamedObject(panel, "playerSpawner") ?? throw new InvalidOperationException("플레이어 스포너가 없습니다.");
+            if (!ReferenceEquals(ReadNamedObject(storage, "avatar"), avatar) || !ReadBool(storage, "isOwned"))
+                throw new InvalidOperationException("로컬 프리셋 저장소 소유권을 확인할 수 없습니다.");
             if (ReadNamedObject(panel, "baseWeaponDatas") is not IEnumerable weapons || !weapons.Cast<object>().Any())
                 throw new InvalidOperationException("시작 무기 카탈로그가 준비되지 않았습니다.");
             backup = (string)NativeCall(panel, "BuildCompactPresetData", "")!;
@@ -156,6 +163,8 @@ internal sealed partial class UnityGameGateway
             if (StartingPresetContext() != importContext || FindLocalPlayerId(out owned, out _) != id || !owned)
                 throw new InvalidOperationException("적용 직전 로컬 런 상태가 변경되었습니다.");
             cancellationToken.ThrowIfCancellationRequested();
+            _applyingPresetContext = importContext; _applyingPresetPanel = panel; _applyingPresetAvatar = avatar;
+            _applyingPresetStorage = storage; _applyingPresetSpawner = spawner;
             _requestPending = true;
             ownsPending = true;
             changed = true;
@@ -207,12 +216,21 @@ internal sealed partial class UnityGameGateway
             NativeCall(panel, "UpdateCurrentPlayer", null, false);
             await WaitForStartingStats(avatar!, preset, passiveEntities, importContext, cancellationToken);
             var weaponWarning = await WaitForStartingWeapon(panel, storage, avatar!, importContext, cancellationToken);
-            await WaitForStartingFruit(storage, preset, importContext, cancellationToken);
+            await WaitForStartingCostume(avatar!, preset, importContext, cancellationToken);
+            // Native PlayerLocalDataStorage uses owner->server SyncLists. Mirror
+            // does not echo that data back to its owner; local mutation cannot
+            // acknowledge the remote server. Keep those results manual there.
+            var serverLoadout = ReadBool(storage, "isServer");
+            if (serverLoadout)
+            {
+                await WaitForStartingFruit(storage, preset, importContext, cancellationToken);
+                await WaitForStartingPocket(storage, preset, importContext, cancellationToken);
+            }
             var applied = NativePreset.ParseCompact((string)NativeCall(panel, "BuildCompactPresetData", "")!);
             locked.RemoveAppliedOptions(applied);
             save.Invoke(null, new object[] { true, false });
-            _log.LogInfo("Starting preset applied through native import/update; source=" + (string.IsNullOrWhiteSpace(build.NativePresetCode) ? "wiki-fields" : "preset-code") + "; permanent purchases excluded.");
-            _log.LogInfo("Starting fruit skewer confirmed: source=" + (build.FruitSkewer is null ? "native-preset" : "wiki-fields") +
+            _log.LogInfo("Starting preset native update: verification=" + (serverLoadout ? "server-confirmed" : "partial-client-results") + "; source=" + (string.IsNullOrWhiteSpace(build.NativePresetCode) ? "wiki-fields" : "preset-code") + "; permanent purchases excluded.");
+            _log.LogInfo("Starting fruit skewer " + (serverLoadout ? "confirmed" : "local-only; server unverified") + ": source=" + (build.FruitSkewer is null ? "native-preset" : "wiki-fields") +
                 ", adaptive=" + preset.Adaptive + ", fruits=" + string.Join(";", preset.Fruits.Select(x => x.Category + ":" + x.Value)));
             foreach (var warning in fallbackWarnings) _log.LogWarning("Starting preset: " + warning);
             foreach (var item in locked.Items) _log.LogWarning("Starting preset locked option excluded: " + item);
@@ -222,6 +240,13 @@ internal sealed partial class UnityGameGateway
             var resultWarning = locked.Bubble ?? (adjusted.Count > 0 ? "현재 포인트·용량·선택 조건에 맞춰 조정했습니다.\n" + string.Join(" · ", adjusted) :
                 fallbackWarnings.Count > 0 ? "일부 시작 옵션을 매핑하지 못했습니다. 현재 설정을 확인하세요." : null);
             if (weaponWarning is not null) resultWarning = resultWarning is null ? weaponWarning : resultWarning + "\n" + weaponWarning;
+            if (!serverLoadout)
+            {
+                const string manual = "과일꼬치·시작 아이템은 클라이언트 로컬 갱신만 관찰했습니다. 서버 반영 미확인: 게임 프리셋에서 수동 확인하세요.";
+                resultWarning = resultWarning is null ? manual : resultWarning + "\n" + manual;
+                return new StartingPresetResult("시작 프리셋 부분 확인: 무기·특성·의상 확인, 과일꼬치·시작 아이템 수동 확인. 저장 슬롯 유지." + limited,
+                    warning: resultWarning);
+            }
             return new StartingPresetResult("시작 프리셋 적용 완료 (현재 설정만 변경, 저장 슬롯 유지)." + limited + "\n" + message,
                 applied: true, warning: resultWarning);
         }
@@ -242,14 +267,28 @@ internal sealed partial class UnityGameGateway
                     await WaitForStartingStats(avatar, previous, entities, importContext!, cancellationToken);
                     var storage = ReadNamedObject(panel, "playerLocalDataStorage") ?? throw new InvalidOperationException("플레이어 저장소가 없습니다.");
                     await WaitForStartingWeapon(panel, storage, avatar, importContext!, cancellationToken);
-                    await WaitForStartingFruit(storage, previous, importContext!, cancellationToken);
+                    await WaitForStartingCostume(avatar, previous, importContext!, cancellationToken);
+                    if (ReadBool(storage, "isServer"))
+                    {
+                        await WaitForStartingFruit(storage, previous, importContext!, cancellationToken);
+                        await WaitForStartingPocket(storage, previous, importContext!, cancellationToken);
+                    }
+                    else return new StartingPresetResult("시작 프리셋 중단 후 기존 설정 복원 요청: 과일꼬치·시작 아이템 서버 반영 미확인.",
+                        warning: "시작 세팅 적용을 중단했습니다. 게임 프리셋에서 기존 과일꼬치·시작 아이템을 수동 확인하세요.");
                 }
                 catch (Exception restoreError) { _log.LogError("Starting preset rollback failed: " + restoreError); return new StartingPresetResult("시작 프리셋 실패 및 복원 실패", warning: "시작 세팅 복원 실패. 네이티브 프리셋에서 현재 설정을 확인하세요."); }
             }
             else if (changed) return new StartingPresetResult("시작 프리셋 일부 적용 후 런/플레이어 변경", warning: "시작 세팅 일부 적용 후 중단됐습니다. 현재 설정을 확인하세요.");
             return new StartingPresetResult("시작 프리셋 미적용/복원: " + ex.GetBaseException().Message, warning: "시작 세팅을 적용하지 못했습니다. 기존 설정을 유지합니다.");
         }
-        finally { if (ownsPending && !_disposed) _requestPending = false; }
+        finally
+        {
+            // Releasing our lease must also work when the panel became unsafe,
+            // but it must not clear a request in another connection's scope.
+            if (ownsPending && !_disposed && _network.SessionId == importContext.Split(':')[0]) _requestPending = false;
+            _applyingPresetPanel = _applyingPresetAvatar = _applyingPresetStorage = _applyingPresetSpawner = null;
+            _applyingPresetContext = null;
+        }
     }
 
     private ulong? VerifiedPassiveId(string slug)
@@ -335,6 +374,37 @@ internal sealed partial class UnityGameGateway
             if (StartingFruitState.Matches(preset, ReadNamedNullableInt(storage, "adaptiveItemDropBonus"), fruits)) return;
         } while (Time.unscaledTime < deadline);
         throw new TimeoutException("과일꼬치 적용 결과가 5초 안에 확인되지 않았습니다.");
+    }
+
+    private async Task WaitForStartingCostume(object avatar, NativePreset preset, string context, CancellationToken token)
+    {
+        var skin = preset.Skin;
+        if (string.IsNullOrWhiteSpace(skin))
+        {
+            var defaultSkin = StaticCall("CostumeDatabase", "FindDefaultCostumeSkin", preset.Costume);
+            skin = defaultSkin is null ? "" : ReadNamedString(defaultSkin, "skinID") ?? "";
+        }
+        var deadline = Time.unscaledTime + 5f;
+        do
+        {
+            await Task.Delay(50, token);
+            if (_disposed || StartingPresetContext() != context) throw new InvalidOperationException("시작 의상 적용 중 연결/플레이어가 변경되었습니다.");
+            if (StartingLoadoutState.CostumeMatches(preset.Costume, skin, ReadNamedString(avatar, "currentCostume"), ReadNamedString(avatar, "currentCostumeSkin"))) return;
+        } while (Time.unscaledTime < deadline);
+        throw new TimeoutException("시작 의상 서버 결과가 확인되지 않았습니다.");
+    }
+
+    private async Task WaitForStartingPocket(object storage, NativePreset preset, string context, CancellationToken token)
+    {
+        var deadline = Time.unscaledTime + 5f;
+        do
+        {
+            await Task.Delay(50, token);
+            if (_disposed || StartingPresetContext() != context) throw new InvalidOperationException("시작 아이템 적용 중 연결/플레이어가 변경되었습니다.");
+            var observed = (ReadNamedObject(storage, "dimensionPocketItem") as IEnumerable)?.Cast<object>().Select(Convert.ToInt32).ToArray();
+            if (StartingLoadoutState.PocketMatches(preset.Pocket.Select(x => x.Entity).ToArray(), observed, ReadBool(storage, "isServer"))) return;
+        } while (Time.unscaledTime < deadline);
+        throw new TimeoutException("시작 아이템 서버 결과가 확인되지 않았습니다.");
     }
 
     private static object? NativeCall(object instance, string method, params object?[] args) =>

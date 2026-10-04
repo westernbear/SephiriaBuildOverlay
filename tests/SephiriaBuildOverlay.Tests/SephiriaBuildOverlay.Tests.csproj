@@ -27,6 +27,7 @@
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\StartingOptionEligibility.cs" Link="StartingOptionEligibility.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\StartingPresetComparison.cs" Link="StartingPresetComparison.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\StartingFruitState.cs" Link="StartingFruitState.cs" />
+    <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\StartingLoadoutState.cs" Link="StartingLoadoutState.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\StartingWeaponState.cs" Link="StartingWeaponState.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\NativeMenuInputPolicy.cs" Link="NativeMenuInputPolicy.cs" />
     <Compile Include="..\..\src\SephiriaBuildOverlay.Plugin\OwnedUiInputScope.cs" Link="OwnedUiInputScope.cs" />

@@ -7,7 +7,7 @@ namespace SephiriaBuildOverlay.Plugin;
 internal sealed class InventoryPlacementBatch
 {
     private Guid _build;
-    private string _run = "", _player = "";
+    private RunScope _scope;
     private string? _model;
     private BoardLayout? _goal, _observed, _expected;
     private double _deadline;
@@ -19,7 +19,8 @@ internal sealed class InventoryPlacementBatch
 
     public void Start(Guid build, RunSnapshot snapshot, double now)
     {
-        _build = build; _run = snapshot.RunId; _player = snapshot.LocalPlayerId;
+        _build = build;
+        _scope = snapshot.Scope;
         _model = null; _goal = _observed = _expected = null;
         Active = true; RequestPending = _awaitingLayout = false; CompletedSteps = 0; EndReason = null;
         _deadline = now + 10;
@@ -30,7 +31,7 @@ internal sealed class InventoryPlacementBatch
         bool calculating, string? unavailable, double now)
     {
         if (!Active) return null;
-        if (!contextAllowed || build != _build || snapshot.RunId != _run || snapshot.LocalPlayerId != _player || !snapshot.IsLocalPlayerOwned)
+        if (!contextAllowed || build != _build || !snapshot.Scope.Equals(_scope) || !snapshot.IsLocalPlayerOwned || !snapshot.Network.Connected)
         { Stop("자동배치 중단: 창 또는 플레이어 상태가 바뀌었습니다."); return null; }
         if (now >= _deadline) { Stop("자동배치 중단: 배치 상태 확인 시간이 초과되었습니다."); return null; }
         if (RequestPending || snapshot.ServerRequestPending) return null;
