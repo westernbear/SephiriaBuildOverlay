@@ -89,10 +89,17 @@ public static class StartingPresetFallback
         {
             var path = catalog.BuildWeaponPath(slug!);
             var entries = path.Select(key => catalog.Entries.Single(x => x.Kind == CatalogKind.Weapon && x.GameKey == key)).ToArray();
-            foreach (var entry in entries)
+            var rootEntry = entries[0];
+            if (!catalog.Verify(rootEntry.Slug, CatalogKind.Weapon, entities).AllowsAutomaticAction ||
+                !int.TryParse(rootEntry.GameKey, NumberStyles.None, CultureInfo.InvariantCulture, out var root))
+            { warnings.Add(rootEntry.Slug + ": 시작 무기 매핑 미검증"); return; }
+            // Equipping an independently verified lobby root does not execute
+            // an upgrade. A stale/missing target must not keep the old weapon.
+            // Upgrade recommendations still use the full catalog verification.
+            preset.SetWeapon(root);
+            foreach (var entry in entries.Skip(1))
                 if (!catalog.Verify(entry.Slug, CatalogKind.Weapon, entities).AllowsAutomaticAction)
-                { warnings.Add(entry.Slug + ": 시작 무기 매핑 미검증"); return; }
-            if (int.TryParse(path[0], NumberStyles.None, CultureInfo.InvariantCulture, out var root)) preset.SetWeapon(root);
+                    warnings.Add(entry.Slug + ": 목표 강화 무기 매핑 미검증. 검증된 시작 무기만 적용합니다.");
         }
         catch (Exception ex) when (ex is KeyNotFoundException or InvalidOperationException)
         { warnings.Add("시작 무기 경로를 검증하지 못했습니다."); }

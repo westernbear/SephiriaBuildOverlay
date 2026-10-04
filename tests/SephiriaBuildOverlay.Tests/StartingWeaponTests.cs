@@ -11,6 +11,8 @@ public sealed class StartingWeaponTests
     [InlineData("raging_helbanus", 400)]
     [InlineData("super_conductor", 0)]
     [InlineData("all_element_staff_ilonica", 500)]
+    [InlineData("crossbow", 100)]
+    [InlineData("minigun", 100)]
     public void StructuredTargetOverridesOldNativeSelectionWithVerifiedStartingWeapon(string slug, int root)
     {
         var catalog = VersionedCatalog.LoadEmbedded();
@@ -19,8 +21,68 @@ public sealed class StartingWeaponTests
         var warnings = new List<string>();
         StartingPresetFallback.ApplyWeapon(preset, slug, catalog, entities, warnings);
         Assert.Equal(root, preset.Weapon); Assert.Empty(warnings); Assert.Single(preset.Fruits); Assert.Equal(1, preset.Adaptive);
-        Assert.NotEqual(int.Parse(catalog.FindBySlug(slug, CatalogKind.Weapon)!.GameKey), preset.Weapon);
+        if (slug != "crossbow") Assert.NotEqual(int.Parse(catalog.FindBySlug(slug, CatalogKind.Weapon)!.GameKey), preset.Weapon);
     }
+
+    [Theory]
+    [InlineData("name", false)]
+    [InlineData("tier", false)]
+    [InlineData("parent", false)]
+    [InlineData("missing", false)]
+    [InlineData("name", true)]
+    [InlineData("tier", true)]
+    [InlineData("parent", true)]
+    [InlineData("missing", true)]
+    public void UnverifiedMinigunTargetStillSelectsVerifiedCrossbowWithOrWithoutNativePreset(string mismatch, bool nativePreset)
+    {
+        var catalog = VersionedCatalog.LoadEmbedded();
+        var target = catalog.FindBySlug("minigun", CatalogKind.Weapon)!;
+        var entities = Describe(catalog).Where(x => x.GameKey != target.GameKey).ToList();
+        if (mismatch != "missing") entities.Add(new GameEntityDescriptor(target.GameKey, CatalogKind.Weapon,
+            mismatch == "name" ? "변경된 이름" : target.KoreanName,
+            tier: mismatch == "tier" ? 1 : target.Tier,
+            parentGameKey: mismatch == "parent" ? "101" : target.ParentGameKey));
+        var current = "AAP1\nW:500\nC:PinkRabbit\nS:\n";
+        var warnings = new List<string>();
+        NativePreset preset;
+        if (nativePreset)
+        {
+            preset = NativePreset.ParseCompact(current);
+            StartingPresetFallback.ApplyWeapon(preset, "minigun", catalog, entities, warnings);
+        }
+        else
+        {
+            var id = Guid.NewGuid();
+            var build = WikiBuildParser.Parse($"{{\"postUuid\":\"{id}\",\"version\":\"1.0.23\",\"weapon\":\"minigun\",\"content\":[]}}", id);
+            preset = StartingPresetFallback.Create(build, current, catalog, entities, _ => null, warnings);
+        }
+        Assert.Equal(100, preset.Weapon);
+        Assert.NotEqual(int.Parse(target.GameKey), preset.Weapon);
+        Assert.False(catalog.Verify(target.Slug, CatalogKind.Weapon, entities).AllowsAutomaticAction);
+        Assert.Contains(warnings, x => x.Contains("minigun") && x.Contains("목표 강화 무기"));
+    }
+
+    [Theory]
+    [InlineData("missing")]
+    [InlineData("name")]
+    [InlineData("duplicate")]
+    public void UnverifiedCrossbowRootKeepsCurrentWeaponEvenWhenUpgradeTargetIsVerified(string mismatch)
+    {
+        var catalog = VersionedCatalog.LoadEmbedded();
+        var root = catalog.FindBySlug("crossbow", CatalogKind.Weapon)!;
+        var entities = Describe(catalog).Where(x => x.GameKey != root.GameKey).ToList();
+        if (mismatch != "missing") entities.Add(new GameEntityDescriptor(root.GameKey, CatalogKind.Weapon, "다른 무기", tier: 1));
+        if (mismatch == "duplicate") entities.Add(new GameEntityDescriptor(root.GameKey, CatalogKind.Weapon, root.KoreanName, tier: 1));
+        Assert.True(catalog.Verify("minigun", CatalogKind.Weapon, entities).AllowsAutomaticAction);
+        var preset = NativePreset.ParseCompact("AAP1\nW:500\nC:PinkRabbit\nS:\n");
+        var warnings = new List<string>();
+        StartingPresetFallback.ApplyWeapon(preset, "minigun", catalog, entities, warnings);
+        Assert.Equal(500, preset.Weapon);
+        Assert.Contains(warnings, x => x.Contains("crossbow") && x.Contains("시작 무기"));
+    }
+
+    private static IEnumerable<GameEntityDescriptor> Describe(VersionedCatalog catalog) =>
+        catalog.Entries.Select(x => new GameEntityDescriptor(x.GameKey, x.Kind, x.KoreanName, x.Rarity, x.Category, x.Tier, x.ParentGameKey, x.IsDual));
 
     [Theory]
     [InlineData(null)]
